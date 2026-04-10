@@ -1,0 +1,22 @@
+---
+description: Seguir AGENTS.md — orquestração Codex, roteamento de skills e critérios de pronto
+alwaysApply: true
+---
+
+# AGENTS.md do projeto
+
+O arquivo `AGENTS.md` na raiz deste repositório é a fonte de verdade para como trabalhar aqui.
+
+## O que cumprir
+
+1. **Roteamento:** use o especialista (skill) mais estreito que couber na tarefa; se cruzar domínios, **sequencie** especialistas em vez de misturar responsabilidades.
+2. **Ordem de colaboração:** siga a sequência descrita em **Collaboration order** no `AGENTS.md` (napkin → planejamento/descoberta → implementação → refinamento → qualidade, etc.).
+3. **Napkin:** no início de trabalho relevante, considere `.claude/napkin.md` e atualize-o conforme o skill napkin e a secção **Persistent memory** do `AGENTS.md`.
+4. **Restrições operacionais:** respeite **Operating constraints** (mudanças cirúrgicas, convenções do projeto, diffs mínimos, validação após edições, etc.).
+5. **Pronto:** só considere concluído quando cumprir **Definitions of done** aplicáveis ao que foi pedido.
+
+## Quando reler
+
+Antes de planos grandes, refactors arriscados ou tarefas multi-domínio, **reabra `AGENTS.md`** para alinhar roteamento e ordem com o texto completo (inclui quando usar `interface-design` vs `frontend-specialist`, documentação só sob pedido explícito, etc.).
+
+Não substituas o `AGENTS.md` por esta regra: esta regra apenas **obriga** segui-lo.
