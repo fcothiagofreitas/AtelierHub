@@ -1,7 +1,7 @@
-import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
-import { authOptions } from "@/lib/auth";
+import { getActiveStoreContext } from "@/lib/session";
+import { ProtectedShell } from "@/modules/auth/components/protected-shell";
 
 type ProtectedLayoutProps = {
   children: ReactNode;
@@ -10,11 +10,26 @@ type ProtectedLayoutProps = {
 export default async function ProtectedLayout({
   children,
 }: ProtectedLayoutProps) {
-  const session = await getServerSession(authOptions);
+  const { session, availableStores, activeStore } = await getActiveStoreContext();
 
-  if (!session) {
+  if (availableStores.length === 0) {
     redirect("/login");
   }
 
-  return children;
+  return (
+    <ProtectedShell
+      userName={session.user.name}
+      userEmail={session.user.email}
+      role={session.user.role}
+      currentStoreId={activeStore?.id ?? null}
+      currentStoreName={activeStore?.name ?? "Nenhuma loja selecionada"}
+      stores={availableStores.map((store) => ({
+        id: store.id,
+        name: store.name,
+        kind: store.kind,
+      }))}
+    >
+      {children}
+    </ProtectedShell>
+  );
 }

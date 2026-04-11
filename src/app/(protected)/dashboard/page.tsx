@@ -1,194 +1,304 @@
 import {
-  Bell,
-  Building2,
-  Database,
-  GitBranch,
-  Layers3,
-  Search,
-  ShieldCheck,
-  Sparkles,
+  AlertTriangle,
+  ArrowUpRight,
+  Boxes,
+  ClipboardList,
+  DollarSign,
+  ReceiptText,
 } from "lucide-react";
-import { getServerSession } from "next-auth";
-import { SignOutButton } from "@/modules/auth/components/sign-out-button";
-import { authOptions } from "@/lib/auth";
-import { Input } from "@/components/ui/input";
+import { roleLabels } from "@/lib/authorization";
+import { getActiveStoreContext } from "@/lib/session";
 
-const foundationCards = [
+type DashboardPageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
+
+const primaryMetrics = [
   {
-    title: "Arquitetura",
-    description: "Next.js, Prisma, Tailwind e shadcn/ui em um monolito modular.",
-    icon: Building2,
+    label: "Vendas hoje",
+    value: "R$ 18.420",
+    delta: "+12.4%",
+    tone: "positive",
+    icon: DollarSign,
   },
   {
-    title: "Acesso",
-    description: "Login por e-mail e senha com base para perfis e escopo por loja.",
-    icon: ShieldCheck,
+    label: "Pedidos em aberto",
+    value: "14",
+    delta: "3 aguardando pagamento",
+    tone: "neutral",
+    icon: ReceiptText,
   },
   {
-    title: "Dados",
-    description: "Schema inicial com tenant, loja, usuario e vinculo usuario-loja.",
-    icon: Database,
+    label: "Itens com alerta",
+    value: "8",
+    delta: "Reposicao sugerida",
+    tone: "warning",
+    icon: Boxes,
   },
   {
-    title: "Entrega",
-    description: "Fluxo alinhado com develop -> staging e main -> production.",
-    icon: GitBranch,
+    label: "Pendencias operacionais",
+    value: "5",
+    delta: "2 exigem revisao hoje",
+    tone: "warning",
+    icon: AlertTriangle,
   },
 ];
 
-export default async function DashboardPage() {
-  const session = await getServerSession(authOptions);
+const pendingItems = [
+  {
+    title: "Transferencia aguardando conferencia",
+    description: "Loja Centro -> Loja Aldeota",
+    badge: "Estoque",
+  },
+  {
+    title: "Grupo de cobranca do dia",
+    description: "3 pedidos pendentes de recebimento",
+    badge: "Financeiro",
+  },
+  {
+    title: "Cadastro aguardando aprovacao",
+    description: "1 novo vendedor criado pela area administrativa",
+    badge: "Cadastros",
+  },
+];
+
+const recentActivity = [
+  {
+    time: "09:12",
+    title: "Venda registrada",
+    meta: "Pedido #004812 • Loja Centro",
+  },
+  {
+    time: "10:05",
+    title: "Troca de contexto",
+    meta: "Operacao alterada para Loja Aldeota",
+  },
+  {
+    time: "10:48",
+    title: "Conferencia concluida",
+    meta: "Transferencia recebida no administrativo",
+  },
+];
+
+export default async function DashboardPage({
+  searchParams,
+}: DashboardPageProps) {
+  const { session, activeStore, availableStores } = await getActiveStoreContext();
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const deniedParam = resolvedSearchParams?.denied;
+  const accessDenied = Array.isArray(deniedParam)
+    ? deniedParam.includes("1")
+    : deniedParam === "1";
 
   return (
-    <main className="min-h-screen px-4 py-4 text-zinc-950 sm:px-6">
-      <div className="mx-auto grid max-w-7xl gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
-        <aside className="rounded-[2rem] border border-white/70 bg-white/70 p-4 shadow-[0_20px_60px_-40px_rgba(38,30,24,0.32)] backdrop-blur">
-          <div className="flex h-full flex-col gap-6">
-            <div className="flex items-center gap-3 rounded-[1.5rem] bg-zinc-950 px-4 py-3 text-white">
-              <div className="flex size-10 items-center justify-center rounded-2xl bg-white/12">
-                <Sparkles className="size-5" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold">AtelierHub</p>
-                <p className="text-xs text-white/70">Workspace</p>
-              </div>
+    <div className="space-y-6">
+      <section className="grid gap-4 xl:grid-cols-[1.35fr_0.65fr]">
+        <div className="rounded-3xl border border-slate-200 bg-slate-50 p-6">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-sm text-slate-500">
+                {roleLabels[session.user.role ?? "VENDEDOR"]} na operacao{" "}
+                <span className="font-medium text-slate-900">
+                  {activeStore?.name ?? "Nao definida"}
+                </span>
+              </p>
+              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">
+                Um painel mais proximo do dia a dia da loja.
+              </h2>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+                A sessao agora nasce com tenant, perfil e contexto de loja ativos.
+                A troca de operacao fica no topo do sistema, sem tirar a pessoa da
+                rotina.
+              </p>
             </div>
 
-            <div className="space-y-2">
-              <p className="px-3 text-xs font-semibold uppercase tracking-[0.22em] text-zinc-400">
-                Navegacao
+            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                Escopo ativo
               </p>
-              <div className="space-y-1">
-                <div className="flex items-center gap-3 rounded-2xl bg-[#fff1ec] px-3 py-3 text-sm font-medium text-zinc-900">
-                  <Layers3 className="size-4 text-[#f05a37]" />
-                  Dashboard
-                </div>
-                <div className="flex items-center gap-3 rounded-2xl px-3 py-3 text-sm text-zinc-500">
-                  <Building2 className="size-4" />
-                  Estrutura base
-                </div>
-                <div className="flex items-center gap-3 rounded-2xl px-3 py-3 text-sm text-zinc-500">
-                  <ShieldCheck className="size-4" />
-                  Autenticacao
-                </div>
-                <div className="flex items-center gap-3 rounded-2xl px-3 py-3 text-sm text-zinc-500">
-                  <Database className="size-4" />
-                  Prisma
-                </div>
-                <div className="flex items-center gap-3 rounded-2xl px-3 py-3 text-sm text-zinc-500">
-                  <GitBranch className="size-4" />
-                  Staging & production
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-auto rounded-[1.5rem] border border-zinc-200 bg-zinc-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-zinc-400">
-                Sessao
+              <p className="mt-1 text-sm font-medium text-slate-900">
+                {availableStores.length} loja(s) disponiveis
               </p>
-              <div className="mt-3 space-y-1">
-                <p className="font-medium">{session?.user?.name}</p>
-                <p className="text-sm text-zinc-500">{session?.user?.email}</p>
-              </div>
-              <div className="mt-4 space-y-1 text-sm text-zinc-500">
-                <p>Perfil: {session?.user?.role ?? "nao definido"}</p>
-                <p>Lojas: {session?.user?.storeIds?.length ?? 0}</p>
-              </div>
-              <div className="mt-4">
-                <SignOutButton />
-              </div>
+              <p className="text-sm text-slate-500">Tenant {session.user.tenantId}</p>
             </div>
           </div>
-        </aside>
 
-        <section className="rounded-[2rem] border border-white/70 bg-white/72 p-4 shadow-[0_20px_60px_-40px_rgba(38,30,24,0.32)] backdrop-blur sm:p-5">
-          <div className="flex flex-col gap-4">
-            <header className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="relative w-full max-w-xl">
-                <Search className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-zinc-400" />
-                <Input
-                  readOnly
-                  value=""
-                  placeholder="Buscar modulo, sprint ou insight"
-                  className="h-12 rounded-full border-zinc-200 bg-zinc-50 pl-11 shadow-none"
-                />
-              </div>
+          {accessDenied ? (
+            <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              A rota solicitada exige outro perfil. Sua sessao continua ativa no
+              contexto atual.
+            </div>
+          ) : null}
 
-              <div className="flex items-center gap-3">
-                <button className="inline-flex size-12 items-center justify-center rounded-full border border-zinc-200 bg-zinc-50 text-zinc-500">
-                  <Bell className="size-4" />
-                </button>
-                <div className="rounded-full border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm text-zinc-500">
-                  Sprint 1 em andamento
+          <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {primaryMetrics.map(({ label, value, delta, tone, icon: Icon }) => (
+              <article
+                key={label}
+                className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="inline-flex size-9 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+                    <Icon className="size-4" />
+                  </span>
+                  <span
+                    className={[
+                      "rounded-full px-2 py-1 text-xs font-medium",
+                      tone === "positive"
+                        ? "bg-emerald-50 text-emerald-700"
+                        : tone === "warning"
+                          ? "bg-amber-50 text-amber-700"
+                          : "bg-slate-100 text-slate-600",
+                    ].join(" ")}
+                  >
+                    {delta}
+                  </span>
                 </div>
-              </div>
-            </header>
-
-            <div className="grid gap-4 xl:grid-cols-[1.4fr_0.8fr]">
-              <div className="rounded-[1.8rem] bg-[#f6f2eb] p-6">
-                <div className="flex items-center gap-2 text-sm text-zinc-500">
-                  <span className="rounded-full bg-white px-3 py-1">Foundation</span>
-                  <span>•</span>
-                  <span>MVP bootstrap</span>
-                </div>
-                <h1 className="mt-6 max-w-2xl text-4xl font-semibold tracking-[-0.06em] text-zinc-900">
-                  A fundacao tecnica do produto ja esta viva.
-                </h1>
-                <p className="mt-4 max-w-2xl text-base leading-7 text-zinc-600">
-                  Este dashboard placeholder agora segue uma linguagem mais leve e
-                  mais proxima de um SaaS moderno, enquanto segura os dados da
-                  sessao autenticada e prepara o terreno da Sprint 2.
+                <p className="mt-4 text-sm text-slate-500">{label}</p>
+                <p className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
+                  {value}
                 </p>
-
-                <div className="mt-8 grid gap-4 md:grid-cols-2">
-                  {foundationCards.map(({ title, description, icon: Icon }) => (
-                    <article
-                      key={title}
-                      className="rounded-[1.5rem] bg-white p-5 shadow-sm"
-                    >
-                      <div className="mb-4 inline-flex rounded-2xl bg-[#fff1ec] p-3 text-[#f05a37]">
-                        <Icon className="size-5" />
-                      </div>
-                      <h2 className="text-lg font-semibold text-zinc-900">{title}</h2>
-                      <p className="mt-2 text-sm leading-6 text-zinc-500">
-                        {description}
-                      </p>
-                    </article>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid gap-4">
-                <div className="rounded-[1.8rem] bg-zinc-950 p-6 text-white">
-                  <p className="text-sm text-white/60">Tenant atual</p>
-                  <p className="mt-3 text-2xl font-semibold">
-                    {session?.user?.tenantId ?? "nao definido"}
-                  </p>
-                  <p className="mt-3 text-sm leading-6 text-white/70">
-                    Base pronta para evoluir contexto por loja, selecao de loja e
-                    protecao por perfil na proxima sprint.
-                  </p>
-                </div>
-
-                <div className="rounded-[1.8rem] bg-white p-6">
-                  <p className="text-sm text-zinc-400">Pronto para a Sprint 2</p>
-                  <div className="mt-4 space-y-3">
-                    <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">
-                      Perfis: admin da marca, administrativo, gerente e vendedor
-                    </div>
-                    <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">
-                      Vínculo usuário-loja e seleção de contexto
-                    </div>
-                    <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">
-                      Escopo de tenant e loja aplicado nas rotas
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+              </article>
+            ))}
           </div>
-        </section>
-      </div>
-    </main>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-slate-900">Pendencias</p>
+              <p className="text-sm text-slate-500">
+                O que merece atencao na operacao atual
+              </p>
+            </div>
+            <span className="inline-flex size-9 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+              <ClipboardList className="size-4" />
+            </span>
+          </div>
+
+          <div className="mt-5 space-y-3">
+            {pendingItems.map((item) => (
+              <article
+                key={item.title}
+                className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">
+                      {item.title}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {item.description}
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-white px-2 py-1 text-[11px] font-medium text-slate-500 ring-1 ring-slate-200">
+                    {item.badge}
+                  </span>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-slate-950">
+                Contexto operacional
+              </h3>
+              <p className="text-sm text-slate-500">
+                Estrutura base pronta para os proximos modulos do MVP
+              </p>
+            </div>
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600"
+            >
+              Ver backlog
+              <ArrowUpRight className="size-4" />
+            </button>
+          </div>
+
+          <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-50 text-slate-500">
+                <tr>
+                  <th className="px-4 py-3 font-medium">Bloco</th>
+                  <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="px-4 py-3 font-medium">Observacao</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-t border-slate-200">
+                  <td className="px-4 py-3 text-slate-900">Auth e perfis</td>
+                  <td className="px-4 py-3">
+                    <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">
+                      Ativo
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-slate-500">
+                    Sessao com tenant, role e loja ativa
+                  </td>
+                </tr>
+                <tr className="border-t border-slate-200">
+                  <td className="px-4 py-3 text-slate-900">Troca de operacao</td>
+                  <td className="px-4 py-3">
+                    <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">
+                      Ativo
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-slate-500">
+                    Select persistente no header
+                  </td>
+                </tr>
+                <tr className="border-t border-slate-200">
+                  <td className="px-4 py-3 text-slate-900">Rotas protegidas</td>
+                  <td className="px-4 py-3">
+                    <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">
+                      Ativo
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-slate-500">
+                    Middleware + bloqueio inicial por perfil
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div>
+            <h3 className="text-lg font-semibold text-slate-950">
+              Atividade recente
+            </h3>
+            <p className="text-sm text-slate-500">
+              Feedback visual de que a pessoa esta dentro de um sistema, nao de
+              uma tela-conceito.
+            </p>
+          </div>
+
+          <div className="mt-5 space-y-4">
+            {recentActivity.map((item) => (
+              <div key={`${item.time}-${item.title}`} className="flex gap-4">
+                <div className="flex w-14 shrink-0 flex-col items-center">
+                  <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">
+                    {item.time}
+                  </span>
+                  <div className="mt-2 h-full w-px bg-slate-200" />
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <p className="text-sm font-medium text-slate-900">
+                    {item.title}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-500">{item.meta}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    </div>
   );
 }

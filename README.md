@@ -54,10 +54,13 @@ npx prisma db execute --file prisma/migrations/0001_init_auth_core/migration.sql
 npm run db:seed
 ```
 
-Usuário inicial padrão:
+Usuarios iniciais do seed:
 
-- e-mail: `admin@atelierhub.local`
-- senha: `12345678`
+- `admin@atelierhub.local` — `ADMIN_DA_MARCA`
+- `administrativo@atelierhub.local` — `ADMINISTRATIVO`
+- `gerente@atelierhub.local` — `GERENTE_LOJA`
+- `vendedor@atelierhub.local` — `VENDEDOR` com acesso a mais de uma loja
+- senha padrao para todos: `12345678`
 
 ### 6. Rodar o projeto
 

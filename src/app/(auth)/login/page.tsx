@@ -1,8 +1,33 @@
+import {
+  Building2,
+  LockKeyhole,
+  Package,
+  ReceiptText,
+  Store,
+} from "lucide-react";
 import { LoginForm } from "@/modules/auth/components/login-form";
 
 type LoginPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
+
+const loginHighlights = [
+  {
+    title: "Operacao multi-loja",
+    description: "Troque de unidade dentro do mesmo sistema sem perder contexto.",
+    icon: Store,
+  },
+  {
+    title: "Vendas e recebimentos",
+    description: "Fluxos de PDV, pedidos e cobrancas na mesma base operacional.",
+    icon: ReceiptText,
+  },
+  {
+    title: "Estoque rastreavel",
+    description: "Movimentacao entre lojas, administrativo e historico centralizado.",
+    icon: Package,
+  },
+];
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
@@ -12,72 +37,83 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
     : callbackUrlParam;
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-5 py-8 sm:px-8">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.95),transparent_22%),radial-gradient(circle_at_top_right,rgba(255,122,89,0.10),transparent_18%),linear-gradient(180deg,#f6f3ee_0%,#efebe5_100%)]" />
-      <div className="relative z-10 grid w-full max-w-7xl gap-8 rounded-[2rem] border border-white/70 bg-white/42 p-4 shadow-[0_24px_80px_-48px_rgba(31,24,18,0.34)] backdrop-blur-xl lg:grid-cols-[1.25fr_0.75fr] lg:p-5">
-        <section className="rounded-[1.8rem] bg-[#f4efe8] p-5 sm:p-7 lg:p-8">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="inline-flex rounded-full bg-white px-4 py-1.5 text-sm font-medium text-zinc-700 shadow-sm">
-              AtelierHub
-            </span>
-            <span className="inline-flex rounded-full border border-white bg-white/60 px-4 py-1.5 text-sm text-zinc-500">
-              Sprint 1 • Foundation
-            </span>
+    <main className="min-h-screen bg-slate-100 px-5 py-6">
+      <div className="mx-auto grid min-h-[calc(100vh-3rem)] w-full max-w-7xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_20px_60px_-35px_rgba(15,23,42,0.18)] lg:grid-cols-[320px_minmax(0,1fr)]">
+        <aside className="flex flex-col border-b border-slate-200 bg-slate-100/80 px-6 py-6 lg:border-r lg:border-b-0">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 items-center justify-center rounded-2xl bg-sky-600 text-sm font-semibold text-white">
+              AH
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-950">AtelierHub</p>
+              <p className="text-xs text-slate-500">Sistema operacional de loja</p>
+            </div>
           </div>
 
-          <div className="mt-7 flex h-full flex-col justify-between gap-8">
-            <div className="space-y-5">
-              <h1 className="max-w-3xl text-4xl font-semibold tracking-[-0.06em] text-zinc-900 sm:text-5xl lg:text-6xl">
-                Uma base leve, arredondada e pronta para virar produto.
-              </h1>
-              <p className="max-w-2xl text-base leading-8 text-zinc-600 sm:text-lg">
-                O MVP começa com uma experiencia mais proxima de software de startup:
-                superficies suaves, navegacao clara e uma fundacao tecnica que ja
-                sustenta auth, tenant, loja e deploy em dois ambientes.
-              </p>
-            </div>
+          <div className="mt-8">
+            <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Acesso ao sistema
+            </span>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-950">
+              Entre para continuar a operacao.
+            </h1>
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              O login usa o mesmo contexto visual do painel para a entrada no MVP
+              parecer parte do sistema, nao uma tela solta.
+            </p>
+          </div>
 
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="rounded-[1.6rem] bg-white p-5 shadow-sm">
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-zinc-400">
-                  Access
-                </p>
-                <h2 className="mt-3 text-lg font-semibold text-zinc-900">
-                  Login por credenciais
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-zinc-500">
-                  Auth com e-mail e senha, pronto para perfis e escopo por loja.
-                </p>
-              </div>
+          <div className="mt-8 space-y-3">
+            {loginHighlights.map(({ title, description, icon: Icon }) => (
+              <article
+                key={title}
+                className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+              >
+                <div className="flex items-start gap-3">
+                  <span className="inline-flex size-10 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+                    <Icon className="size-4" />
+                  </span>
+                  <div>
+                    <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
+                    <p className="mt-1 text-sm leading-6 text-slate-500">
+                      {description}
+                    </p>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
 
-              <div className="rounded-[1.6rem] bg-white p-5 shadow-sm">
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-zinc-400">
-                  Core
-                </p>
-                <h2 className="mt-3 text-lg font-semibold text-zinc-900">
-                  Tenant, loja e usuario
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-zinc-500">
-                  Estrutura inicial do dominio pronta para abrir a Sprint 2.
-                </p>
-              </div>
-
-              <div className="rounded-[1.6rem] bg-zinc-950 p-5 text-white shadow-sm">
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-zinc-400">
-                  Delivery
-                </p>
-                <h2 className="mt-3 text-lg font-semibold">
-                  Develop e main alinhados
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-zinc-300">
-                  Base preparada para staging e production com o fluxo definido.
-                </p>
+          <div className="mt-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex items-center gap-3">
+              <span className="inline-flex size-10 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+                <Building2 className="size-4" />
+              </span>
+              <div>
+                <p className="text-sm font-medium text-slate-900">Tenant demo ativo</p>
+                <p className="text-sm text-slate-500">AtelierHub Demo</p>
               </div>
             </div>
+          </div>
+        </aside>
+
+        <section className="flex items-center justify-center bg-white px-6 py-8 lg:px-10">
+          <div className="w-full max-w-md space-y-6">
+            <div className="flex items-center gap-3">
+              <span className="inline-flex size-11 items-center justify-center rounded-2xl bg-slate-950 text-white">
+                <LockKeyhole className="size-5" />
+              </span>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                  Workspace
+                </p>
+                <p className="text-sm text-slate-600">Entrada segura por credenciais</p>
+              </div>
+            </div>
+
+            <LoginForm callbackUrl={callbackUrl} />
           </div>
         </section>
-
-        <LoginForm callbackUrl={callbackUrl} />
       </div>
     </main>
   );

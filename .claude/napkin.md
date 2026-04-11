@@ -33,3 +33,7 @@
 ## User Directives
 1. **[2026-04-09] Avaliações devem comparar áudio/requisito com docs existentes**
    Do instead: responder com o que já está documentado, o que está implícito e o que ainda falta explicitar.
+2. **[2026-04-11] UI base deve evitar cara antiga ou editorial**
+   Do instead: seguir uma linguagem mais startup/SaaS, com cantos arredondados, sans serif limpa e superfícies leves nas áreas autenticadas.
+3. **[2026-04-11] A área autenticada deve parecer sistema operacional de loja**
+   Do instead: usar shell de dashboard, seletor de loja no header e métricas/pendências reais; consultar `.interface-design/system.md` antes de expandir novas telas.

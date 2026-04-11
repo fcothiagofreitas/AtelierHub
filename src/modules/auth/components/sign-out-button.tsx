@@ -9,7 +9,7 @@ export function SignOutButton() {
     <Button
       type="button"
       variant="outline"
-      className="rounded-xl"
+      className="h-10 w-full rounded-xl border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50"
       onClick={() => signOut({ callbackUrl: "/login" })}
     >
       <LogOut className="mr-2 size-4" />

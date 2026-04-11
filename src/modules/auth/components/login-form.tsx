@@ -53,39 +53,40 @@ export function LoginForm({ callbackUrl = "/dashboard" }: LoginFormProps) {
   }
 
   return (
-    <Card className="w-full rounded-[2rem] border-white/70 bg-white/88 shadow-[0_20px_80px_-32px_rgba(43,32,22,0.28)] backdrop-blur-xl">
+    <Card className="w-full rounded-[1.75rem] border-slate-200 bg-white shadow-[0_18px_45px_-30px_rgba(15,23,42,0.18)]">
       <CardHeader className="space-y-4 p-7 pb-5">
         <div className="flex items-center justify-between">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-[1.1rem] bg-zinc-950 text-white shadow-sm">
+          <div className="inline-flex h-12 w-12 items-center justify-center rounded-[1rem] bg-slate-950 text-white shadow-sm">
             <LockKeyhole className="size-5" />
           </div>
-          <span className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-500">
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
             Credenciais
           </span>
         </div>
         <div className="space-y-2">
-          <CardTitle className="text-[1.75rem] tracking-tight">
-            Acessar workspace
+          <CardTitle className="text-[1.75rem] tracking-tight text-slate-950">
+            Acessar o painel
           </CardTitle>
-          <CardDescription className="text-sm leading-6 text-zinc-500">
-            Use o usuario criado pela area administrativa para acessar o MVP.
+          <CardDescription className="text-sm leading-6 text-slate-500">
+            Use o usuario vinculado a uma marca e a uma ou mais lojas para entrar
+            no sistema.
           </CardDescription>
         </div>
       </CardHeader>
       <CardContent className="space-y-5 p-7 pt-0">
         <form className="space-y-5" onSubmit={form.handleSubmit(onSubmit)}>
           <div className="space-y-2.5">
-            <Label htmlFor="email" className="text-sm font-medium text-zinc-600">
+            <Label htmlFor="email" className="text-sm font-medium text-slate-600">
               E-mail
             </Label>
             <div className="relative">
-              <Mail className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-zinc-400" />
+              <Mail className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-slate-400" />
               <Input
                 id="email"
                 type="email"
                 autoComplete="email"
                 placeholder="voce@empresa.com"
-                className="h-12 rounded-2xl border-zinc-200 bg-zinc-50/80 pl-11 shadow-none transition focus-visible:bg-white"
+                className="h-12 rounded-2xl border-slate-200 bg-slate-50 pl-11 shadow-none transition focus-visible:border-sky-200 focus-visible:bg-white"
                 {...form.register("email")}
               />
             </div>
@@ -97,7 +98,7 @@ export function LoginForm({ callbackUrl = "/dashboard" }: LoginFormProps) {
           </div>
 
           <div className="space-y-2.5">
-            <Label htmlFor="password" className="text-sm font-medium text-zinc-600">
+            <Label htmlFor="password" className="text-sm font-medium text-slate-600">
               Senha
             </Label>
             <Input
@@ -105,7 +106,7 @@ export function LoginForm({ callbackUrl = "/dashboard" }: LoginFormProps) {
               type="password"
               autoComplete="current-password"
               placeholder="Sua senha"
-              className="h-12 rounded-2xl border-zinc-200 bg-zinc-50/80 shadow-none transition focus-visible:bg-white"
+              className="h-12 rounded-2xl border-slate-200 bg-slate-50 shadow-none transition focus-visible:border-sky-200 focus-visible:bg-white"
               {...form.register("password")}
             />
             {form.formState.errors.password ? (
@@ -124,7 +125,7 @@ export function LoginForm({ callbackUrl = "/dashboard" }: LoginFormProps) {
 
           <Button
             type="submit"
-            className="h-12 w-full rounded-2xl bg-zinc-950 text-white shadow-sm transition hover:bg-zinc-800"
+            className="h-12 w-full rounded-2xl bg-sky-600 text-white shadow-sm transition hover:bg-sky-700"
             disabled={form.formState.isSubmitting}
           >
             {form.formState.isSubmitting ? (
@@ -137,8 +138,9 @@ export function LoginForm({ callbackUrl = "/dashboard" }: LoginFormProps) {
             )}
           </Button>
         </form>
-        <div className="rounded-[1.5rem] border border-zinc-200 bg-zinc-50/70 px-4 py-4 text-sm text-zinc-500">
-          Base inicial do MVP com auth, Prisma e estrutura modular prontos para a Sprint 2.
+        <div className="rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500">
+          Login conectado ao mesmo contexto visual do shell administrativo e da
+          operacao por loja.
         </div>
       </CardContent>
     </Card>

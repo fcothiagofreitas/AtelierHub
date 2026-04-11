@@ -30,7 +30,7 @@ async function main() {
     },
   });
 
-  const store = await prisma.store.upsert({
+  const adminStore = await prisma.store.upsert({
     where: {
       tenantId_slug: {
         tenantId: tenant.id,
@@ -50,7 +50,47 @@ async function main() {
     },
   });
 
-  const user = await prisma.user.upsert({
+  const centroStore = await prisma.store.upsert({
+    where: {
+      tenantId_slug: {
+        tenantId: tenant.id,
+        slug: "loja-centro",
+      },
+    },
+    update: {
+      name: "Loja Centro",
+      kind: "OPERATIONAL",
+      isActive: true,
+    },
+    create: {
+      tenantId: tenant.id,
+      name: "Loja Centro",
+      slug: "loja-centro",
+      kind: "OPERATIONAL",
+    },
+  });
+
+  const aldeotaStore = await prisma.store.upsert({
+    where: {
+      tenantId_slug: {
+        tenantId: tenant.id,
+        slug: "loja-aldeota",
+      },
+    },
+    update: {
+      name: "Loja Aldeota",
+      kind: "OPERATIONAL",
+      isActive: true,
+    },
+    create: {
+      tenantId: tenant.id,
+      name: "Loja Aldeota",
+      slug: "loja-aldeota",
+      kind: "OPERATIONAL",
+    },
+  });
+
+  const adminUser = await prisma.user.upsert({
     where: {
       tenantId_email: {
         tenantId: tenant.id,
@@ -72,26 +112,231 @@ async function main() {
     },
   });
 
+  const administrativoUser = await prisma.user.upsert({
+    where: {
+      tenantId_email: {
+        tenantId: tenant.id,
+        email: "administrativo@atelierhub.local",
+      },
+    },
+    update: {
+      name: "Operacao Administrativa",
+      role: "ADMINISTRATIVO",
+      isActive: true,
+      passwordHash,
+    },
+    create: {
+      tenantId: tenant.id,
+      name: "Operacao Administrativa",
+      email: "administrativo@atelierhub.local",
+      passwordHash,
+      role: "ADMINISTRATIVO",
+    },
+  });
+
+  const gerenteUser = await prisma.user.upsert({
+    where: {
+      tenantId_email: {
+        tenantId: tenant.id,
+        email: "gerente@atelierhub.local",
+      },
+    },
+    update: {
+      name: "Gerente Loja Centro",
+      role: "GERENTE_LOJA",
+      isActive: true,
+      passwordHash,
+    },
+    create: {
+      tenantId: tenant.id,
+      name: "Gerente Loja Centro",
+      email: "gerente@atelierhub.local",
+      passwordHash,
+      role: "GERENTE_LOJA",
+    },
+  });
+
+  const vendedorUser = await prisma.user.upsert({
+    where: {
+      tenantId_email: {
+        tenantId: tenant.id,
+        email: "vendedor@atelierhub.local",
+      },
+    },
+    update: {
+      name: "Vendedor Multi Loja",
+      role: "VENDEDOR",
+      isActive: true,
+      passwordHash,
+    },
+    create: {
+      tenantId: tenant.id,
+      name: "Vendedor Multi Loja",
+      email: "vendedor@atelierhub.local",
+      passwordHash,
+      role: "VENDEDOR",
+    },
+  });
+
   await prisma.userStore.upsert({
     where: {
       userId_storeId: {
-        userId: user.id,
-        storeId: store.id,
+        userId: adminUser.id,
+        storeId: adminStore.id,
       },
     },
     update: {
       isDefault: true,
     },
     create: {
-      userId: user.id,
-      storeId: store.id,
+      userId: adminUser.id,
+      storeId: adminStore.id,
       isDefault: true,
+    },
+  });
+
+  await prisma.userStore.upsert({
+    where: {
+      userId_storeId: {
+        userId: adminUser.id,
+        storeId: centroStore.id,
+      },
+    },
+    update: {
+      isDefault: false,
+    },
+    create: {
+      userId: adminUser.id,
+      storeId: centroStore.id,
+      isDefault: false,
+    },
+  });
+
+  await prisma.userStore.upsert({
+    where: {
+      userId_storeId: {
+        userId: adminUser.id,
+        storeId: aldeotaStore.id,
+      },
+    },
+    update: {
+      isDefault: false,
+    },
+    create: {
+      userId: adminUser.id,
+      storeId: aldeotaStore.id,
+      isDefault: false,
+    },
+  });
+
+  await prisma.userStore.upsert({
+    where: {
+      userId_storeId: {
+        userId: administrativoUser.id,
+        storeId: adminStore.id,
+      },
+    },
+    update: {
+      isDefault: true,
+    },
+    create: {
+      userId: administrativoUser.id,
+      storeId: adminStore.id,
+      isDefault: true,
+    },
+  });
+
+  await prisma.userStore.upsert({
+    where: {
+      userId_storeId: {
+        userId: administrativoUser.id,
+        storeId: centroStore.id,
+      },
+    },
+    update: {
+      isDefault: false,
+    },
+    create: {
+      userId: administrativoUser.id,
+      storeId: centroStore.id,
+      isDefault: false,
+    },
+  });
+
+  await prisma.userStore.upsert({
+    where: {
+      userId_storeId: {
+        userId: administrativoUser.id,
+        storeId: aldeotaStore.id,
+      },
+    },
+    update: {
+      isDefault: false,
+    },
+    create: {
+      userId: administrativoUser.id,
+      storeId: aldeotaStore.id,
+      isDefault: false,
+    },
+  });
+
+  await prisma.userStore.upsert({
+    where: {
+      userId_storeId: {
+        userId: gerenteUser.id,
+        storeId: centroStore.id,
+      },
+    },
+    update: {
+      isDefault: true,
+    },
+    create: {
+      userId: gerenteUser.id,
+      storeId: centroStore.id,
+      isDefault: true,
+    },
+  });
+
+  await prisma.userStore.upsert({
+    where: {
+      userId_storeId: {
+        userId: vendedorUser.id,
+        storeId: centroStore.id,
+      },
+    },
+    update: {
+      isDefault: true,
+    },
+    create: {
+      userId: vendedorUser.id,
+      storeId: centroStore.id,
+      isDefault: true,
+    },
+  });
+
+  await prisma.userStore.upsert({
+    where: {
+      userId_storeId: {
+        userId: vendedorUser.id,
+        storeId: aldeotaStore.id,
+      },
+    },
+    update: {
+      isDefault: false,
+    },
+    create: {
+      userId: vendedorUser.id,
+      storeId: aldeotaStore.id,
+      isDefault: false,
     },
   });
 
   console.log("Seed concluído com sucesso.");
   console.log(`Tenant: ${tenant.name}`);
-  console.log(`Usuário inicial: ${adminEmail}`);
+  console.log(`Admin da marca: ${adminEmail}`);
+  console.log("Administrativo: administrativo@atelierhub.local");
+  console.log("Gerente de loja: gerente@atelierhub.local");
+  console.log("Vendedor multi-loja: vendedor@atelierhub.local");
 }
 
 main()

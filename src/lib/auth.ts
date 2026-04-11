@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import type { UserRole } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { loginSchema } from "@/modules/auth/schemas/login-schema";
 
@@ -8,7 +9,7 @@ type AuthorizedUser = {
   id: string;
   name: string;
   email: string;
-  role: string;
+  role: UserRole;
   tenantId: string;
   storeIds: string[];
   defaultStoreId: string | null;
