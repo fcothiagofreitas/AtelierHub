@@ -53,22 +53,24 @@ export function StoreSwitcher({
   }
 
   return (
-    <div className="min-w-[15rem]">
+    <div className="min-w-[14rem] max-w-[16rem]">
       <Select value={value} onValueChange={handleValueChange}>
-        <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-white text-left">
+        <SelectTrigger className="h-10 rounded-md border-slate-200 bg-white text-left">
           <div className="flex min-w-0 items-center gap-2">
-            <span className="inline-flex size-7 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+            <span className="inline-flex size-7 items-center justify-center rounded-sm bg-slate-100 text-slate-600">
               {isPending ? (
                 <LoaderCircle className="size-3.5 animate-spin" />
               ) : (
                 <Building2 className="size-3.5" />
               )}
             </span>
-            <div className="min-w-0">
+            <div className="min-w-0 overflow-hidden">
               <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400">
                 Operacao
               </p>
-              <SelectValue placeholder="Selecionar loja" />
+              <div className="truncate text-sm font-medium text-slate-900">
+                <SelectValue placeholder="Selecionar loja" />
+              </div>
             </div>
           </div>
         </SelectTrigger>
