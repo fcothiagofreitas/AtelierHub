@@ -1,12 +1,5 @@
 import {
   Bell,
-  Building2,
-  ClipboardList,
-  LayoutGrid,
-  Package,
-  Settings2,
-  ShoppingBag,
-  Users,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -14,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { roleLabels } from "@/lib/authorization";
+import { SidebarNav } from "@/modules/auth/components/sidebar-nav";
 import { SignOutButton } from "@/modules/auth/components/sign-out-button";
 import { StoreSwitcher } from "@/modules/auth/components/store-switcher";
 import type { UserRole } from "@/generated/prisma/enums";
@@ -33,29 +27,6 @@ type ProtectedShellProps = {
   currentStoreName: string;
   stores: StoreOption[];
 };
-
-const navigationGroups = [
-  {
-    label: "Visao geral",
-    items: [
-      { label: "Dashboard", icon: LayoutGrid, active: true },
-      { label: "Vendas", icon: ShoppingBag },
-      { label: "Estoque", icon: Package },
-    ],
-  },
-  {
-    label: "Cadastros",
-    items: [
-      { label: "Clientes", icon: Users },
-      { label: "Lojas", icon: Building2 },
-      { label: "Administrativo", icon: ClipboardList },
-    ],
-  },
-  {
-    label: "Sistema",
-    items: [{ label: "Configuracoes", icon: Settings2 }],
-  },
-];
 
 function getInitials(name?: string | null) {
   if (!name) {
@@ -103,39 +74,7 @@ export function ProtectedShell({
               />
             </div>
 
-            <nav className="mt-6 space-y-6">
-              {navigationGroups.map((group) => (
-                <div key={group.label}>
-                  <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                    {group.label}
-                  </p>
-                  <div className="mt-2 space-y-1">
-                    {group.items.map(({ label, icon: Icon, active }) => (
-                      <button
-                        key={label}
-                        type="button"
-                        className={[
-                          "flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm transition",
-                          active
-                            ? "bg-white text-slate-950 shadow-sm ring-1 ring-slate-200"
-                            : "text-slate-600 hover:bg-white/80 hover:text-slate-900",
-                        ].join(" ")}
-                      >
-                        <span
-                          className={[
-                            "inline-flex size-8 items-center justify-center rounded-sm",
-                            active ? "bg-sky-50 text-sky-700" : "bg-transparent",
-                          ].join(" ")}
-                        >
-                          <Icon className="size-4" />
-                        </span>
-                        <span>{label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </nav>
+            <SidebarNav />
 
             <div className="mt-auto rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
               <div className="flex items-center gap-3">
