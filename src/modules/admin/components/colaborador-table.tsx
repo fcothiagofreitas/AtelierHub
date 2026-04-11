@@ -5,72 +5,78 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { roleLabels } from "@/lib/roles";
 import {
-  toggleUserActive,
-  resetUserPassword,
-} from "@/modules/admin/actions/user-actions";
+  toggleColaboradorActive,
+  resetColaboradorPassword,
+} from "@/modules/admin/actions/colaborador-actions";
 import { ConfirmActionButton } from "./confirm-action-button";
 import type { UserRole } from "@prisma/client";
 
-type UserRow = {
+type ColaboradorRow = {
   id: string;
   name: string;
-  email: string;
+  cpf: string | null;
   role: UserRole;
   isActive: boolean;
+  userId: string | null;
   stores: { store: { name: string } }[];
 };
 
-type UserTableProps = {
-  users: UserRow[];
+type ColaboradorTableProps = {
+  colaboradores: ColaboradorRow[];
   search: string;
   resetOk: boolean;
 };
 
-export function UserTable({ users, search, resetOk }: UserTableProps) {
+export function ColaboradorTable({
+  colaboradores,
+  search,
+  resetOk,
+}: ColaboradorTableProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold">Usuários</h2>
+          <h2 className="text-lg font-semibold">Colaboradores</h2>
           <p className="text-sm text-muted-foreground">
-            {users.length} {users.length === 1 ? "pessoa" : "pessoas"}{" "}
+            {colaboradores.length}{" "}
+            {colaboradores.length === 1 ? "pessoa" : "pessoas"}{" "}
             {search
-              ? `encontrada${users.length !== 1 ? "s" : ""} para "${search}"`
-              : "com acesso ao sistema"}
+              ? `encontrada${colaboradores.length !== 1 ? "s" : ""} para "${search}"`
+              : "cadastradas"}
           </p>
         </div>
         <Link
-          href="/admin/usuarios/new"
+          href="/admin/colaboradores/new"
           className={cn(buttonVariants({ size: "sm" }))}
         >
           <Plus className="size-4" />
-          Novo usuário
+          Novo colaborador
         </Link>
       </div>
 
       {resetOk && (
         <div className="rounded-md border border-green-200 bg-green-50 px-4 py-2.5 text-sm text-green-800">
-          Senha redefinida com sucesso. O usuário deve trocar no próximo acesso.
+          Senha redefinida com sucesso. O colaborador deve trocar no próximo acesso.
         </div>
       )}
 
-      {users.length === 0 ? (
+      {colaboradores.length === 0 ? (
         <div className="rounded-lg border border-dashed p-10 text-center">
           <UserX className="mx-auto mb-3 size-8 text-muted-foreground/40" />
           <p className="text-sm font-medium text-muted-foreground">
             {search
-              ? "Nenhum usuário encontrado"
-              : "Nenhum usuário cadastrado ainda"}
+              ? "Nenhum colaborador encontrado"
+              : "Nenhum colaborador cadastrado ainda"}
           </p>
           {!search && (
             <Link
-              href="/admin/usuarios/new"
+              href="/admin/colaboradores/new"
               className={cn(
                 buttonVariants({ variant: "link" }),
                 "mt-2 text-sm",
               )}
             >
-              Criar primeiro usuário
+              Cadastrar primeiro colaborador
             </Link>
           )}
         </div>
@@ -79,43 +85,54 @@ export function UserTable({ users, search, resetOk }: UserTableProps) {
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-muted-foreground">
               <tr>
-                <th className="px-4 py-3 text-left font-medium">Usuário</th>
-                <th className="px-4 py-3 text-left font-medium">Perfil</th>
+                <th className="px-4 py-3 text-left font-medium">Nome</th>
+                <th className="px-4 py-3 text-left font-medium">Cargo</th>
                 <th className="px-4 py-3 text-left font-medium">Lojas</th>
+                <th className="px-4 py-3 text-left font-medium">Acesso</th>
                 <th className="px-4 py-3 text-left font-medium">Status</th>
                 <th className="px-4 py-3 text-right font-medium">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y">
-              {users.map((user) => (
+              {colaboradores.map((col) => (
                 <tr
-                  key={user.id}
+                  key={col.id}
                   className="bg-card hover:bg-muted/30 transition-colors"
                 >
                   <td className="px-4 py-3">
-                    <p className="font-medium">{user.name}</p>
-                    <p className="text-xs text-muted-foreground">{user.email}</p>
+                    <p className="font-medium">{col.name}</p>
+                    {col.cpf && (
+                      <p className="text-xs text-muted-foreground">{col.cpf}</p>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
-                    {roleLabels[user.role]}
+                    {roleLabels[col.role]}
                   </td>
                   <td className="px-4 py-3">
-                    <p className="text-muted-foreground text-xs leading-relaxed">
-                      {user.stores.map((s) => s.store.name).join(", ") || "—"}
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      {col.stores.map((s) => s.store.name).join(", ") || "—"}
                     </p>
                   </td>
                   <td className="px-4 py-3">
                     <Badge
-                      variant={user.isActive ? "default" : "secondary"}
+                      variant={col.userId ? "default" : "secondary"}
                       className="text-xs"
                     >
-                      {user.isActive ? "Ativo" : "Inativo"}
+                      {col.userId ? "Com login" : "Sem login"}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge
+                      variant={col.isActive ? "default" : "secondary"}
+                      className="text-xs"
+                    >
+                      {col.isActive ? "Ativo" : "Inativo"}
                     </Badge>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1">
                       <Link
-                        href={`/admin/usuarios/${user.id}/edit`}
+                        href={`/admin/colaboradores/${col.id}/edit`}
                         className={cn(
                           buttonVariants({ variant: "ghost", size: "sm" }),
                         )}
@@ -123,39 +140,41 @@ export function UserTable({ users, search, resetOk }: UserTableProps) {
                         <Pencil className="size-4" />
                       </Link>
 
-                      <ConfirmActionButton
-                        title="Resetar senha"
-                        description={`A senha de ${user.name} será redefinida para a senha padrão do sistema. O usuário precisará alterá-la no próximo acesso.`}
-                        actionLabel="Resetar senha"
-                        triggerLabel="Resetar senha"
-                        triggerClassName="text-xs text-muted-foreground hover:text-foreground"
-                        formAction={resetUserPassword}
-                        hiddenFields={{ userId: user.id }}
-                      />
+                      {col.userId && (
+                        <ConfirmActionButton
+                          title="Resetar senha"
+                          description={`A senha de ${col.name} será redefinida para a senha padrão do sistema.`}
+                          actionLabel="Resetar senha"
+                          triggerLabel="Resetar senha"
+                          triggerClassName="text-xs text-muted-foreground hover:text-foreground"
+                          formAction={resetColaboradorPassword}
+                          hiddenFields={{ id: col.id }}
+                        />
+                      )}
 
                       <ConfirmActionButton
-                        title={user.isActive ? "Desativar usuário" : "Ativar usuário"}
+                        title={col.isActive ? "Desativar colaborador" : "Ativar colaborador"}
                         description={
-                          user.isActive
-                            ? `${user.name} perderá acesso ao sistema imediatamente e não conseguirá fazer login.`
-                            : `${user.name} voltará a ter acesso ao sistema.`
+                          col.isActive
+                            ? `${col.name} perderá acesso ao sistema e não aparecerá em seleções operacionais.`
+                            : `${col.name} voltará a ter acesso e aparecerá nas listagens.`
                         }
-                        actionLabel={user.isActive ? "Desativar" : "Ativar"}
-                        triggerLabel={user.isActive ? "Desativar" : "Ativar"}
+                        actionLabel={col.isActive ? "Desativar" : "Ativar"}
+                        triggerLabel={col.isActive ? "Desativar" : "Ativar"}
                         triggerClassName={
-                          user.isActive
+                          col.isActive
                             ? "text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
                             : "text-xs text-green-700 hover:bg-green-50"
                         }
                         actionClassName={
-                          user.isActive
+                          col.isActive
                             ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             : undefined
                         }
-                        formAction={toggleUserActive}
+                        formAction={toggleColaboradorActive}
                         hiddenFields={{
-                          userId: user.id,
-                          isActive: String(!user.isActive),
+                          id: col.id,
+                          isActive: String(!col.isActive),
                         }}
                       />
                     </div>

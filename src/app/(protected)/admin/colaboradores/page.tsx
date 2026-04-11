@@ -1,26 +1,26 @@
 import { requireRole } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
-import { UserTable } from "@/modules/admin/components/user-table";
+import { ColaboradorTable } from "@/modules/admin/components/colaborador-table";
 import { SearchBar } from "@/modules/admin/components/search-bar";
 
-type UsuariosPageProps = {
+type Props = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export default async function UsuariosPage({ searchParams }: UsuariosPageProps) {
+export default async function ColaboradoresPage({ searchParams }: Props) {
   const session = await requireRole(["ADMIN_DA_MARCA", "ADMINISTRATIVO"]);
   const params = searchParams ? await searchParams : {};
   const search = typeof params.q === "string" ? params.q : "";
   const resetOk = params.reset === "ok";
 
-  const users = await prisma.user.findMany({
+  const colaboradores = await prisma.colaborador.findMany({
     where: {
       tenantId: session.user.tenantId,
       ...(search
         ? {
             OR: [
               { name: { contains: search, mode: "insensitive" } },
-              { email: { contains: search, mode: "insensitive" } },
+              { cpf: { contains: search, mode: "insensitive" } },
             ],
           }
         : {}),
@@ -37,11 +37,15 @@ export default async function UsuariosPage({ searchParams }: UsuariosPageProps) 
   return (
     <div className="space-y-5">
       <SearchBar
-        placeholder="Buscar por nome ou e-mail..."
-        base="/admin/usuarios"
+        placeholder="Buscar por nome ou CPF..."
+        base="/admin/colaboradores"
         defaultValue={search}
       />
-      <UserTable users={users} search={search} resetOk={resetOk} />
+      <ColaboradorTable
+        colaboradores={colaboradores}
+        search={search}
+        resetOk={resetOk}
+      />
     </div>
   );
 }

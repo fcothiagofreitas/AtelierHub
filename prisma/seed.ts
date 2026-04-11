@@ -13,10 +13,7 @@ async function main() {
   const tenant = await prisma.tenant.upsert({
     where: { slug: "brand-demo" },
     update: {},
-    create: {
-      name: "Marca Demo",
-      slug: "brand-demo",
-    },
+    create: { name: "Marca Demo", slug: "brand-demo" },
   });
 
   console.log(`✓  Tenant: ${tenant.name}`);
@@ -30,7 +27,6 @@ async function main() {
         name: "Administrativo",
         slug: "administrativo",
         kind: StoreKind.ADMINISTRATIVE,
-        isActive: true,
       },
     }),
     prisma.store.upsert({
@@ -41,7 +37,6 @@ async function main() {
         name: "Loja Aldeota",
         slug: "loja-aldeota",
         kind: StoreKind.OPERATIONAL,
-        isActive: true,
       },
     }),
     prisma.store.upsert({
@@ -52,65 +47,78 @@ async function main() {
         name: "Loja Centro",
         slug: "loja-centro",
         kind: StoreKind.OPERATIONAL,
-        isActive: true,
       },
     }),
   ]);
 
   console.log(`✓  Lojas: ${storeAdmin.name}, ${storeAldeia.name}, ${storeCentro.name}`);
 
-  const usersData = [
+  // Dados de cada colaborador: pessoa primeiro, login opcional
+  const colaboradoresData = [
     {
       name: "Admin da Marca",
-      email: "admin@demo.com",
       role: UserRole.ADMIN_DA_MARCA,
-      password: "admin123",
       stores: [storeAdmin.id, storeAldeia.id, storeCentro.id],
       defaultStore: storeAdmin.id,
+      login: { email: "admin@demo.com", password: "admin123" },
     },
     {
       name: "Gerente Aldeota",
-      email: "gerente@demo.com",
       role: UserRole.GERENTE_LOJA,
-      password: "gerente123",
       stores: [storeAldeia.id],
       defaultStore: storeAldeia.id,
+      login: { email: "gerente@demo.com", password: "gerente123" },
     },
     {
       name: "Camila Vendedora",
-      email: "vendedor@demo.com",
       role: UserRole.VENDEDOR,
-      password: "vendedor123",
       stores: [storeAldeia.id],
       defaultStore: storeAldeia.id,
+      minCommission: 1.5,
+      login: { email: "vendedor@demo.com", password: "vendedor123" },
     },
   ];
 
-  for (const userData of usersData) {
+  for (const data of colaboradoresData) {
+    // Cria ou atualiza o User (login)
     const user = await prisma.user.upsert({
-      where: { tenantId_email: { tenantId: tenant.id, email: userData.email } },
+      where: { tenantId_email: { tenantId: tenant.id, email: data.login.email } },
       update: {},
       create: {
         tenantId: tenant.id,
-        name: userData.name,
-        email: userData.email,
-        passwordHash: await hash(userData.password),
-        role: userData.role,
+        email: data.login.email,
+        passwordHash: await hash(data.login.password),
         isActive: true,
       },
     });
 
-    await prisma.userStore.deleteMany({ where: { userId: user.id } });
-
-    await prisma.userStore.createMany({
-      data: userData.stores.map((storeId) => ({
+    // Cria ou atualiza o Colaborador vinculado ao User
+    const colaborador = await prisma.colaborador.upsert({
+      where: { userId: user.id },
+      update: {},
+      create: {
+        tenantId: tenant.id,
+        name: data.name,
+        role: data.role,
+        isActive: true,
+        minCommission: data.minCommission ?? 0,
         userId: user.id,
+      },
+    });
+
+    // Recria os vínculos de loja
+    await prisma.colaboradorStore.deleteMany({ where: { colaboradorId: colaborador.id } });
+    await prisma.colaboradorStore.createMany({
+      data: data.stores.map((storeId) => ({
+        colaboradorId: colaborador.id,
         storeId,
-        isDefault: storeId === userData.defaultStore,
+        isDefault: storeId === data.defaultStore,
       })),
     });
 
-    console.log(`✓  Usuário: ${user.name} (${user.email}) / senha: ${userData.password}`);
+    console.log(
+      `✓  Colaborador: ${colaborador.name} (${data.login.email}) / senha: ${data.login.password}`,
+    );
   }
 
   console.log("\n✅  Seed concluído com sucesso!");

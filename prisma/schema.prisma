@@ -20,58 +20,89 @@ enum StoreKind {
 }
 
 model Tenant {
-  id        String   @id @default(cuid())
-  name      String
-  slug      String   @unique
-  stores    Store[]
-  users     User[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String        @id @default(cuid())
+  name         String
+  slug         String        @unique
+  stores       Store[]
+  colaboradores Colaborador[]
+  users        User[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 }
 
 model Store {
-  id         String      @id @default(cuid())
-  tenantId   String
-  name       String
-  slug       String
-  kind       StoreKind   @default(OPERATIONAL)
-  isActive   Boolean     @default(true)
-  tenant     Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  userAccess UserStore[]
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+  id               String             @id @default(cuid())
+  tenantId         String
+  name             String
+  slug             String
+  kind             StoreKind          @default(OPERATIONAL)
+  isActive         Boolean            @default(true)
+  tenant           Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  colaboradorAccess ColaboradorStore[]
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
 
   @@unique([tenantId, slug])
   @@index([tenantId])
 }
 
-model User {
-  id           String      @id @default(cuid())
-  tenantId     String
-  name         String
-  email        String
-  passwordHash String
-  role         UserRole    @default(VENDEDOR)
-  isActive     Boolean     @default(true)
-  tenant       Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  stores       UserStore[]
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+// Qualquer pessoa que trabalha na empresa: admin, gerente, vendedor.
+// Acesso ao sistema é opcional — criado via toggle no formulário.
+model Colaborador {
+  id            String            @id @default(cuid())
+  tenantId      String
+  name          String
+  cpf           String?
+  phone         String?
+  admissionAt   DateTime?
+  dismissalAt   DateTime?
+  isDismissed   Boolean           @default(false)
+  minCommission Float             @default(0)
+  isActive      Boolean           @default(true)
+  role          UserRole
 
-  @@unique([tenantId, email])
+  // Acesso ao sistema — opcional
+  userId        String?           @unique
+  user          User?             @relation(fields: [userId], references: [id])
+
+  stores        ColaboradorStore[]
+  tenant        Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
   @@index([tenantId])
 }
 
-model UserStore {
-  id        String   @id @default(cuid())
-  userId    String
-  storeId   String
-  isDefault Boolean  @default(false)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+model ColaboradorStore {
+  id            String      @id @default(cuid())
+  colaboradorId String
+  storeId       String
+  isDefault     Boolean     @default(false)
+  createdAt     DateTime    @default(now())
 
-  @@unique([userId, storeId])
-  @@index([userId])
+  colaborador   Colaborador @relation(fields: [colaboradorId], references: [id], onDelete: Cascade)
+  store         Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([colaboradorId, storeId])
+  @@index([colaboradorId])
   @@index([storeId])
+}
+
+// Apenas credenciais de login. Toda pessoa é um Colaborador primeiro.
+model User {
+  id           String       @id @default(cuid())
+  tenantId     String
+  email        String
+  passwordHash String
+  isActive     Boolean      @default(true)
+
+  colaborador  Colaborador?
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
 }

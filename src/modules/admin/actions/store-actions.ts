@@ -88,7 +88,7 @@ export async function deleteStore(formData: FormData) {
   if (!id) redirect("/admin/lojas");
 
   try {
-    await prisma.userStore.deleteMany({ where: { storeId: id } });
+    await prisma.colaboradorStore.deleteMany({ where: { storeId: id } });
     await prisma.store.delete({ where: { id } });
   } catch {
     // Silently ignore delete errors and redirect

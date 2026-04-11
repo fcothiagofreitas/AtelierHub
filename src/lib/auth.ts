@@ -16,9 +16,7 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Senha", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          return null;
-        }
+        if (!credentials?.email || !credentials?.password) return null;
 
         const user = await prisma.user.findFirst({
           where: {
@@ -26,15 +24,19 @@ export const authOptions: NextAuthOptions = {
             isActive: true,
           },
           include: {
-            stores: {
-              where: { store: { isActive: true } },
-              orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
-              select: { storeId: true, isDefault: true },
+            colaborador: {
+              include: {
+                stores: {
+                  where: { store: { isActive: true } },
+                  orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
+                  select: { storeId: true, isDefault: true },
+                },
+              },
             },
           },
         });
 
-        if (!user) return null;
+        if (!user || !user.colaborador) return null;
 
         const passwordMatch = await bcrypt.compare(
           credentials.password,
@@ -42,15 +44,16 @@ export const authOptions: NextAuthOptions = {
         );
         if (!passwordMatch) return null;
 
-        const storeIds = user.stores.map((s) => s.storeId);
-        const defaultStore = user.stores.find((s) => s.isDefault);
+        const storeIds = user.colaborador.stores.map((s) => s.storeId);
+        const defaultStore = user.colaborador.stores.find((s) => s.isDefault);
 
         return {
           id: user.id,
-          name: user.name,
+          colaboradorId: user.colaborador.id,
+          name: user.colaborador.name,
           email: user.email,
           tenantId: user.tenantId,
-          role: user.role,
+          role: user.colaborador.role,
           storeIds,
           defaultStoreId: defaultStore?.storeId ?? storeIds[0] ?? null,
         };
@@ -61,6 +64,7 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        token.colaboradorId = user.colaboradorId;
         token.tenantId = user.tenantId;
         token.role = user.role;
         token.storeIds = user.storeIds;
@@ -70,6 +74,7 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       session.user.id = token.id;
+      session.user.colaboradorId = token.colaboradorId;
       session.user.tenantId = token.tenantId;
       session.user.role = token.role;
       session.user.storeIds = token.storeIds;

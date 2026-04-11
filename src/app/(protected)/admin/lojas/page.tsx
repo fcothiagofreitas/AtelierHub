@@ -20,7 +20,7 @@ export default async function LojasPage({ searchParams }: LojasPageProps) {
         : {}),
     },
     orderBy: [{ kind: "asc" }, { name: "asc" }],
-    include: { _count: { select: { userAccess: true } } },
+    include: { _count: { select: { colaboradorAccess: true } } },
   });
 
   return (

@@ -56,8 +56,8 @@ const navGroups: NavGroup[] = [
         roles: ADMIN_ROLES,
       },
       {
-        label: "Usuários",
-        href: "/admin/usuarios",
+        label: "Colaboradores",
+        href: "/admin/colaboradores",
         icon: Users,
         roles: ADMIN_ROLES,
       },
@@ -101,10 +101,10 @@ export function SidebarNav({ userRole }: SidebarNavProps) {
           </p>
           <ul className="mt-1.5 space-y-0.5">
             {group.items.map((item) => {
+              const EXACT_ONLY = ["/dashboard", "/admin"];
               const isExact = pathname === item.href;
               const isParent =
-                item.href !== "/dashboard" &&
-                item.href !== "/admin" &&
+                !EXACT_ONLY.includes(item.href) &&
                 pathname.startsWith(item.href + "/");
               const active = isExact || isParent;
 

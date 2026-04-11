@@ -1,4 +1,4 @@
-import { Building2, Users, UserCheck, Store } from "lucide-react";
+import { Building2, Users, UserCheck } from "lucide-react";
 import Link from "next/link";
 import { requireRole } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
@@ -7,12 +7,13 @@ export default async function AdminPage() {
   const session = await requireRole(["ADMIN_DA_MARCA", "ADMINISTRATIVO"]);
   const tenantId = session.user.tenantId;
 
-  const [totalStores, activeStores, totalUsers, activeUsers] = await Promise.all([
-    prisma.store.count({ where: { tenantId } }),
-    prisma.store.count({ where: { tenantId, isActive: true } }),
-    prisma.user.count({ where: { tenantId } }),
-    prisma.user.count({ where: { tenantId, isActive: true } }),
-  ]);
+  const [totalStores, activeStores, totalColaboradores, activeColaboradores] =
+    await Promise.all([
+      prisma.store.count({ where: { tenantId } }),
+      prisma.store.count({ where: { tenantId, isActive: true } }),
+      prisma.colaborador.count({ where: { tenantId } }),
+      prisma.colaborador.count({ where: { tenantId, isActive: true } }),
+    ]);
 
   const cards = [
     {
@@ -25,22 +26,22 @@ export default async function AdminPage() {
       cta: "Gerenciar lojas",
     },
     {
-      label: "Usuários ativos",
-      value: activeUsers,
-      total: totalUsers,
+      label: "Colaboradores ativos",
+      value: activeColaboradores,
+      total: totalColaboradores,
       icon: UserCheck,
-      href: "/admin/usuarios",
-      description: `${totalUsers - activeUsers} inativo${totalUsers - activeUsers !== 1 ? "s" : ""}`,
-      cta: "Gerenciar usuários",
+      href: "/admin/colaboradores",
+      description: `${totalColaboradores - activeColaboradores} inativo${totalColaboradores - activeColaboradores !== 1 ? "s" : ""}`,
+      cta: "Gerenciar colaboradores",
     },
     {
-      label: "Total de usuários",
-      value: totalUsers,
-      total: totalUsers,
+      label: "Total de colaboradores",
+      value: totalColaboradores,
+      total: totalColaboradores,
       icon: Users,
-      href: "/admin/usuarios",
-      description: "Todos os perfis",
-      cta: "Ver usuários",
+      href: "/admin/colaboradores",
+      description: "Todos os cargos",
+      cta: "Ver colaboradores",
     },
   ];
 
@@ -81,7 +82,7 @@ export default async function AdminPage() {
         <h3 className="text-sm font-semibold">Acesso rápido</h3>
         <div className="mt-3 flex flex-wrap gap-2">
           <QuickLink href="/admin/lojas/new" label="Nova loja" />
-          <QuickLink href="/admin/usuarios/new" label="Novo usuário" />
+          <QuickLink href="/admin/colaboradores/new" label="Novo colaborador" />
         </div>
       </div>
     </div>

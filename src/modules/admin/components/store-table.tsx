@@ -11,7 +11,7 @@ type StoreRow = {
   slug: string;
   kind: "ADMINISTRATIVE" | "OPERATIONAL";
   isActive: boolean;
-  _count: { userAccess: number };
+  _count: { colaboradorAccess: number };
 };
 
 type StoreTableProps = {
@@ -101,7 +101,7 @@ export function StoreTable({ stores, search }: StoreTableProps) {
                     </code>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
-                    {store._count.userAccess}
+                    {store._count.colaboradorAccess}
                   </td>
                   <td className="px-4 py-3">
                     <Badge
