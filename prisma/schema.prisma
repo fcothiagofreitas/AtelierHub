@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN_DA_MARCA
+  ADMINISTRATIVO
+  GERENTE_LOJA
+  VENDEDOR
+}
+
+enum StoreKind {
+  ADMINISTRATIVE
+  OPERATIONAL
+}
+
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  stores    Store[]
+  users     User[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Store {
+  id         String      @id @default(cuid())
+  tenantId   String
+  name       String
+  slug       String
+  kind       StoreKind   @default(OPERATIONAL)
+  isActive   Boolean     @default(true)
+  tenant     Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userAccess UserStore[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+}
+
+model User {
+  id           String      @id @default(cuid())
+  tenantId     String
+  name         String
+  email        String
+  passwordHash String
+  role         UserRole    @default(VENDEDOR)
+  isActive     Boolean     @default(true)
+  tenant       Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  stores       UserStore[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+}
+
+model UserStore {
+  id        String   @id @default(cuid())
+  userId    String
+  storeId   String
+  isDefault Boolean  @default(false)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, storeId])
+  @@index([userId])
+  @@index([storeId])
+}
