@@ -3,6 +3,7 @@
 import {
   Building2,
   LayoutGrid,
+  LayoutDashboard,
   Package,
   Settings2,
   ShoppingBag,
@@ -42,6 +43,12 @@ const navGroups: NavGroup[] = [
     label: "Administrativo",
     roles: ADMIN_ROLES,
     items: [
+      {
+        label: "Painel",
+        href: "/admin",
+        icon: LayoutDashboard,
+        roles: ADMIN_ROLES,
+      },
       {
         label: "Lojas",
         href: "/admin/lojas",
@@ -94,10 +101,12 @@ export function SidebarNav({ userRole }: SidebarNavProps) {
           </p>
           <ul className="mt-1.5 space-y-0.5">
             {group.items.map((item) => {
-              const active =
-                pathname === item.href ||
-                (item.href !== "/dashboard" &&
-                  pathname.startsWith(item.href + "/"));
+              const isExact = pathname === item.href;
+              const isParent =
+                item.href !== "/dashboard" &&
+                item.href !== "/admin" &&
+                pathname.startsWith(item.href + "/");
+              const active = isExact || isParent;
 
               return (
                 <li key={item.href + item.label}>

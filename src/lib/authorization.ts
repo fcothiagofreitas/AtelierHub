@@ -2,12 +2,7 @@ import { redirect } from "next/navigation";
 import type { UserRole } from "@prisma/client";
 import { requireSession } from "@/lib/session";
 
-export const roleLabels: Record<UserRole, string> = {
-  ADMIN_DA_MARCA: "Admin da marca",
-  ADMINISTRATIVO: "Administrativo",
-  GERENTE_LOJA: "Gerente de loja",
-  VENDEDOR: "Vendedor",
-};
+export { roleLabels } from "@/lib/roles";
 
 export async function requireRole(allowed: UserRole[]) {
   const session = await requireSession();
