@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { UserRole } from "@prisma/client";
 import { cn } from "@/lib/utils";
 
 type NavItem = {
@@ -17,12 +18,16 @@ type NavItem = {
   href: string;
   icon: React.ElementType;
   soon?: boolean;
+  roles?: UserRole[];
 };
 
 type NavGroup = {
   label: string;
+  roles?: UserRole[];
   items: NavItem[];
 };
+
+const ADMIN_ROLES: UserRole[] = ["ADMIN_DA_MARCA", "ADMINISTRATIVO"];
 
 const navGroups: NavGroup[] = [
   {
@@ -35,25 +40,54 @@ const navGroups: NavGroup[] = [
   },
   {
     label: "Administrativo",
+    roles: ADMIN_ROLES,
     items: [
-      { label: "Lojas", href: "/admin/lojas", icon: Building2 },
-      { label: "Usuários", href: "/admin/usuarios", icon: Users },
+      {
+        label: "Lojas",
+        href: "/admin/lojas",
+        icon: Building2,
+        roles: ADMIN_ROLES,
+      },
+      {
+        label: "Usuários",
+        href: "/admin/usuarios",
+        icon: Users,
+        roles: ADMIN_ROLES,
+      },
     ],
   },
   {
     label: "Sistema",
     items: [
-      { label: "Configurações", href: "/configuracoes", icon: Settings2, soon: true },
+      {
+        label: "Configurações",
+        href: "/configuracoes",
+        icon: Settings2,
+        soon: true,
+        roles: ADMIN_ROLES,
+      },
     ],
   },
 ];
 
-export function SidebarNav() {
+type SidebarNavProps = {
+  userRole: UserRole;
+};
+
+export function SidebarNav({ userRole }: SidebarNavProps) {
   const pathname = usePathname();
 
+  const visibleGroups = navGroups
+    .filter((g) => !g.roles || g.roles.includes(userRole))
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !item.roles || item.roles.includes(userRole)),
+    }))
+    .filter((g) => g.items.length > 0);
+
   return (
-    <nav className="mt-6 flex-1 space-y-5 overflow-y-auto">
-      {navGroups.map((group) => (
+    <nav className="flex-1 space-y-5 overflow-y-auto">
+      {visibleGroups.map((group) => (
         <div key={group.label}>
           <p className="px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
             {group.label}
@@ -71,7 +105,7 @@ export function SidebarNav() {
                     href={item.soon ? "#" : item.href}
                     aria-disabled={item.soon}
                     className={cn(
-                      "group flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                      "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                       active
                         ? "bg-accent text-accent-foreground"
                         : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",

@@ -1,11 +1,10 @@
 import type { ReactNode } from "react";
 import type { UserRole } from "@prisma/client";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
 import { roleLabels } from "@/lib/authorization";
+import { NavHeader } from "./nav-header";
 import { SidebarNav } from "./sidebar-nav";
 import { SignOutButton } from "./sign-out-button";
-import { StoreSwitcher } from "./store-switcher";
 
 type StoreOption = {
   id: string;
@@ -15,7 +14,6 @@ type StoreOption = {
 
 type AppShellProps = {
   children: ReactNode;
-  pageTitle: string;
   userName: string | null | undefined;
   userEmail: string | null | undefined;
   userRole: UserRole;
@@ -36,7 +34,6 @@ function initials(name?: string | null) {
 
 export function AppShell({
   children,
-  pageTitle,
   userName,
   userEmail,
   userRole,
@@ -48,6 +45,7 @@ export function AppShell({
     <div className="flex min-h-screen bg-muted/30">
       {/* Sidebar */}
       <aside className="hidden w-60 shrink-0 flex-col border-r bg-background lg:flex">
+        {/* Logo */}
         <div className="flex h-14 items-center gap-3 border-b px-4">
           <div className="flex size-7 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-foreground">
             AH
@@ -60,14 +58,18 @@ export function AppShell({
           </div>
         </div>
 
+        {/* Nav */}
         <div className="flex flex-1 flex-col overflow-hidden px-3 py-4">
-          <SidebarNav />
+          <SidebarNav userRole={userRole} />
         </div>
 
-        <div className="border-t p-3">
+        {/* User */}
+        <div className="border-t p-3 space-y-1">
           <div className="flex items-center gap-3 rounded-md px-2 py-2">
             <Avatar className="size-8 shrink-0">
-              <AvatarFallback className="text-xs">{initials(userName)}</AvatarFallback>
+              <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                {initials(userName)}
+              </AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium">{userName}</p>
@@ -76,26 +78,18 @@ export function AppShell({
               </p>
             </div>
           </div>
-          <div className="mt-1">
-            <SignOutButton />
-          </div>
+          <SignOutButton />
         </div>
       </aside>
 
-      {/* Main */}
+      {/* Content */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center gap-4 border-b bg-background px-6">
-          <div className="flex-1">
-            <h1 className="text-sm font-semibold">{pageTitle}</h1>
-            <p className="text-[11px] text-muted-foreground">{activeStoreName}</p>
-          </div>
-          <StoreSwitcher stores={stores} activeStoreId={activeStoreId} />
-          <Separator orientation="vertical" className="h-6" />
-          <Avatar className="size-8">
-            <AvatarFallback className="text-xs">{initials(userName)}</AvatarFallback>
-          </Avatar>
-        </header>
-
+        <NavHeader
+          userName={userName}
+          stores={stores}
+          activeStoreId={activeStoreId}
+          activeStoreName={activeStoreName}
+        />
         <main className="flex-1 p-6">{children}</main>
       </div>
     </div>
