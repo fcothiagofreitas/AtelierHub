@@ -7,7 +7,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 
 type StoreOption = {
@@ -39,6 +38,8 @@ export function StoreSwitcher({ stores, activeStoreId }: StoreSwitcherProps) {
     });
   }
 
+  const activeStore = stores.find((s) => s.id === activeStoreId);
+
   return (
     <Select
       value={activeStoreId ?? undefined}
@@ -46,25 +47,26 @@ export function StoreSwitcher({ stores, activeStoreId }: StoreSwitcherProps) {
       disabled={isPending}
     >
       <SelectTrigger className="h-8 w-auto min-w-[140px] gap-1.5 rounded-md border-border bg-background text-sm">
-        <SelectValue placeholder="Selecionar loja" />
+        <span className="flex-1 truncate text-left text-sm">
+          {activeStore ? (
+            <span className="flex items-center gap-1.5">
+              {activeStore.name}
+              {activeStore.kind === "ADMINISTRATIVE" && (
+                <span className="text-[10px] text-muted-foreground">Admin</span>
+              )}
+            </span>
+          ) : (
+            <span className="text-muted-foreground">Selecionar loja</span>
+          )}
+        </span>
       </SelectTrigger>
       <SelectContent>
         {stores.map((store) => (
           <SelectItem key={store.id} value={store.id}>
             <span className="flex items-center gap-2">
-              <span
-                className={
-                  store.kind === "ADMINISTRATIVE"
-                    ? "text-muted-foreground"
-                    : ""
-                }
-              >
-                {store.name}
-              </span>
+              {store.name}
               {store.kind === "ADMINISTRATIVE" && (
-                <span className="text-[10px] text-muted-foreground">
-                  Admin
-                </span>
+                <span className="text-[10px] text-muted-foreground">Admin</span>
               )}
             </span>
           </SelectItem>

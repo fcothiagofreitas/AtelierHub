@@ -2,12 +2,13 @@ import { Pencil, Plus, UserX } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { roleLabels } from "@/lib/roles";
 import {
   toggleUserActive,
   resetUserPassword,
 } from "@/modules/admin/actions/user-actions";
+import { ConfirmActionButton } from "./confirm-action-button";
 import type { UserRole } from "@prisma/client";
 
 type UserRow = {
@@ -122,39 +123,41 @@ export function UserTable({ users, search, resetOk }: UserTableProps) {
                         <Pencil className="size-4" />
                       </Link>
 
-                      <form action={resetUserPassword}>
-                        <input type="hidden" name="userId" value={user.id} />
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          type="submit"
-                          className="text-xs text-muted-foreground hover:text-foreground"
-                          title="Redefinir senha"
-                        >
-                          Resetar senha
-                        </Button>
-                      </form>
+                      <ConfirmActionButton
+                        title="Resetar senha"
+                        description={`A senha de ${user.name} será redefinida para a senha padrão do sistema. O usuário precisará alterá-la no próximo acesso.`}
+                        actionLabel="Resetar senha"
+                        triggerLabel="Resetar senha"
+                        triggerClassName="text-xs text-muted-foreground hover:text-foreground"
+                        formAction={resetUserPassword}
+                        hiddenFields={{ userId: user.id }}
+                      />
 
-                      <form action={toggleUserActive}>
-                        <input type="hidden" name="userId" value={user.id} />
-                        <input
-                          type="hidden"
-                          name="isActive"
-                          value={String(!user.isActive)}
-                        />
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          type="submit"
-                          className={
-                            user.isActive
-                              ? "text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
-                              : "text-xs text-green-700 hover:bg-green-50"
-                          }
-                        >
-                          {user.isActive ? "Desativar" : "Ativar"}
-                        </Button>
-                      </form>
+                      <ConfirmActionButton
+                        title={user.isActive ? "Desativar usuário" : "Ativar usuário"}
+                        description={
+                          user.isActive
+                            ? `${user.name} perderá acesso ao sistema imediatamente e não conseguirá fazer login.`
+                            : `${user.name} voltará a ter acesso ao sistema.`
+                        }
+                        actionLabel={user.isActive ? "Desativar" : "Ativar"}
+                        triggerLabel={user.isActive ? "Desativar" : "Ativar"}
+                        triggerClassName={
+                          user.isActive
+                            ? "text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                            : "text-xs text-green-700 hover:bg-green-50"
+                        }
+                        actionClassName={
+                          user.isActive
+                            ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            : undefined
+                        }
+                        formAction={toggleUserActive}
+                        hiddenFields={{
+                          userId: user.id,
+                          isActive: String(!user.isActive),
+                        }}
+                      />
                     </div>
                   </td>
                 </tr>

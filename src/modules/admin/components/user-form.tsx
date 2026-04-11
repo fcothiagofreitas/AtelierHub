@@ -12,7 +12,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 import { roleLabels } from "@/lib/roles";
 import {
@@ -209,7 +208,11 @@ export function UserForm({ user, availableStores }: UserFormProps) {
             onValueChange={(v) => v && setDefaultStoreId(v)}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Selecione a loja padrão" />
+              <span className="flex-1 truncate text-left text-sm">
+                {selectedStores.find((s) => s.id === defaultStoreId)?.name ?? (
+                  <span className="text-muted-foreground">Selecione a loja padrão</span>
+                )}
+              </span>
             </SelectTrigger>
             <SelectContent>
               {selectedStores.map((store) => (
