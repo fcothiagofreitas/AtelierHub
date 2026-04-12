@@ -1,4 +1,4 @@
-import { Building2, Handshake, LibraryBig, Users, UserCheck } from "lucide-react";
+import { Building2, Handshake, LibraryBig, Package, Users, UserCheck } from "lucide-react";
 import Link from "next/link";
 import { requireRole } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
@@ -15,6 +15,7 @@ export default async function AdminPage() {
     totalCorretores,
     activeCorretores,
     totalProdutos,
+    skusComSaldo,
   ] = await Promise.all([
     prisma.store.count({ where: { tenantId } }),
     prisma.store.count({ where: { tenantId, isActive: true } }),
@@ -23,6 +24,9 @@ export default async function AdminPage() {
     prisma.corretor.count({ where: { tenantId } }),
     prisma.corretor.count({ where: { tenantId, isActive: true, isBlocked: false } }),
     prisma.produto.count({ where: { tenantId } }),
+    prisma.estoqueSaldo.count({
+      where: { tenantId, quantidade: { gt: 0 } },
+    }),
   ]);
 
   const cards = [
@@ -71,6 +75,15 @@ export default async function AdminPage() {
       description: "Com variações e dados fiscais",
       cta: "Abrir catálogo",
     },
+    {
+      label: "Linhas de saldo (>0)",
+      value: skusComSaldo,
+      total: skusComSaldo,
+      icon: Package,
+      href: "/admin/estoque",
+      description: "Por loja e variação",
+      cta: "Abrir estoque",
+    },
   ];
 
   return (
@@ -95,9 +108,7 @@ export default async function AdminPage() {
               </div>
             </div>
             <p className="mt-4 text-sm text-muted-foreground">{card.label}</p>
-            <p className="mt-1 text-3xl font-semibold tracking-tight">
-              {card.value}
-            </p>
+            <p className="mt-1 text-3xl font-semibold tracking-tight">{card.value}</p>
             <p className="mt-1 text-xs text-muted-foreground">{card.description}</p>
             <p className="mt-4 text-xs font-medium text-primary group-hover:underline">
               {card.cta} →
@@ -114,6 +125,7 @@ export default async function AdminPage() {
           <QuickLink href="/admin/corretores/new" label="Novo corretor" />
           <QuickLink href="/admin/catalogo" label="Catálogo" />
           <QuickLink href="/admin/catalogo/produtos/new" label="Novo produto" />
+          <QuickLink href="/admin/estoque" label="Estoque" />
         </div>
       </div>
     </div>

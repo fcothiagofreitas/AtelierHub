@@ -52,7 +52,12 @@ const navGroups: NavGroup[] = [
         roles: ROLES_COM_CLIENTES,
       },
       { label: "Vendas", href: "/vendas", icon: ShoppingBag, soon: true },
-      { label: "Estoque", href: "/estoque", icon: Package, soon: true },
+      {
+        label: "Estoque",
+        href: "/admin/estoque",
+        icon: Package,
+        roles: ["ADMIN_DA_MARCA", "ADMINISTRATIVO", "GERENTE_LOJA", "VENDEDOR"],
+      },
     ],
   },
   {

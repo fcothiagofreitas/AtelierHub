@@ -9,6 +9,7 @@ import {
 } from "@prisma/client";
 import { buildEan13FromBody12 } from "../src/lib/ean13";
 import { formatNomeGrade } from "../src/lib/produto-grade";
+import { entradaManualEstoque } from "../src/modules/estoque/estoque-service";
 
 const prisma = new PrismaClient();
 
@@ -275,7 +276,7 @@ async function main() {
     },
   });
 
-  await prisma.produto.create({
+  const produtoSeed = await prisma.produto.create({
     data: {
       tenantId: tenant.id,
       referencia: "SEED-CALCA-001",
@@ -305,13 +306,32 @@ async function main() {
         ],
       },
     },
+    include: { variacoes: true },
+  });
+
+  const variacaoId = produtoSeed.variacoes[0]!.id;
+  await entradaManualEstoque({
+    tenantId: tenant.id,
+    userId: null,
+    storeId: storeAldeia.id,
+    produtoVariacaoId: variacaoId,
+    quantidade: 5,
+  });
+  await entradaManualEstoque({
+    tenantId: tenant.id,
+    userId: null,
+    storeId: storeAdmin.id,
+    produtoVariacaoId: variacaoId,
+    quantidade: 12,
   });
 
   await prisma.tenant.update({
     where: { id: tenant.id },
     data: { eanSequence: 1 },
   });
-  console.log("✓  Catálogo de exemplo (categoria, subcategoria, tipo, coleção, produto + EAN-13)");
+  console.log(
+    "✓  Catálogo de exemplo (categoria, subcategoria, tipo, coleção, produto + EAN-13 + estoque seed)",
+  );
 
   console.log("\n✅  Seed concluído com sucesso!");
   console.log("\n📌  Credenciais de teste:");

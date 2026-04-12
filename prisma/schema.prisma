@@ -48,6 +48,8 @@ model Tenant {
   catalogoCores     CatalogoCor[]
   produtos          Produto[]
   produtoVariacoes  ProdutoVariacao[]
+  estoqueSaldos     EstoqueSaldo[]
+  movimentosEstoque MovimentoEstoque[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 }
@@ -243,6 +245,68 @@ model ProdutoVariacao {
   @@index([ean13])
   @@index([opcaoTamanhoId])
   @@index([corCatalogoId])
+  estoqueSaldos     EstoqueSaldo[]
+  movimentosEstoque MovimentoEstoque[]
+}
+
+enum MovimentoEstoqueTipo {
+  /// Entrada manual de mercadoria na loja (quantidade > 0 no movimento).
+  ENTRADA_MANUAL
+  /// Saída por defeito, devolução a fornecedor, etc.
+  SAIDA_DEFEITO
+  /// Linha de saída numa transferência entre lojas.
+  TRANSFERENCIA_SAIDA
+  /// Linha de entrada numa transferência entre lojas.
+  TRANSFERENCIA_ENTRADA
+  /// Ajuste por conferência de recebimento ou inventário (delta pode ser + ou -).
+  AJUSTE_CONFERENCIA
+}
+
+/// Saldo agregado por loja e SKU (variação).
+model EstoqueSaldo {
+  id                String @id @default(cuid())
+  tenantId          String
+  storeId           String
+  produtoVariacaoId String
+  quantidade        Int    @default(0)
+
+  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  store           Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  produtoVariacao ProdutoVariacao @relation(fields: [produtoVariacaoId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([storeId, produtoVariacaoId])
+  @@index([tenantId])
+  @@index([tenantId, storeId])
+  @@index([produtoVariacaoId])
+}
+
+/// Linha de movimento de estoque (auditoria). O efeito no saldo é `delta` (+ entra, − sai).
+model MovimentoEstoque {
+  id                  String               @id @default(cuid())
+  tenantId            String
+  storeId             String
+  produtoVariacaoId   String
+  delta               Int
+  tipo                MovimentoEstoqueTipo
+  motivo              String?
+  userId              String?
+  loteTransferenciaId String?
+
+  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  store           Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  produtoVariacao ProdutoVariacao @relation(fields: [produtoVariacaoId], references: [id], onDelete: Cascade)
+  user            User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, storeId])
+  @@index([tenantId, produtoVariacaoId])
+  @@index([tenantId, createdAt])
+  @@index([loteTransferenciaId])
 }
 
 // Corretor: parceiro externo — não é Colaborador. Limite de crédito (consignado) opcional (null = ilimitado).
@@ -330,6 +394,8 @@ model Store {
   tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   colaboradorAccess ColaboradorStore[]
   clientes          Cliente[]
+  estoqueSaldos     EstoqueSaldo[]
+  movimentosEstoque MovimentoEstoque[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 
@@ -390,9 +456,10 @@ model User {
 
   colaborador Colaborador?
 
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  movimentosEstoque MovimentoEstoque[]
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
 
   @@unique([tenantId, email])
   @@index([tenantId])
