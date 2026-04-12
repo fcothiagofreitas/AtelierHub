@@ -21,8 +21,8 @@
    Do instead: criar `Pool({ connectionString })` e passar para `PrismaPg(pool)` em vez de depender do construtor com objeto simples.
 
 ## Domain Behavior Guardrails
-1. **[2026-04-12] Variações de produto: grade tamanho×cor (plano B) sem texto solto na geração**
-   Do instead: listas parseadas (vírgula ou linha), matriz com células desmarcáveis para “buracos”, nomes no formato `Tamanho — Cor`; EAN/código por SKU preservados quando o nome gerado coincide com linha existente; preço no MVP permanece ao nível do produto até sprint de precificação por variação.
+1. **[2026-04-11] Tamanhos em `GradeTamanho` + `OpcaoTamanho`; produto escolhe a grade; variação usa `opcaoTamanho` + cor; cores com fluxo contínuo em `/cores/new`**
+   Do instead: CRUD de grades e opções em `/admin/catalogo/tamanhos`; produto com select de grade e opções filtradas; cores rápidas sem sair da tela.
 2. **[2026-04-09] Multi-loja já existe como premissa central**
    Do instead: assumir `tenant` com várias lojas e validar se a regra nova é por permissão, visibilidade ou fluxo operacional antes de propor mudança estrutural.
 3. **[2026-04-09] Estoque precisa de rastreabilidade por movimento**

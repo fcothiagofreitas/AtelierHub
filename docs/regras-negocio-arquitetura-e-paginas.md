@@ -31,18 +31,18 @@ Baseado em [especificacao-excalidraw-produto-vendas-cadastros.md](./especificaca
 ## 2. Glossário
 
 
-| Termo                 | Significado                                                                                                                     |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| **Tenant**            | Empresa contratante do sistema; isolamento total de dados entre tenants.                                                        |
-| **Loja**              | Unidade (filial/ponto de venda) **dentro** de um tenant.                                                                        |
-| **Pedido**            | Documento de venda/orçamento com itens; passa por estados até quitação.                                                         |
-| **Venda direta**      | Cliente retira e paga conforme acordado (inclui “na hora”); corretor opcional.                                                  |
-| **Venda consignada**  | Retiradas ao longo do tempo; pagamento pode ser no fim do período; cenários com corretor responsável.                           |
-| **Corretor**          | Intermediário opcional; comissão própria; se bloqueado, **não** pode ser usado em novas vendas.                                 |
-| **Grupo de cobrança** | Agrupamento de pedidos em aberto para quitar **uma vez** (por cliente ou por corretor), com possibilidade de pagamento parcial. |
-| **Variação (SKU)**    | Combinação cor/tamanho (etc.) do produto, com código de barras próprio quando aplicável.                                        |
-| **PDV**               | Superfície **focada** para montar e quitar uma venda: cliente, vendedor, corretor, produtos e pagamentos (venda rápida).        |
-| **Tela de vendas da loja** | Tela **geral** de vendas: lista, histórico e filtros temporais — não substitui o PDV rápido.                               |
+| Termo                      | Significado                                                                                                                     |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| **Tenant**                 | Empresa contratante do sistema; isolamento total de dados entre tenants.                                                        |
+| **Loja**                   | Unidade (filial/ponto de venda) **dentro** de um tenant.                                                                        |
+| **Pedido**                 | Documento de venda/orçamento com itens; passa por estados até quitação.                                                         |
+| **Venda direta**           | Cliente retira e paga conforme acordado (inclui “na hora”); corretor opcional.                                                  |
+| **Venda consignada**       | Retiradas ao longo do tempo; pagamento pode ser no fim do período; cenários com corretor responsável.                           |
+| **Corretor**               | Intermediário opcional; comissão própria; se bloqueado, **não** pode ser usado em novas vendas.                                 |
+| **Grupo de cobrança**      | Agrupamento de pedidos em aberto para quitar **uma vez** (por cliente ou por corretor), com possibilidade de pagamento parcial. |
+| **Variação (SKU)**         | Combinação cor/tamanho (etc.) do produto, com código de barras próprio quando aplicável.                                        |
+| **PDV**                    | Superfície **focada** para montar e quitar uma venda: cliente, vendedor, corretor, produtos e pagamentos (venda rápida).        |
+| **Tela de vendas da loja** | Tela **geral** de vendas: lista, histórico e filtros temporais — não substitui o PDV rápido.                                    |
 
 
 ---
@@ -217,26 +217,25 @@ Organização por **módulos**. Ajuste nomes ao framework escolhido (rotas/menus
 ### 7.2 Início / dashboard
 
 
-| Página        | Conteúdo / ações                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Página        | Conteúdo / ações                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Dashboard** | Resumo do dia: vendas (finalizadas), pedidos em andamento, valor em aberto, alertas de estoque baixo, metas (se aplicável). **Atalhos operacionais:** abrir **PDV rápido** (modal ~80% ou rota dedicada — RN-V8/V9), link para **Tela de vendas da loja** (lista/histórico), **Consulta produto** (ou busca rápida). **Atalhos para cadastros** (conforme permissão): **Clientes**, **Corretores**, **Vendedores**, **Produtos**, **Categorias / tipos / coleções** (podem ser um único bloco “Cadastros” com sublinks ou botões). |
 
 
 ### 7.2.1 Área administrativa
 
 
-| Página                              | Conteúdo / ações                                                                                                                                                                      |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Painel administrativo**           | Visão consolidada do tenant: estoque total, desempenho agregado, alertas operacionais, pendências de conferência, transferências e atalhos para cadastros centrais.               |
-| **Lojas**                           | CRUD de lojas; responsável da unidade; status ativa/inativa; dados básicos e parâmetros operacionais.                                                                               |
-| **Vendedores**                      | CRUD centralizado de vendedores; vínculo com lojas quando aplicável; comissão mínima; situação ativa/demitido.                                                                      |
-| **Corretores**                      | CRUD centralizado de corretores; comissão padrão; bloqueio/ativo; dados de recebimento.                                                                                              |
-| **Produtos e cadastros auxiliares** | Entrada central para CRUD de produtos, categorias, subcategorias, tipos e coleções, quando a operação do tenant optar por centralizar esses cadastros no administrativo.            |
-| **Usuários e permissões**           | Convites, papéis (vendedor, gestor, financeiro, admin), lojas permitidas e definição de quem acessa a área administrativa ou apenas a operação da loja.                            |
+| Página                              | Conteúdo / ações                                                                                                                                                         |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Painel administrativo**           | Visão consolidada do tenant: estoque total, desempenho agregado, alertas operacionais, pendências de conferência, transferências e atalhos para cadastros centrais.      |
+| **Lojas**                           | CRUD de lojas; responsável da unidade; status ativa/inativa; dados básicos e parâmetros operacionais.                                                                    |
+| **Vendedores**                      | CRUD centralizado de vendedores; vínculo com lojas quando aplicável; comissão mínima; situação ativa/demitido.                                                           |
+| **Corretores**                      | CRUD centralizado de corretores; comissão padrão; bloqueio/ativo; dados de recebimento.                                                                                  |
+| **Produtos e cadastros auxiliares** | Entrada central para CRUD de produtos, categorias, subcategorias, tipos e coleções, quando a operação do tenant optar por centralizar esses cadastros no administrativo. |
+| **Usuários e permissões**           | Convites, papéis (vendedor, gestor, financeiro, admin), lojas permitidas e definição de quem acessa a área administrativa ou apenas a operação da loja.                  |
 
 
 ### 7.3 Cadastros — pessoas
-
 
 Observação de contexto: quando o tenant adotar **centralização administrativa**, os CRUDs de **vendedores** e **corretores** são executados a partir da **área administrativa**; as telas abaixo descrevem o conteúdo funcional desses cadastros.
 
@@ -293,22 +292,22 @@ Duas superfícies complementares (RN-V6 a RN-V10): a **tela de vendas da loja** 
 #### 7.7.1 Tela de vendas da loja (lista e histórico)
 
 
-| Página                        | Conteúdo / ações                                                                                                                                                                                                                                                                                                                                                                                                      |
-| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Página                                        | Conteúdo / ações                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Tela de vendas da loja** *(tela principal)* | Visão **ampla**, estilo painel: **tabela ou lista** de pedidos/vendas com colunas essenciais (código, data, cliente, vendedor, valor, estado, modalidade…). **Filtro por intervalo de datas** + **presets rápidos** (hoje, ontem, semana atual, mês atual, últimos 7/30 dias, etc.). Filtros adicionais: estado, cliente, vendedor, corretor, loja. Deve permitir **busca rápida** por **número do pedido** e **nome do cliente**. **Atalho destacado “Nova venda”** → abre o **PDV rápido em modal ~80%**. |
-| **Detalhe do pedido**         | A partir da lista: itens, totais, histórico de pagamentos, comissões calculadas, timeline de status.                                                                                                                                                                                                                                                                                                                  |
-| **Recebimento (pedido)**      | Registrar pagamento (forma, valor); **parcial**; atualiza estado (parcial/quitado). Pode ser acessado do detalhe ou fluxos financeiros.                                                                                                                                                                                                                                                                               |
-| **Grupos de cobrança**        | Criar grupo por **cliente** ou **corretor**; incluir pedidos “em aberto”; total; receber parcial/total.                                                                                                                                                                                                                                                                                                               |
-| **Contas a receber**          | Visão agregada por cliente/corretor/pedido; aging (sugerido). Link a partir da tela de vendas da loja ou menu financeiro.                                                                                                                                                                                                                                                                                              |
+| **Detalhe do pedido**                         | A partir da lista: itens, totais, histórico de pagamentos, comissões calculadas, timeline de status.                                                                                                                                                                                                                                                                                                                                                                                                        |
+| **Recebimento (pedido)**                      | Registrar pagamento (forma, valor); **parcial**; atualiza estado (parcial/quitado). Pode ser acessado do detalhe ou fluxos financeiros.                                                                                                                                                                                                                                                                                                                                                                     |
+| **Grupos de cobrança**                        | Criar grupo por **cliente** ou **corretor**; incluir pedidos “em aberto”; total; receber parcial/total.                                                                                                                                                                                                                                                                                                                                                                                                     |
+| **Contas a receber**                          | Visão agregada por cliente/corretor/pedido; aging (sugerido). Link a partir da tela de vendas da loja ou menu financeiro.                                                                                                                                                                                                                                                                                                                                                                                   |
 
 
 #### 7.7.2 PDV rápido (conteúdo do modal ou rota dedicada)
 
 
-| Superfície             | Conteúdo / ações                                                                                                                                                                                                                                                                                                                                                                                                           |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Superfície                    | Conteúdo / ações                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **PDV rápido** *(componente)* | **Somente** o fluxo operacional: **cliente** (obrig.), **vendedor**, **corretor** (opc.), **modalidade** direta/consignada; **busca de produtos** (barras/teclado); **carrinho** (quantidades, descontos se permitido); **pagamentos** (no ato, pendente, parcial, conforme §4.4); **Salvar em andamento**; **Finalizar** (→ estado **Em aberto** + baixa estoque, §5). **Sem** lista histórica completa nesta superfície. |
-| **Apresentação**             | Por padrão: **modal** sobre a tela de vendas da loja com **~80%** da viewport; alternativa: **rota** `/pdv` com o mesmo layout interno (RN-V9). Em telas pequenas, preferir **full screen** mantendo o mesmo conteúdo.                                                                                                                                                                                                   |
+| **Apresentação**              | Por padrão: **modal** sobre a tela de vendas da loja com **~80%** da viewport; alternativa: **rota** `/pdv` com o mesmo layout interno (RN-V9). Em telas pequenas, preferir **full screen** mantendo o mesmo conteúdo.                                                                                                                                                                                                     |
 
 
 ### 7.8 Comissões e financeiro (gestão)
@@ -335,10 +334,10 @@ Duas superfícies complementares (RN-V6 a RN-V10): a **tela de vendas da loja** 
 ### 7.10 Configurações da empresa (tenant)
 
 
-| Página                    | Conteúdo / ações                                                                   |
-| ------------------------- | ---------------------------------------------------------------------------------- |
-| **Parâmetros gerais**     | Moeda, timezone, política de crédito (bloquear vs alertar).                        |
-| **Fiscal (placeholder)**  | “Em definição” até RN-NF1; alinhado a **informações fiscais por produto** (RN-P6). |
+| Página                   | Conteúdo / ações                                                                   |
+| ------------------------ | ---------------------------------------------------------------------------------- |
+| **Parâmetros gerais**    | Moeda, timezone, política de crédito (bloquear vs alertar).                        |
+| **Fiscal (placeholder)** | “Em definição” até RN-NF1; alinhado a **informações fiscais por produto** (RN-P6). |
 
 
 ### 7.11 Super-admin da plataforma (opcional)
@@ -424,7 +423,7 @@ Stack é **sugestão**; o desenho lógico (multi-tenant, agregados, API) permane
 #### Regras operacionais
 
 - **Staging e production não compartilham o mesmo banco lógico**; cada ambiente usa seu próprio banco dentro do mesmo PostgreSQL.
-- Cada ambiente tem seu **`.env` próprio** e suas próprias credenciais.
+- Cada ambiente tem seu `**.env` próprio** e suas próprias credenciais.
 - O deploy de **production** sempre vem da branch `main`.
 - O deploy de **staging** sempre vem da branch `develop`.
 - O desenho do MVP prioriza **simplicidade, baixo consumo de recursos e rollback rápido**, em vez de infraestrutura mais sofisticada.
