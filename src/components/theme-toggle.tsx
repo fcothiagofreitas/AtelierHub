@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { CheckIcon, Monitor, Moon, Sun } from "lucide-react";
-import { useTheme } from "next-themes";
+import { useTheme } from "@ecosy/next-themes";
 import { buttonVariants } from "@/components/ui/button";
 import {
   DropdownMenu,
