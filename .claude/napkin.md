@@ -31,9 +31,11 @@
    Do instead: assumir app fora do Docker, PostgreSQL em Docker, `develop -> staging` e `main -> production` até nova decisão explícita.
 5. **[2026-04-09] Front e back andam juntos por entrega**
    Do instead: em cada sprint entregar tela, regra, banco e fluxo funcional testável, evitando separar backend completo de frontend completo.
+6. **[2026-04-11] Vendas da loja listam só pedidos da loja ativa; PDV em `/vendas?pdv=1`**
+   Do instead: escopo `storeId` + `tenantId` como em Clientes; finalizar venda usa `MovimentoEstoqueTipo.VENDA` na mesma transação que passa o pedido a `EM_ABERTO`.
 
 ## User Directives
-1. **[2026-04-12] Tema claro/escuro/sistema via `next-themes` no layout raiz + toggle no `NavHeader`**
+1. **[2026-04-12] Tema claro/escuro/sistema via `@ecosy/next-themes` (fork compatível React 19) no layout + toggle no `NavHeader`**
    Do instead: tokens em `globals.css` (`:root` / `.dark`); evitar cores fixas em telas novas.
 2. **[2026-04-09] Avaliações devem comparar áudio/requisito com docs existentes**
    Do instead: responder com o que já está documentado, o que está implícito e o que ainda falta explicitar.

@@ -72,3 +72,13 @@
 - `panel`: branco
 - `panel-muted`: cinza muito claro
 - `control`: branco com borda suave
+
+### PDV / Nova venda
+
+Modal sobre `/vendas` (`?pdv=1`), alinhado a RN-V8 (~80% viewport):
+
+- **Dimensões:** largura e altura próximas de **80vw × 80vh** (com teto razoável em px); **scroll só no corpo** — título do modal e **rodapé com ações** fixos (`border-t`, fundo `muted` leve).
+- **Faixa operacional** no topo do conteúdo (não duplica o header global): nome da **loja ativa**, **estado do fluxo** (ex.: antes de rascunho / rascunho em andamento), e micro-feedback **A guardar… / Guardado** no auto-save.
+- **Colunas (desktop):** à **esquerda**, blocos de **Artigos** (busca, EAN, resultados) e **Carrinho e total** (tabela compacta, números tabulares, total como linha de trabalho). À **direita**, **Comprador** e **Equipa de venda** (vendedor, corretor, modalidade) em `panel` / `panel-muted`.
+- **Hierarquia:** primário **Finalizar venda** quando há rascunho com itens; **Fechar** e **Descartar** com peso menor. Combobox de cliente com lista elevada, estado vazio explícito, `Esc` fecha a lista.
+- **Mobile:** coluna de artigos/carrinho primeiro; ações do rodapé empilhadas; alvos de toque ≥ ~40px nos incrementos e fecho.

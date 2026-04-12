@@ -338,6 +338,10 @@ Entregar a tela principal da operação da loja.
 - Busca e filtros funcionam
 - Tela vira ponto principal da operação da loja
 
+### Status (implementação)
+
+MVP **Sprint 8** entregue no código: modelo `Pedido` + `PedidoItem`, migração, seed com três pedidos de exemplo, rotas `/vendas` (lista com período, atalhos, filtros e buscas), `/vendas/[id]` (detalhe), atalho **Nova venda** → PDV (Sprint 9), item ativo no menu **Operação**.
+
 ## Sprint 9 — PDV rápido
 
 ### Objetivo
@@ -367,6 +371,10 @@ Fazer a venda acontecer no fluxo rápido do MVP.
 - Pedido pode ser iniciado, salvo automaticamente e finalizado
 - Baixa de estoque ocorre ao finalizar
 - Venda aparece na lista da loja
+
+### Status (implementação)
+
+MVP **Sprint 9** entregue no código: modal **PDV rápido** em `/vendas?pdv=1` (e **Nova venda**), seleção de cliente/vendedor/corretor e modalidade direta/consignada, busca de variação + leitura **EAN-13**, carrinho com quantidade/preço, **auto-save** do pedido em andamento, **finalização** com validação de saldo e movimentos `MovimentoEstoqueTipo.VENDA`, redirect/fecho volta à lista; enum e migração `VENDA`; `/vendas/novo` redireciona para `?pdv=1`.
 
 ## Sprint 10 — Pagamentos e cobranças
 

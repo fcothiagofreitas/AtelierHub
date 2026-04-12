@@ -309,6 +309,16 @@ Duas superfícies complementares (RN-V6 a RN-V10): a **tela de vendas da loja** 
 | **PDV rápido** *(componente)* | **Somente** o fluxo operacional: **cliente** (obrig.), **vendedor**, **corretor** (opc.), **modalidade** direta/consignada; **busca de produtos** (barras/teclado); **carrinho** (quantidades, descontos se permitido); **pagamentos** (no ato, pendente, parcial, conforme §4.4); **Salvar em andamento**; **Finalizar** (→ estado **Em aberto** + baixa estoque, §5). **Sem** lista histórica completa nesta superfície. |
 | **Apresentação**              | Por padrão: **modal** sobre a tela de vendas da loja com **~80%** da viewport; alternativa: **rota** `/pdv` com o mesmo layout interno (RN-V9). Em telas pequenas, preferir **full screen** mantendo o mesmo conteúdo.                                                                                                                                                                                                     |
 
+#### Linguagem do balcão vs ações no sistema
+
+Termos do dia a dia no balcão nem sempre mapeiam 1:1 a botões na primeira versão do PDV:
+
+| Linguagem / intenção | No sistema (hoje) | Observação |
+| -------------------- | ----------------- | ---------- |
+| **Salvar em andamento** | Pedido `EM_ANDAMENTO` + persistência ao alterar itens (auto-save após existir rascunho) | RN-V6 / §7.7.2 |
+| **Finalizar (venda)** | Ação **Finalizar** → pedido `EM_ABERTO` + baixa de stock | PDV atual |
+| **Receber** (pagamento do pedido) | Fluxo de **Recebimento (pedido)** / quitação | §7.7.1; fora do escopo mínimo do PDV — ver backlog (ex. Sprint 10) |
+| **Entregar** (retirada física) | Não há botão dedicado no PDV MVP | Pode evoluir para logística; não confundir com “finalizar” |
 
 ### 7.8 Comissões e financeiro (gestão)
 
