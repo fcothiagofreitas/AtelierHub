@@ -175,7 +175,7 @@ Subir os cadastros mestres usados pela operação.
 ### Domínio (decisão fechada para o MVP)
 
 - **Corretor não é colaborador** — entidade e CRUD separados; não usar `Colaborador` / `UserRole` para corretor.
-- **Limite de crédito do corretor (MVP):** um único **limite geral**, válido para **exposição em aberto** no contexto **consignado / fiado**; **sem** sublimite por loja ou por cliente neste MVP. **Campo opcional:** se **não** for preenchido, considera-se **ilimitado** para aquele corretor (até existir cálculo de exposição no PDV).
+- **Limite de crédito do corretor (MVP):** um único **limite geral**, válido para **exposição em aberto** no contexto **consignado**; **sem** sublimite por loja ou por cliente neste MVP. **Campo opcional:** se **não** for preenchido, considera-se **ilimitado** para aquele corretor (até existir cálculo de exposição no PDV).
 - **Quando estourar o limite:** política de **alerta** (não bloqueio rígido) na camada de venda quando existir PDV — o cadastro na Sprint 4 prepara o valor; a consulta na venda pode vir na sprint de vendas.
 
 ### Já coberto pelo modelo atual (`Colaborador` + admin)
@@ -191,7 +191,7 @@ Estes itens da sprint original passaram a ser tratados no **CRUD de colaboradore
 ### Backlog técnico — Sprint 4 (MVP)
 
 1. **Modelo `Corretor`** no Prisma (`tenantId`, dados cadastrais alinhados a RN-CR1, comissão, Pix/dados de pagamento, status ativo/bloqueado).
-2. **Campo de limite geral de crédito** (consignado/fiado, um valor por corretor — ex. `Decimal` opcional; **vazio = ilimitado**).
+2. **Campo de limite geral de crédito** (consignado, um valor por corretor — ex. `Decimal` opcional; **vazio = ilimitado**).
 3. **CRUD administrativo** — listagem + criar/editar corretor (área `/admin` ou rota equivalente), com busca/filtro básico se couber no mesmo padrão de lojas/colaboradores.
 4. **Seed** — pelo menos um corretor de exemplo para desenvolvimento.
 
@@ -202,7 +202,7 @@ Estes itens da sprint original passaram a ser tratados no **CRUD de colaboradore
 
 ### Critério de pronto (MVP desta sprint)
 
-- Administrativo cria, edita e lista **corretores** com dados essenciais, **comissão**, **pagamento (ex. Pix)** e **limite geral de crédito** (consignado/fiado).
+- Administrativo cria, edita e lista **corretores** com dados essenciais, **comissão**, **pagamento (ex. Pix)** e **limite geral de crédito** (consignado).
 - Corretor **bloqueado** / **ativo** refletidos no cadastro (uso em telas de venda fica para quando o PDV existir).
 
 ### Nota

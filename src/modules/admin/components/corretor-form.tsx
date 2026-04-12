@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MoneyInputBrl } from "@/components/ui/money-input-brl";
 import { corretorPaymentLabels } from "@/lib/corretor-labels";
 import {
   upsertCorretor,
@@ -41,10 +42,10 @@ export function CorretorForm({ corretor }: CorretorFormProps) {
     null,
   );
 
-  const creditDefault =
+  const creditLimitReais =
     corretor?.creditLimitConsignado != null
-      ? decimalToInputString(corretor.creditLimitConsignado)
-      : "";
+      ? Number(corretor.creditLimitConsignado.toString())
+      : null;
 
   return (
     <form action={action} className="space-y-6">
@@ -151,18 +152,18 @@ export function CorretorForm({ corretor }: CorretorFormProps) {
       </div>
 
       <div className="rounded-lg border bg-muted/30 p-4 space-y-1.5">
-        <Label htmlFor="creditLimitConsignado">Limite de crédito (consignado / fiado)</Label>
-        <Input
+        <Label htmlFor="creditLimitConsignado">Limite de crédito (consignado)</Label>
+        <MoneyInputBrl
+          key={corretor?.id ?? "new"}
           id="creditLimitConsignado"
           name="creditLimitConsignado"
-          inputMode="decimal"
-          placeholder="Em aberto — deixe vazio para ilimitado"
-          defaultValue={creditDefault}
-          aria-invalid={Boolean(state?.fieldErrors?.creditLimitConsignado)}
+          defaultReais={creditLimitReais}
+          placeholder="Ilimitado"
+          invalid={Boolean(state?.fieldErrors?.creditLimitConsignado)}
         />
         <p className="text-xs text-muted-foreground">
-          Valor máximo de exposição em aberto para este corretor. Vazio = sem limite cadastral
-          (ilimitado até o PDV validar de outra forma).
+          Teto de exposição em aberto para operações em consignado. Deixe vazio para sem limite
+          cadastral (ilimitado até o PDV aplicar outras regras).
         </p>
         {state?.fieldErrors?.creditLimitConsignado && (
           <p className="text-xs text-destructive">{state.fieldErrors.creditLimitConsignado}</p>
@@ -200,8 +201,4 @@ export function CorretorForm({ corretor }: CorretorFormProps) {
       </div>
     </form>
   );
-}
-
-function decimalToInputString(d: { toString(): string }) {
-  return d.toString();
 }

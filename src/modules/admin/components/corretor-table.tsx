@@ -68,7 +68,7 @@ export function CorretorTable({ corretores, search }: CorretorTableProps) {
               <tr>
                 <th className="px-4 py-3 text-left font-medium">Nome</th>
                 <th className="px-4 py-3 text-left font-medium">Comissão</th>
-                <th className="px-4 py-3 text-left font-medium">Limite consignado</th>
+                <th className="px-4 py-3 text-left font-medium">Limite de crédito</th>
                 <th className="px-4 py-3 text-left font-medium">Status</th>
                 <th className="px-4 py-3 text-right font-medium">Ações</th>
               </tr>

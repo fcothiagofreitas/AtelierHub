@@ -37,7 +37,7 @@ model Tenant {
   updatedAt    DateTime      @updatedAt
 }
 
-// Corretor: parceiro externo — não é Colaborador. Limite consignado/fiado opcional (null = ilimitado).
+// Corretor: parceiro externo — não é Colaborador. Limite de crédito (consignado) opcional (null = ilimitado).
 model Corretor {
   id       String @id @default(cuid())
   tenantId String
@@ -57,7 +57,7 @@ model Corretor {
   bankAccount   String?
   notes         String?
 
-  /// Exposição máxima em aberto (consignado/fiado). Null = sem teto cadastral (ilimitado).
+  /// Exposição máxima em aberto (consignado). Null = sem teto cadastral (ilimitado).
   creditLimitConsignado Decimal? @db.Decimal(14, 2)
 
   isActive  Boolean @default(true)
