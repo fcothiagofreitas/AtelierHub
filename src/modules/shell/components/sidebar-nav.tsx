@@ -51,7 +51,12 @@ const navGroups: NavGroup[] = [
         icon: UserCircle,
         roles: ROLES_COM_CLIENTES,
       },
-      { label: "Vendas", href: "/vendas", icon: ShoppingBag, soon: true },
+      {
+        label: "Vendas",
+        href: "/vendas",
+        icon: ShoppingBag,
+        roles: ROLES_COM_CLIENTES,
+      },
       {
         label: "Estoque",
         href: "/admin/estoque",
