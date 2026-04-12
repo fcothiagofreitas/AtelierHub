@@ -8,6 +8,7 @@ import {
   Package,
   Settings2,
   ShoppingBag,
+  UserCircle,
   Users,
 } from "lucide-react";
 import Link from "next/link";
@@ -31,11 +32,24 @@ type NavGroup = {
 
 const ADMIN_ROLES: UserRole[] = ["ADMIN_DA_MARCA", "ADMINISTRATIVO"];
 
+const ROLES_COM_CLIENTES: UserRole[] = [
+  "ADMIN_DA_MARCA",
+  "ADMINISTRATIVO",
+  "GERENTE_LOJA",
+  "VENDEDOR",
+];
+
 const navGroups: NavGroup[] = [
   {
     label: "Operação",
     items: [
       { label: "Dashboard", href: "/dashboard", icon: LayoutGrid },
+      {
+        label: "Clientes",
+        href: "/clientes",
+        icon: UserCircle,
+        roles: ROLES_COM_CLIENTES,
+      },
       { label: "Vendas", href: "/vendas", icon: ShoppingBag, soon: true },
       { label: "Estoque", href: "/estoque", icon: Package, soon: true },
     ],

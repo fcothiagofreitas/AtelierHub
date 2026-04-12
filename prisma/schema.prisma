@@ -25,6 +25,11 @@ enum CorretorPaymentMethod {
   BANK_TRANSFER
 }
 
+enum ClienteTipo {
+  PF
+  PJ
+}
+
 model Tenant {
   id           String        @id @default(cuid())
   name         String
@@ -32,6 +37,7 @@ model Tenant {
   stores       Store[]
   colaboradores Colaborador[]
   corretores   Corretor[]
+  clientes     Cliente[]
   users        User[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
@@ -63,10 +69,53 @@ model Corretor {
   isActive  Boolean @default(true)
   isBlocked Boolean @default(false)
 
+  clientes Cliente[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([tenantId])
+}
+
+model Cliente {
+  id       String      @id @default(cuid())
+  tenantId String
+  storeId  String
+  tipo     ClienteTipo
+
+  nome        String?
+  cpf         String?
+  aniversario DateTime?
+
+  fantasia          String?
+  razaoSocial       String?
+  cnpj              String?
+  ie                String?
+  ieIsento          Boolean  @default(false)
+  responsavelNome   String?
+  responsavelFone   String?
+
+  endereco String?
+  telefone String?
+  email    String?
+
+  creditLimit Decimal? @db.Decimal(14, 2)
+  isBlocked Boolean @default(false)
+  isActive  Boolean @default(true)
+
+  corretorId String?
+  corretor   Corretor? @relation(fields: [corretorId], references: [id], onDelete: SetNull)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  store  Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([storeId])
+  @@index([tenantId, cpf])
+  @@index([tenantId, cnpj])
 }
 
 model Store {
@@ -78,6 +127,7 @@ model Store {
   isActive         Boolean            @default(true)
   tenant           Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   colaboradorAccess ColaboradorStore[]
+  clientes         Cliente[]
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
 

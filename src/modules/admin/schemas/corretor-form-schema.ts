@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { CorretorPaymentMethod } from "@prisma/client";
+import { parseCreditLimitField } from "@/lib/parse-credit-limit";
 
 const paymentMethods = [
   CorretorPaymentMethod.PIX,
@@ -13,16 +14,8 @@ function emptyToUndefined(s: string | undefined): string | undefined {
   return t === "" ? undefined : t;
 }
 
-export function parseCreditLimitConsignado(raw: string | undefined): {
-  ok: true;
-  value: number | null;
-} | { ok: false; message: string } {
-  const s = raw?.trim() ?? "";
-  if (s === "") return { ok: true, value: null };
-  const n = Number(s.replace(",", "."));
-  if (Number.isNaN(n)) return { ok: false, message: "Limite de crédito inválido" };
-  if (n < 0) return { ok: false, message: "Limite deve ser ≥ 0" };
-  return { ok: true, value: n };
+export function parseCreditLimitConsignado(raw: string | undefined) {
+  return parseCreditLimitField(raw);
 }
 
 export const corretorFormSchema = z

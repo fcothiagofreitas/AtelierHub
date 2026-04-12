@@ -5,10 +5,8 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/authorization";
-import {
-  corretorFormSchema,
-  parseCreditLimitConsignado,
-} from "@/modules/admin/schemas/corretor-form-schema";
+import { corretorFormSchema } from "@/modules/admin/schemas/corretor-form-schema";
+import { parseCreditLimitField } from "@/lib/parse-credit-limit";
 
 export type CorretorActionResult = {
   error?: string;
@@ -54,7 +52,7 @@ export async function upsertCorretor(
     };
   }
 
-  const credit = parseCreditLimitConsignado(parsed.data.creditLimitConsignado);
+  const credit = parseCreditLimitField(parsed.data.creditLimitConsignado);
   if (!credit.ok) {
     return { fieldErrors: { creditLimitConsignado: credit.message } };
   }

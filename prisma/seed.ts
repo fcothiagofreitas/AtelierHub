@@ -1,5 +1,12 @@
 import bcrypt from "bcryptjs";
-import { Prisma, PrismaClient, UserRole, StoreKind, CorretorPaymentMethod } from "@prisma/client";
+import {
+  Prisma,
+  PrismaClient,
+  UserRole,
+  StoreKind,
+  CorretorPaymentMethod,
+  ClienteTipo,
+} from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -151,6 +158,43 @@ async function main() {
       `✓  Colaborador: ${colaborador.name} (${data.login.email}) / senha: ${data.login.password}`,
     );
   }
+
+  await prisma.cliente.deleteMany({ where: { tenantId: tenant.id } });
+  await prisma.$transaction([
+    prisma.cliente.create({
+      data: {
+        tenantId: tenant.id,
+        storeId: storeAldeia.id,
+        tipo: ClienteTipo.PF,
+        nome: "Helena Cliente (seed)",
+        cpf: "12345678909",
+        endereco: "Rua Seed, 100 — Aldeota",
+        telefone: "85999990001",
+        email: "helena@seed.demo",
+        isActive: true,
+        isBlocked: false,
+      },
+    }),
+    prisma.cliente.create({
+      data: {
+        tenantId: tenant.id,
+        storeId: storeAldeia.id,
+        tipo: ClienteTipo.PJ,
+        fantasia: "Moda Seed",
+        razaoSocial: "Moda Seed Indústria e Comércio LTDA",
+        cnpj: "11222333000181",
+        ieIsento: true,
+        endereco: "Av. Seed, 500",
+        telefone: "8530010000",
+        email: "contato@modaseed.demo",
+        responsavelNome: "Carlos Responsável",
+        responsavelFone: "85988776655",
+        isActive: true,
+        isBlocked: false,
+      },
+    }),
+  ]);
+  console.log("✓  Clientes de exemplo (PF + PJ na Loja Aldeota)");
 
   console.log("\n✅  Seed concluído com sucesso!");
   console.log("\n📌  Credenciais de teste:");

@@ -21,6 +21,8 @@ type NavHeaderProps = {
 
 const routeTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
+  "/clientes": "Clientes",
+  "/clientes/new": "Novo cliente",
   "/admin": "Painel administrativo",
   "/admin/lojas": "Lojas",
   "/admin/lojas/new": "Nova loja",
@@ -30,7 +32,6 @@ const routeTitles: Record<string, string> = {
   "/admin/corretores/new": "Novo corretor",
   "/vendas": "Vendas",
   "/estoque": "Estoque",
-  "/clientes": "Clientes",
   "/configuracoes": "Configurações",
 };
 
