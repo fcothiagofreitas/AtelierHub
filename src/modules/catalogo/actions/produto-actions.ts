@@ -263,10 +263,12 @@ export async function upsertProduto(
       }
 
       if (finalVariacaoIds.length > 0) {
+        // PedidoItem referencia SKU com ON DELETE RESTRICT — não apagar variações já usadas em pedidos.
         await tx.produtoVariacao.deleteMany({
           where: {
             produtoId: pid,
             id: { notIn: finalVariacaoIds },
+            pedidoItens: { none: {} },
           },
         });
       }
