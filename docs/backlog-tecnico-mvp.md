@@ -309,7 +309,7 @@ Subir a rastreabilidade de estoque entre administrativo e lojas.
 
 ### Status (implementação)
 
-MVP **Sprint 7** entregue no código: migração `EstoqueSaldo` + `MovimentoEstoque`, serviço transacional, entradas/saídas/transferências/ajuste, seed com saldos de exemplo, rotas `/admin/estoque/*` (consulta, histórico, entrada, saída defeito, transferência, conferência), link no menu **Operação** e no painel admin.
+MVP **Sprint 7** entregue no código: migração `EstoqueSaldo` + `MovimentoEstoque`, serviço transacional, entradas/saídas/transferências/ajuste, seed com saldos de exemplo, rotas em `/admin/estoque` (consulta, histórico, entrada, saída defeito, transferência, conferência), link no menu **Operação** e no painel admin.
 
 ## Sprint 8 — Tela de vendas da loja
 
@@ -516,3 +516,4 @@ Colocar o MVP em operação com segurança.
 - Cada sprint deve entregar **front e back juntos**
 - Cada sprint deve produzir pelo menos **um fluxo funcional testável**
 - O backlog deve ser refinado conforme o projeto evoluir, sem perder as decisões fechadas acima
+
