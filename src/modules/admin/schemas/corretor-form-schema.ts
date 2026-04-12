@@ -1,22 +1,13 @@
 import { z } from "zod";
 import { CorretorPaymentMethod } from "@prisma/client";
 import { parseCreditLimitField } from "@/lib/parse-credit-limit";
+import { emptyToUndefined } from "@/lib/form-utils";
 
 const paymentMethods = [
   CorretorPaymentMethod.PIX,
   CorretorPaymentMethod.CASH,
   CorretorPaymentMethod.BANK_TRANSFER,
 ] as const;
-
-function emptyToUndefined(s: string | undefined): string | undefined {
-  if (s == null) return undefined;
-  const t = s.trim();
-  return t === "" ? undefined : t;
-}
-
-export function parseCreditLimitConsignado(raw: string | undefined) {
-  return parseCreditLimitField(raw);
-}
 
 export const corretorFormSchema = z
   .object({
@@ -47,7 +38,7 @@ export const corretorFormSchema = z
         });
       }
     }
-    const parsed = parseCreditLimitConsignado(data.creditLimitConsignado);
+    const parsed = parseCreditLimitField(data.creditLimitConsignado);
     if (!parsed.ok) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

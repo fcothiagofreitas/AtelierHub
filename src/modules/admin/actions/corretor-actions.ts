@@ -5,8 +5,9 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/authorization";
-import { corretorFormSchema } from "@/modules/admin/schemas/corretor-form-schema";
 import { parseCreditLimitField } from "@/lib/parse-credit-limit";
+import { flattenZodErrors } from "@/lib/form-utils";
+import { corretorFormSchema } from "@/modules/admin/schemas/corretor-form-schema";
 
 export type CorretorActionResult = {
   error?: string;
@@ -44,17 +45,7 @@ export async function upsertCorretor(
   });
 
   if (!parsed.success) {
-    const flat = parsed.error.flatten().fieldErrors;
-    return {
-      fieldErrors: Object.fromEntries(
-        Object.entries(flat).map(([k, v]) => [k, v?.[0] ?? ""]),
-      ),
-    };
-  }
-
-  const credit = parseCreditLimitField(parsed.data.creditLimitConsignado);
-  if (!credit.ok) {
-    return { fieldErrors: { creditLimitConsignado: credit.message } };
+    return { fieldErrors: flattenZodErrors(parsed.error) };
   }
 
   const {
@@ -74,8 +65,10 @@ export async function upsertCorretor(
     isBlocked,
   } = parsed.data;
 
+  // schema (superRefine) já validou o campo; parseCreditLimitField é chamado aqui apenas para extrair o valor numérico
+  const credit = parseCreditLimitField(parsed.data.creditLimitConsignado);
   const creditLimitConsignado =
-    credit.value == null ? null : new Prisma.Decimal(credit.value);
+    credit.ok && credit.value != null ? new Prisma.Decimal(credit.value) : null;
 
   let dbError: string | null = null;
 
@@ -143,14 +136,18 @@ export async function toggleCorretorBlocked(formData: FormData) {
   const tenantId = session.user.tenantId;
   const id = String(formData.get("id") ?? "");
 
-  const row = await prisma.corretor.findFirst({ where: { id, tenantId } });
-  if (!row) return;
+  try {
+    const row = await prisma.corretor.findFirst({ where: { id, tenantId } });
+    if (!row) return;
 
-  await prisma.corretor.update({
-    where: { id },
-    data: { isBlocked: !row.isBlocked },
-  });
+    await prisma.corretor.update({
+      where: { id },
+      data: { isBlocked: !row.isBlocked },
+    });
 
-  revalidatePath("/admin/corretores");
-  revalidatePath("/admin");
+    revalidatePath("/admin/corretores");
+    revalidatePath("/admin");
+  } catch {
+    // falha silenciosa: o UI reflete o estado real do banco no próximo revalidate
+  }
 }

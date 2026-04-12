@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/authorization";
 import { parseCreditLimitField } from "@/lib/parse-credit-limit";
+import { flattenZodErrors } from "@/lib/form-utils";
 import { clientePfSchema, clientePjSchema } from "@/modules/clientes/schemas/cliente-schemas";
 import { ROLES_ACESSO_CLIENTES } from "@/modules/clientes/lib/roles";
 
@@ -14,14 +15,8 @@ export type ClienteActionResult = {
   fieldErrors?: Partial<Record<string, string>>;
 };
 
-function flattenZod(err: import("zod").ZodError): Record<string, string> {
-  const flat = err.flatten().fieldErrors as Record<string, string[] | undefined>;
-  return Object.fromEntries(
-    Object.entries(flat).map(([k, v]) => [k, v?.[0] ?? ""]),
-  );
-}
-
-function assertStore(session: { user: { storeIds: string[] } }, storeId: string) {
+/** Verifica se o usuário da sessão tem acesso à loja informada. */
+function hasStoreAccess(session: { user: { storeIds: string[] } }, storeId: string): boolean {
   return session.user.storeIds.includes(storeId);
 }
 
@@ -47,16 +42,13 @@ export async function upsertClientePf(
   });
 
   if (!parsed.success) {
-    return { fieldErrors: flattenZod(parsed.error) };
+    return { fieldErrors: flattenZodErrors(parsed.error) };
   }
 
   const data = parsed.data;
-  if (!assertStore(session, data.storeId)) {
+  if (!hasStoreAccess(session, data.storeId)) {
     return { error: "Você não tem acesso a esta loja." };
   }
-
-  const credit = parseCreditLimitField(data.creditLimitConsignado);
-  if (!credit.ok) return { fieldErrors: { creditLimitConsignado: credit.message } };
 
   let aniversario: Date | null = null;
   if (data.aniversario?.trim()) {
@@ -65,15 +57,16 @@ export async function upsertClientePf(
   }
 
   const tenantId = session.user.tenantId;
-  const creditLimit =
-    credit.value == null ? null : new Prisma.Decimal(credit.value);
+  // schema (superRefine) já validou o campo; parseCreditLimitField é chamado aqui apenas para extrair o valor numérico
+  const credit = parseCreditLimitField(data.creditLimitConsignado);
+  const creditLimit = credit.ok && credit.value != null ? new Prisma.Decimal(credit.value) : null;
 
   try {
     if (data.id) {
       const existing = await prisma.cliente.findFirst({
         where: { id: data.id, tenantId, tipo: "PF" },
       });
-      if (!existing || !assertStore(session, existing.storeId)) {
+      if (!existing || !hasStoreAccess(session, existing.storeId)) {
         return { error: "Cliente não encontrado." };
       }
       if (existing.storeId !== data.storeId) {
@@ -148,20 +141,18 @@ export async function upsertClientePj(
   });
 
   if (!parsed.success) {
-    return { fieldErrors: flattenZod(parsed.error) };
+    return { fieldErrors: flattenZodErrors(parsed.error) };
   }
 
   const data = parsed.data;
-  if (!assertStore(session, data.storeId)) {
+  if (!hasStoreAccess(session, data.storeId)) {
     return { error: "Você não tem acesso a esta loja." };
   }
 
-  const credit = parseCreditLimitField(data.creditLimitConsignado);
-  if (!credit.ok) return { fieldErrors: { creditLimitConsignado: credit.message } };
-
   const tenantId = session.user.tenantId;
-  const creditLimit =
-    credit.value == null ? null : new Prisma.Decimal(credit.value);
+  // schema (superRefine) já validou o campo; parseCreditLimitField é chamado aqui apenas para extrair o valor numérico
+  const credit = parseCreditLimitField(data.creditLimitConsignado);
+  const creditLimit = credit.ok && credit.value != null ? new Prisma.Decimal(credit.value) : null;
 
   const ieValue = data.ieIsento ? null : data.ie ?? null;
 
@@ -170,7 +161,7 @@ export async function upsertClientePj(
       const existing = await prisma.cliente.findFirst({
         where: { id: data.id, tenantId, tipo: "PJ" },
       });
-      if (!existing || !assertStore(session, existing.storeId)) {
+      if (!existing || !hasStoreAccess(session, existing.storeId)) {
         return { error: "Cliente não encontrado." };
       }
       if (existing.storeId !== data.storeId) {
@@ -232,13 +223,17 @@ export async function toggleClienteBlocked(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const tenantId = session.user.tenantId;
 
-  const row = await prisma.cliente.findFirst({ where: { id, tenantId } });
-  if (!row || !assertStore(session, row.storeId)) return;
+  try {
+    const row = await prisma.cliente.findFirst({ where: { id, tenantId } });
+    if (!row || !hasStoreAccess(session, row.storeId)) return;
 
-  await prisma.cliente.update({
-    where: { id },
-    data: { isBlocked: !row.isBlocked },
-  });
+    await prisma.cliente.update({
+      where: { id },
+      data: { isBlocked: !row.isBlocked },
+    });
 
-  revalidatePath("/clientes");
+    revalidatePath("/clientes");
+  } catch {
+    // falha silenciosa: o UI reflete o estado real do banco no próximo revalidate
+  }
 }

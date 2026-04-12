@@ -1,20 +1,22 @@
 import { z } from "zod";
 import { parseCreditLimitField } from "@/lib/parse-credit-limit";
-
-function empty(s: string | undefined): string | undefined {
-  if (s == null) return undefined;
-  const t = s.trim();
-  return t === "" ? undefined : t;
-}
+import { emptyToUndefined } from "@/lib/form-utils";
+import { isValidCpf, isValidCnpj } from "@/lib/doc-validation";
 
 const cpfDigits = z.preprocess(
   (v) => String(v ?? "").replace(/\D/g, "").slice(0, 11),
-  z.string().length(11, "CPF deve ter 11 dígitos"),
+  z
+    .string()
+    .length(11, "CPF deve ter 11 dígitos")
+    .refine(isValidCpf, "CPF inválido"),
 );
 
 const cnpjDigits = z.preprocess(
   (v) => String(v ?? "").replace(/\D/g, "").slice(0, 14),
-  z.string().length(14, "CNPJ deve ter 14 dígitos"),
+  z
+    .string()
+    .length(14, "CNPJ deve ter 14 dígitos")
+    .refine(isValidCnpj, "CNPJ inválido"),
 );
 
 export const clientePfSchema = z
@@ -25,10 +27,10 @@ export const clientePfSchema = z
     cpf: cpfDigits,
     endereco: z.string().min(3, "Informe o endereço"),
     telefone: z.string().min(8, "Informe o telefone"),
-    email: z.string().optional().transform(empty),
-    aniversario: z.string().optional().transform(empty),
+    email: z.string().optional().transform(emptyToUndefined),
+    aniversario: z.string().optional().transform(emptyToUndefined),
     creditLimitConsignado: z.string().optional(),
-    corretorId: z.string().optional().transform(empty),
+    corretorId: z.string().optional().transform(emptyToUndefined),
     isActive: z.boolean(),
     isBlocked: z.boolean(),
   })
@@ -56,15 +58,15 @@ export const clientePjSchema = z
     fantasia: z.string().min(2, "Informe o nome fantasia"),
     razaoSocial: z.string().min(2, "Informe a razão social"),
     cnpj: cnpjDigits,
-    ie: z.string().optional().transform(empty),
+    ie: z.string().optional().transform(emptyToUndefined),
     ieIsento: z.boolean(),
     endereco: z.string().min(3, "Informe o endereço"),
     telefone: z.string().min(8, "Informe o telefone"),
-    email: z.string().optional().transform(empty),
+    email: z.string().optional().transform(emptyToUndefined),
     responsavelNome: z.string().min(2, "Informe o responsável"),
     responsavelFone: z.string().min(8, "Informe o telefone do responsável"),
     creditLimitConsignado: z.string().optional(),
-    corretorId: z.string().optional().transform(empty),
+    corretorId: z.string().optional().transform(emptyToUndefined),
     isActive: z.boolean(),
     isBlocked: z.boolean(),
   })

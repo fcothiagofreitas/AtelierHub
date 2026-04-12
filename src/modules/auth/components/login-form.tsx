@@ -1,12 +1,25 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { DevLoginShortcuts } from "@/modules/auth/components/dev-login-shortcuts";
+
+type DevLoginShortcutsProps = { onPick: (email: string, password: string) => void };
+
+// Em produção o módulo inteiro é excluído do bundle; process.env.NODE_ENV é
+// substituído estaticamente pelo bundler, tornando o import morto ("dead code").
+const DevLoginShortcuts: React.ComponentType<DevLoginShortcutsProps> =
+  process.env.NODE_ENV === "development"
+    ? dynamic(() =>
+        import("@/modules/auth/components/dev-login-shortcuts").then((m) => ({
+          default: m.DevLoginShortcuts,
+        })),
+      )
+    : () => null;
 
 export function LoginForm() {
   const router = useRouter();
