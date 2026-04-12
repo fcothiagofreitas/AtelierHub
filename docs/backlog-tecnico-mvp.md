@@ -172,6 +172,12 @@ Entregue e versionado no branch `rewrite` (ex.: commit `feat: sprint 3 — área
 
 Subir os cadastros mestres usados pela operação.
 
+### Domínio (decisão fechada para o MVP)
+
+- **Corretor não é colaborador** — entidade e CRUD separados; não usar `Colaborador` / `UserRole` para corretor.
+- **Limite de crédito do corretor (MVP):** um único **limite geral**, válido para **exposição em aberto** no contexto **consignado / fiado**; **sem** sublimite por loja ou por cliente neste MVP.
+- **Quando estourar o limite:** política de **alerta** (não bloqueio rígido) na camada de venda quando existir PDV — o cadastro na Sprint 4 prepara o valor; a consulta na venda pode vir na sprint de vendas.
+
 ### Já coberto pelo modelo atual (`Colaborador` + admin)
 
 Estes itens da sprint original passaram a ser tratados no **CRUD de colaboradores** (em especial com perfil **VENDEDOR**), não como CRUD separado de “vendedor”:
@@ -182,24 +188,26 @@ Estes itens da sprint original passaram a ser tratados no **CRUD de colaboradore
 - Datas de admissão e demissão + flags `isDismissed` / `dismissalAt` no schema
 - Login próprio do vendedor (toggle de acesso, quando aplicável)
 
-### Backlog técnico — ainda pendente
+### Backlog técnico — Sprint 4 (MVP)
 
-- **Corretor (modelo + CRUD)** — não existe tabela nem telas; é o núcleo restante da sprint.
-- **Status ativo/bloqueado do corretor** e **comissão por corretor**
-- **Dados Pix / transferência do corretor**
-- **Regras na operação** — quando existirem telas de venda, pedido ou seleção de vendedor/corretor:
-  - excluir da seleção colaborador **vendedor** demitido/inativo conforme regra de negócio
-  - excluir corretor **bloqueado** das seleções
-- (Opcional / endurecimento) Garantir validações e mensagens únicas para demissão vs. apenas inativo
+1. **Modelo `Corretor`** no Prisma (`tenantId`, dados cadastrais alinhados a RN-CR1, comissão, Pix/dados de pagamento, status ativo/bloqueado).
+2. **Campo de limite geral de crédito** (consignado/fiado, um valor por corretor — ex. `Decimal` opcional).
+3. **CRUD administrativo** — listagem + criar/editar corretor (área `/admin` ou rota equivalente), com busca/filtro básico se couber no mesmo padrão de lojas/colaboradores.
+4. **Seed** — pelo menos um corretor de exemplo para desenvolvimento.
 
-### Critério de pronto (atualizado)
+### Fora do escopo do MVP (Sprint 4 ou sprints futuras)
 
-- Administrativo cadastra e mantém **corretores** com regras de bloqueio e comissão
-- Regras de bloqueio (corretor) e demissão/inatividade (vendedor como colaborador) **passam a valer nas fluxos operacionais** que consumirem esses cadastros (vendas, comissões, etc.)
+- Limite de crédito **por cliente** ou **por loja** para corretor.
+- **Regras na operação** (PDV): cálculo de exposição em aberto, alerta ao ultrapassar limite, exclusão de corretor bloqueado nas seleções — depende da sprint de **vendas / PDV**; o cadastro só fornece o teto.
+
+### Critério de pronto (MVP desta sprint)
+
+- Administrativo cria, edita e lista **corretores** com dados essenciais, **comissão**, **pagamento (ex. Pix)** e **limite geral de crédito** (consignado/fiado).
+- Corretor **bloqueado** / **ativo** refletidos no cadastro (uso em telas de venda fica para quando o PDV existir).
 
 ### Nota
 
-O critério “administrativo cria vendedor” no sentido de **pessoa com perfil vendedor** já é atendido pelo cadastro de colaborador. O que falta para “fechar” a Sprint 4 no espírito do documento original é sobretudo **corretor** e **integração com a operação** (filtros em seleções).
+O “vendedor” como pessoa operacional continua no **Colaborador**. O que a Sprint 4 fecha no MVP é o **corretor** como cadastro separado, com **um** limite de crédito geral conforme acima.
 
 ## Sprint 5 — Clientes
 
