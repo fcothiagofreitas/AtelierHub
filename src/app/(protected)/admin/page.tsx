@@ -1,4 +1,4 @@
-import { Building2, Handshake, Users, UserCheck } from "lucide-react";
+import { Building2, Handshake, LibraryBig, Users, UserCheck } from "lucide-react";
 import Link from "next/link";
 import { requireRole } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
@@ -14,6 +14,7 @@ export default async function AdminPage() {
     activeColaboradores,
     totalCorretores,
     activeCorretores,
+    totalProdutos,
   ] = await Promise.all([
     prisma.store.count({ where: { tenantId } }),
     prisma.store.count({ where: { tenantId, isActive: true } }),
@@ -21,6 +22,7 @@ export default async function AdminPage() {
     prisma.colaborador.count({ where: { tenantId, isActive: true } }),
     prisma.corretor.count({ where: { tenantId } }),
     prisma.corretor.count({ where: { tenantId, isActive: true, isBlocked: false } }),
+    prisma.produto.count({ where: { tenantId } }),
   ]);
 
   const cards = [
@@ -60,6 +62,15 @@ export default async function AdminPage() {
       description: `${totalCorretores - activeCorretores} inativo${totalCorretores - activeCorretores !== 1 ? "s" : ""} ou bloqueado${totalCorretores - activeCorretores !== 1 ? "s" : ""}`,
       cta: "Gerenciar corretores",
     },
+    {
+      label: "Produtos no catálogo",
+      value: totalProdutos,
+      total: totalProdutos,
+      icon: LibraryBig,
+      href: "/admin/catalogo/produtos",
+      description: "Com variações e dados fiscais",
+      cta: "Abrir catálogo",
+    },
   ];
 
   return (
@@ -67,11 +78,11 @@ export default async function AdminPage() {
       <div>
         <h2 className="text-xl font-semibold">Painel administrativo</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Configure lojas, colaboradores, corretores e acessos da marca.
+          Configure lojas, colaboradores, corretores, catálogo e acessos da marca.
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {cards.map((card) => (
           <Link
             key={card.label}
@@ -101,6 +112,8 @@ export default async function AdminPage() {
           <QuickLink href="/admin/lojas/new" label="Nova loja" />
           <QuickLink href="/admin/colaboradores/new" label="Novo colaborador" />
           <QuickLink href="/admin/corretores/new" label="Novo corretor" />
+          <QuickLink href="/admin/catalogo" label="Catálogo" />
+          <QuickLink href="/admin/catalogo/produtos/new" label="Novo produto" />
         </div>
       </div>
     </div>

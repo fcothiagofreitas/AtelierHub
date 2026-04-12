@@ -31,16 +31,218 @@ enum ClienteTipo {
 }
 
 model Tenant {
-  id           String        @id @default(cuid())
-  name         String
-  slug         String        @unique
-  stores       Store[]
-  colaboradores Colaborador[]
-  corretores   Corretor[]
-  clientes     Cliente[]
-  users        User[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  id                String             @id @default(cuid())
+  name              String
+  slug              String             @unique
+  /// Sequência interna para gerar EAN-13 de uso operacional (prefixo 789 + 9 dígitos + DV).
+  eanSequence       Int                @default(0)
+  stores            Store[]
+  colaboradores     Colaborador[]
+  corretores        Corretor[]
+  clientes          Cliente[]
+  users             User[]
+  categoriasProduto CategoriaProduto[]
+  tiposProduto      TipoProduto[]
+  colecoesProduto   ColecaoProduto[]
+  gradesTamanho     GradeTamanho[]
+  catalogoCores     CatalogoCor[]
+  produtos          Produto[]
+  produtoVariacoes  ProdutoVariacao[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+}
+
+/// Conjunto de tamanhos (ex.: letras, numérico infantil) — o produto referencia uma grade; as opções ficam abaixo.
+model GradeTamanho {
+  id        String         @id @default(cuid())
+  tenantId  String
+  tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  nome      String
+  slug      String
+  ordem     Int            @default(0)
+  isActive  Boolean        @default(true)
+  opcoes    OpcaoTamanho[]
+  produtos  Produto[]
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+}
+
+/// Uma opção de tamanho dentro da grade (ex.: P, 38, GG).
+model OpcaoTamanho {
+  id             String            @id @default(cuid())
+  gradeTamanhoId String
+  gradeTamanho   GradeTamanho      @relation(fields: [gradeTamanhoId], references: [id], onDelete: Cascade)
+  nome           String
+  slug           String
+  ordem          Int               @default(0)
+  isActive       Boolean           @default(true)
+  variacoes      ProdutoVariacao[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@unique([gradeTamanhoId, slug])
+  @@index([gradeTamanhoId])
+}
+
+/// Valores de cor reutilizáveis — catálogo da marca.
+model CatalogoCor {
+  id        String            @id @default(cuid())
+  tenantId  String
+  tenant    Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  nome      String
+  slug      String
+  ordem     Int               @default(0)
+  isActive  Boolean           @default(true)
+  variacoes ProdutoVariacao[]
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+}
+
+/// Categoria de produto (catálogo central da marca).
+model CategoriaProduto {
+  id            String                @id @default(cuid())
+  tenantId      String
+  tenant        Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  nome          String
+  slug          String
+  ordem         Int                   @default(0)
+  isActive      Boolean               @default(true)
+  subcategorias SubcategoriaProduto[]
+  produtos      Produto[]
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+}
+
+model SubcategoriaProduto {
+  id          String           @id @default(cuid())
+  categoriaId String
+  categoria   CategoriaProduto @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+  nome        String
+  slug        String
+  ordem       Int              @default(0)
+  isActive    Boolean          @default(true)
+  produtos    Produto[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@unique([categoriaId, slug])
+  @@index([categoriaId])
+}
+
+model TipoProduto {
+  id        String    @id @default(cuid())
+  tenantId  String
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  nome      String
+  slug      String
+  ordem     Int       @default(0)
+  isActive  Boolean   @default(true)
+  produtos  Produto[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+}
+
+model ColecaoProduto {
+  id        String    @id @default(cuid())
+  tenantId  String
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  nome      String
+  slug      String
+  ordem     Int       @default(0)
+  isActive  Boolean   @default(true)
+  produtos  Produto[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+}
+
+model Produto {
+  id         String   @id @default(cuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  /// Código de referência interno da marca (SKU pai / estilo).
+  referencia String?
+  nome       String
+  descricao  String?
+  /// Preço base de venda (mesmo para todas as variações até precificação por SKU).
+  precoVenda Decimal? @db.Decimal(14, 2)
+
+  categoriaId    String?
+  categoria      CategoriaProduto?    @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+  subcategoriaId String?
+  subcategoria   SubcategoriaProduto? @relation(fields: [subcategoriaId], references: [id], onDelete: SetNull)
+  tipoId         String?
+  tipo           TipoProduto?         @relation(fields: [tipoId], references: [id], onDelete: SetNull)
+  colecaoId      String?
+  colecao        ColecaoProduto?      @relation(fields: [colecaoId], references: [id], onDelete: SetNull)
+
+  /// Grade de tamanhos aplicada ao produto (opções de SKU vêm desta grade).
+  gradeTamanhoId String?
+  gradeTamanho   GradeTamanho?        @relation(fields: [gradeTamanhoId], references: [id], onDelete: SetNull)
+
+  isActive Boolean @default(true)
+
+  /// NCM (8 dígitos), sem máscara.
+  ncm               String?
+  /// CEST (7 dígitos), sem máscara.
+  cest              String?
+  /// Origem da mercadoria (tabela de origem / ICMS), 0–8 quando informado.
+  origemMercadoria  Int?
+  /// Ex.: UN, PC, KG — para exibição e integrações fiscais futuras.
+  unidadeTributavel String?
+
+  variacoes ProdutoVariacao[]
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  @@index([tenantId])
+  @@index([categoriaId])
+  @@index([nome])
+  @@index([gradeTamanhoId])
+}
+
+model ProdutoVariacao {
+  id        String  @id @default(cuid())
+  tenantId  String
+  tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  produtoId String
+  produto   Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+
+  opcaoTamanhoId String?
+  opcaoTamanho   OpcaoTamanho? @relation(fields: [opcaoTamanhoId], references: [id], onDelete: SetNull)
+  corCatalogoId String?
+  corCatalogo   CatalogoCor? @relation(fields: [corCatalogoId], references: [id], onDelete: SetNull)
+
+  /// Rótulo derivado (ex.: Tamanho — Cor); mantido para listagens e compatibilidade.
+  nome          String
+  /// Código EAN-13 gerado ou informado (13 dígitos numéricos).
+  ean13         String?
+  /// Código de referência externo (fornecedor, ERP legado, etc.).
+  codigoExterno String?
+  ordem         Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([produtoId])
+  @@index([ean13])
+  @@index([opcaoTamanhoId])
+  @@index([corCatalogoId])
 }
 
 // Corretor: parceiro externo — não é Colaborador. Limite de crédito (consignado) opcional (null = ilimitado).
@@ -87,21 +289,21 @@ model Cliente {
   cpf         String?
   aniversario DateTime?
 
-  fantasia          String?
-  razaoSocial       String?
-  cnpj              String?
-  ie                String?
-  ieIsento          Boolean  @default(false)
-  responsavelNome   String?
-  responsavelFone   String?
+  fantasia        String?
+  razaoSocial     String?
+  cnpj            String?
+  ie              String?
+  ieIsento        Boolean @default(false)
+  responsavelNome String?
+  responsavelFone String?
 
   endereco String?
   telefone String?
   email    String?
 
   creditLimit Decimal? @db.Decimal(14, 2)
-  isBlocked Boolean @default(false)
-  isActive  Boolean @default(true)
+  isBlocked   Boolean  @default(false)
+  isActive    Boolean  @default(true)
 
   corretorId String?
   corretor   Corretor? @relation(fields: [corretorId], references: [id], onDelete: SetNull)
@@ -119,17 +321,17 @@ model Cliente {
 }
 
 model Store {
-  id               String             @id @default(cuid())
-  tenantId         String
-  name             String
-  slug             String
-  kind             StoreKind          @default(OPERATIONAL)
-  isActive         Boolean            @default(true)
-  tenant           Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id                String             @id @default(cuid())
+  tenantId          String
+  name              String
+  slug              String
+  kind              StoreKind          @default(OPERATIONAL)
+  isActive          Boolean            @default(true)
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   colaboradorAccess ColaboradorStore[]
-  clientes         Cliente[]
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
+  clientes          Cliente[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -138,40 +340,40 @@ model Store {
 // Qualquer pessoa que trabalha na empresa: admin, gerente, vendedor.
 // Acesso ao sistema é opcional — criado via toggle no formulário.
 model Colaborador {
-  id            String            @id @default(cuid())
+  id            String    @id @default(cuid())
   tenantId      String
   name          String
   cpf           String?
   phone         String?
   admissionAt   DateTime?
   dismissalAt   DateTime?
-  isDismissed   Boolean           @default(false)
-  minCommission Float             @default(0)
-  isActive      Boolean           @default(true)
+  isDismissed   Boolean   @default(false)
+  minCommission Float     @default(0)
+  isActive      Boolean   @default(true)
   role          UserRole
 
   // Acesso ao sistema — opcional
-  userId        String?           @unique
-  user          User?             @relation(fields: [userId], references: [id])
+  userId String? @unique
+  user   User?   @relation(fields: [userId], references: [id])
 
-  stores        ColaboradorStore[]
-  tenant        Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  stores ColaboradorStore[]
+  tenant Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([tenantId])
 }
 
 model ColaboradorStore {
-  id            String      @id @default(cuid())
+  id            String   @id @default(cuid())
   colaboradorId String
   storeId       String
-  isDefault     Boolean     @default(false)
-  createdAt     DateTime    @default(now())
+  isDefault     Boolean  @default(false)
+  createdAt     DateTime @default(now())
 
-  colaborador   Colaborador @relation(fields: [colaboradorId], references: [id], onDelete: Cascade)
-  store         Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  colaborador Colaborador @relation(fields: [colaboradorId], references: [id], onDelete: Cascade)
+  store       Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
   @@unique([colaboradorId, storeId])
   @@index([colaboradorId])
@@ -180,17 +382,17 @@ model ColaboradorStore {
 
 // Apenas credenciais de login. Toda pessoa é um Colaborador primeiro.
 model User {
-  id           String       @id @default(cuid())
+  id           String  @id @default(cuid())
   tenantId     String
   email        String
   passwordHash String
-  isActive     Boolean      @default(true)
+  isActive     Boolean @default(true)
 
-  colaborador  Colaborador?
+  colaborador Colaborador?
 
-  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([tenantId, email])
   @@index([tenantId])

@@ -39,6 +39,10 @@ const routeTitles: Record<string, string> = {
   "/admin/catalogo/tipos/new": "Novo tipo",
   "/admin/catalogo/colecoes": "Coleções",
   "/admin/catalogo/colecoes/new": "Nova coleção",
+  "/admin/catalogo/tamanhos": "Grades de tamanhos",
+  "/admin/catalogo/tamanhos/new": "Nova grade",
+  "/admin/catalogo/cores": "Cores",
+  "/admin/catalogo/cores/new": "Nova cor",
   "/admin/catalogo/produtos": "Produtos",
   "/admin/catalogo/produtos/new": "Novo produto",
   "/vendas": "Vendas",
@@ -47,6 +51,9 @@ const routeTitles: Record<string, string> = {
 };
 
 function resolveTitle(pathname: string): string {
+  if (/\/admin\/catalogo\/produtos\/[^/]+\/edit$/.test(pathname)) {
+    return "Editar produto";
+  }
   if (routeTitles[pathname]) return routeTitles[pathname];
   // Tenta correspondência parcial para rotas aninhadas como /admin/lojas/new
   const match = Object.keys(routeTitles)

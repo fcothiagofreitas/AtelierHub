@@ -7,6 +7,8 @@ import {
   CorretorPaymentMethod,
   ClienteTipo,
 } from "@prisma/client";
+import { buildEan13FromBody12 } from "../src/lib/ean13";
+import { formatNomeGrade } from "../src/lib/produto-grade";
 
 const prisma = new PrismaClient();
 
@@ -195,6 +197,121 @@ async function main() {
     }),
   ]);
   console.log("✓  Clientes de exemplo (PF + PJ na Loja Aldeota)");
+
+  await prisma.produto.deleteMany({ where: { tenantId: tenant.id } });
+  await prisma.catalogoCor.deleteMany({ where: { tenantId: tenant.id } });
+  await prisma.gradeTamanho.deleteMany({ where: { tenantId: tenant.id } });
+  await prisma.subcategoriaProduto.deleteMany({
+    where: { categoria: { tenantId: tenant.id } },
+  });
+  await prisma.categoriaProduto.deleteMany({ where: { tenantId: tenant.id } });
+  await prisma.tipoProduto.deleteMany({ where: { tenantId: tenant.id } });
+  await prisma.colecaoProduto.deleteMany({ where: { tenantId: tenant.id } });
+
+  const eanDemo = buildEan13FromBody12(`789${String(1).padStart(9, "0")}`);
+
+  const cat = await prisma.categoriaProduto.create({
+    data: {
+      tenantId: tenant.id,
+      nome: "Vestuário",
+      slug: "vestuario",
+      ordem: 0,
+      isActive: true,
+    },
+  });
+  const sub = await prisma.subcategoriaProduto.create({
+    data: {
+      categoriaId: cat.id,
+      nome: "Calças",
+      slug: "calcas",
+      ordem: 0,
+      isActive: true,
+    },
+  });
+  const tipo = await prisma.tipoProduto.create({
+    data: {
+      tenantId: tenant.id,
+      nome: "Calça",
+      slug: "calca",
+      ordem: 0,
+      isActive: true,
+    },
+  });
+  const col = await prisma.colecaoProduto.create({
+    data: {
+      tenantId: tenant.id,
+      nome: "Verão 2026",
+      slug: "verao-2026",
+      ordem: 0,
+      isActive: true,
+    },
+  });
+
+  const gradeLetras = await prisma.gradeTamanho.create({
+    data: {
+      tenantId: tenant.id,
+      nome: "Letras",
+      slug: "letras",
+      ordem: 0,
+      isActive: true,
+    },
+  });
+  const opUnico = await prisma.opcaoTamanho.create({
+    data: {
+      gradeTamanhoId: gradeLetras.id,
+      nome: "Único",
+      slug: "unico",
+      ordem: 0,
+      isActive: true,
+    },
+  });
+  const corAzul = await prisma.catalogoCor.create({
+    data: {
+      tenantId: tenant.id,
+      nome: "Azul",
+      slug: "azul",
+      ordem: 0,
+      isActive: true,
+    },
+  });
+
+  await prisma.produto.create({
+    data: {
+      tenantId: tenant.id,
+      referencia: "SEED-CALCA-001",
+      nome: "Calça jeans (seed)",
+      descricao: "Produto de exemplo com variação, NCM/CEST e EAN-13.",
+      categoriaId: cat.id,
+      subcategoriaId: sub.id,
+      tipoId: tipo.id,
+      colecaoId: col.id,
+      gradeTamanhoId: gradeLetras.id,
+      isActive: true,
+      ncm: "61034900",
+      cest: "2803800",
+      origemMercadoria: 0,
+      unidadeTributavel: "UN",
+      variacoes: {
+        create: [
+          {
+            tenantId: tenant.id,
+            opcaoTamanhoId: opUnico.id,
+            corCatalogoId: corAzul.id,
+            nome: formatNomeGrade(opUnico.nome, corAzul.nome),
+            ean13: eanDemo,
+            codigoExterno: "FORN-001",
+            ordem: 0,
+          },
+        ],
+      },
+    },
+  });
+
+  await prisma.tenant.update({
+    where: { id: tenant.id },
+    data: { eanSequence: 1 },
+  });
+  console.log("✓  Catálogo de exemplo (categoria, subcategoria, tipo, coleção, produto + EAN-13)");
 
   console.log("\n✅  Seed concluído com sucesso!");
   console.log("\n📌  Credenciais de teste:");
