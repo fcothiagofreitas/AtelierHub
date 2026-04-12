@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import type { UserRole } from "@prisma/client";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { StoreSwitcher } from "./store-switcher";
@@ -30,6 +30,17 @@ const routeTitles: Record<string, string> = {
   "/admin/colaboradores/new": "Novo colaborador",
   "/admin/corretores": "Corretores",
   "/admin/corretores/new": "Novo corretor",
+  "/admin/catalogo": "Catálogo",
+  "/admin/catalogo/categorias": "Categorias",
+  "/admin/catalogo/categorias/new": "Nova categoria",
+  "/admin/catalogo/subcategorias": "Subcategorias",
+  "/admin/catalogo/subcategorias/new": "Nova subcategoria",
+  "/admin/catalogo/tipos": "Tipos de produto",
+  "/admin/catalogo/tipos/new": "Novo tipo",
+  "/admin/catalogo/colecoes": "Coleções",
+  "/admin/catalogo/colecoes/new": "Nova coleção",
+  "/admin/catalogo/produtos": "Produtos",
+  "/admin/catalogo/produtos/new": "Novo produto",
   "/vendas": "Vendas",
   "/estoque": "Estoque",
   "/configuracoes": "Configurações",
@@ -73,6 +84,7 @@ export function NavHeader({
       </div>
 
       <div className="flex items-center gap-3 shrink-0">
+        <ThemeToggle />
         <StoreSwitcher stores={stores} activeStoreId={activeStoreId} />
         <Separator orientation="vertical" className="h-5" />
         <Avatar className="size-8">

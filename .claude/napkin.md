@@ -21,19 +21,23 @@
    Do instead: criar `Pool({ connectionString })` e passar para `PrismaPg(pool)` em vez de depender do construtor com objeto simples.
 
 ## Domain Behavior Guardrails
-1. **[2026-04-09] Multi-loja já existe como premissa central**
+1. **[2026-04-12] Variações de produto: grade tamanho×cor (plano B) sem texto solto na geração**
+   Do instead: listas parseadas (vírgula ou linha), matriz com células desmarcáveis para “buracos”, nomes no formato `Tamanho — Cor`; EAN/código por SKU preservados quando o nome gerado coincide com linha existente; preço no MVP permanece ao nível do produto até sprint de precificação por variação.
+2. **[2026-04-09] Multi-loja já existe como premissa central**
    Do instead: assumir `tenant` com várias lojas e validar se a regra nova é por permissão, visibilidade ou fluxo operacional antes de propor mudança estrutural.
-2. **[2026-04-09] Estoque precisa de rastreabilidade por movimento**
+3. **[2026-04-09] Estoque precisa de rastreabilidade por movimento**
    Do instead: modelar entradas e saídas com transferência, venda, defeito e conferência antes de admitir ajuste manual livre.
-3. **[2026-04-09] DevOps do MVP prioriza simplicidade operacional**
+4. **[2026-04-09] DevOps do MVP prioriza simplicidade operacional**
    Do instead: assumir app fora do Docker, PostgreSQL em Docker, `develop -> staging` e `main -> production` até nova decisão explícita.
-4. **[2026-04-09] Front e back andam juntos por entrega**
+5. **[2026-04-09] Front e back andam juntos por entrega**
    Do instead: em cada sprint entregar tela, regra, banco e fluxo funcional testável, evitando separar backend completo de frontend completo.
 
 ## User Directives
-1. **[2026-04-09] Avaliações devem comparar áudio/requisito com docs existentes**
+1. **[2026-04-12] Tema claro/escuro/sistema via `next-themes` no layout raiz + toggle no `NavHeader`**
+   Do instead: tokens em `globals.css` (`:root` / `.dark`); evitar cores fixas em telas novas.
+2. **[2026-04-09] Avaliações devem comparar áudio/requisito com docs existentes**
    Do instead: responder com o que já está documentado, o que está implícito e o que ainda falta explicitar.
-2. **[2026-04-11] UI base deve evitar cara antiga ou editorial**
+3. **[2026-04-11] UI base deve evitar cara antiga ou editorial**
    Do instead: seguir uma linguagem mais startup/SaaS, com cantos arredondados, sans serif limpa e superfícies leves nas áreas autenticadas.
-3. **[2026-04-11] A área autenticada deve parecer sistema operacional de loja**
+4. **[2026-04-11] A área autenticada deve parecer sistema operacional de loja**
    Do instead: usar shell de dashboard, seletor de loja no header e métricas/pendências reais; consultar `.interface-design/system.md` antes de expandir novas telas.
