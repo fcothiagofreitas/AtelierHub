@@ -32,6 +32,60 @@ async function assertVariacaoTenant(
 }
 
 /**
+ * Regista movimentos e saldos usando um `TransactionClient` existente (ex.: finalização de venda + pedido).
+ */
+export async function registrarMovimentosEstoqueInTransaction(
+  tx: Prisma.TransactionClient,
+  input: {
+    tenantId: string;
+    userId: string | null;
+    linhas: LinhaMovimento[];
+  },
+): Promise<void> {
+  const { tenantId, userId, linhas } = input;
+  for (const L of linhas) {
+    if (L.delta === 0) continue;
+    await assertStoreTenant(tx, tenantId, L.storeId);
+    await assertVariacaoTenant(tx, tenantId, L.produtoVariacaoId);
+
+    await tx.movimentoEstoque.create({
+      data: {
+        tenantId,
+        storeId: L.storeId,
+        produtoVariacaoId: L.produtoVariacaoId,
+        delta: L.delta,
+        tipo: L.tipo,
+        motivo: L.motivo ?? null,
+        userId,
+        loteTransferenciaId: L.loteTransferenciaId ?? null,
+      },
+    });
+
+    const saldo = await tx.estoqueSaldo.upsert({
+      where: {
+        storeId_produtoVariacaoId: {
+          storeId: L.storeId,
+          produtoVariacaoId: L.produtoVariacaoId,
+        },
+      },
+      create: {
+        tenantId,
+        storeId: L.storeId,
+        produtoVariacaoId: L.produtoVariacaoId,
+        quantidade: L.delta,
+      },
+      update: {
+        quantidade: { increment: L.delta },
+      },
+    });
+
+    if (saldo.quantidade < 0) {
+      throw new Error("Saldo insuficiente para esta operação.");
+    }
+  }
+}
+
+/**
  * Regista uma ou mais linhas de movimento e atualiza saldos na mesma transação.
  * Falha se algum saldo ficar negativo.
  */
@@ -44,46 +98,7 @@ export async function registrarMovimentosEstoque(input: {
   if (linhas.length === 0) return;
 
   await prisma.$transaction(async (tx) => {
-    for (const L of linhas) {
-      if (L.delta === 0) continue;
-      await assertStoreTenant(tx, tenantId, L.storeId);
-      await assertVariacaoTenant(tx, tenantId, L.produtoVariacaoId);
-
-      await tx.movimentoEstoque.create({
-        data: {
-          tenantId,
-          storeId: L.storeId,
-          produtoVariacaoId: L.produtoVariacaoId,
-          delta: L.delta,
-          tipo: L.tipo,
-          motivo: L.motivo ?? null,
-          userId,
-          loteTransferenciaId: L.loteTransferenciaId ?? null,
-        },
-      });
-
-      const saldo = await tx.estoqueSaldo.upsert({
-        where: {
-          storeId_produtoVariacaoId: {
-            storeId: L.storeId,
-            produtoVariacaoId: L.produtoVariacaoId,
-          },
-        },
-        create: {
-          tenantId,
-          storeId: L.storeId,
-          produtoVariacaoId: L.produtoVariacaoId,
-          quantidade: L.delta,
-        },
-        update: {
-          quantidade: { increment: L.delta },
-        },
-      });
-
-      if (saldo.quantidade < 0) {
-        throw new Error("Saldo insuficiente para esta operação.");
-      }
-    }
+    await registrarMovimentosEstoqueInTransaction(tx, { tenantId, userId, linhas });
   });
 }
 
