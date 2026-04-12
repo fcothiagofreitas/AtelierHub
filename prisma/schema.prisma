@@ -30,6 +30,19 @@ enum ClienteTipo {
   PJ
 }
 
+enum PedidoEstado {
+  EM_ANDAMENTO
+  EM_ABERTO
+  PAGO_PARCIAL
+  QUITADO
+  CANCELADO
+}
+
+enum PedidoModalidade {
+  DIRETA
+  CONSIGNADA
+}
+
 model Tenant {
   id                String             @id @default(cuid())
   name              String
@@ -50,6 +63,7 @@ model Tenant {
   produtoVariacoes  ProdutoVariacao[]
   estoqueSaldos     EstoqueSaldo[]
   movimentosEstoque MovimentoEstoque[]
+  pedidos           Pedido[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 }
@@ -247,6 +261,7 @@ model ProdutoVariacao {
   @@index([corCatalogoId])
   estoqueSaldos     EstoqueSaldo[]
   movimentosEstoque MovimentoEstoque[]
+  pedidoItens       PedidoItem[]
 }
 
 enum MovimentoEstoqueTipo {
@@ -254,6 +269,8 @@ enum MovimentoEstoqueTipo {
   ENTRADA_MANUAL
   /// Saída por defeito, devolução a fornecedor, etc.
   SAIDA_DEFEITO
+  /// Saída por venda (pedido finalizado na loja).
+  VENDA
   /// Linha de saída numa transferência entre lojas.
   TRANSFERENCIA_SAIDA
   /// Linha de entrada numa transferência entre lojas.
@@ -309,6 +326,61 @@ model MovimentoEstoque {
   @@index([loteTransferenciaId])
 }
 
+/// Pedido de venda na loja (lista / PDV / pagamentos em sprints seguintes).
+model Pedido {
+  id       String @id @default(cuid())
+  tenantId String
+  storeId  String
+  /// Número sequencial por loja (ex.: busca e comprovantes).
+  numero   Int
+
+  /// Opcional em rascunho (EM_ANDAMENTO); obrigatório para finalizar.
+  clienteId  String?
+  vendedorId String
+  corretorId String?
+
+  estado     PedidoEstado
+  modalidade PedidoModalidade @default(DIRETA)
+
+  /// Total líquido do pedido; em andamento pode ser null até fechar linhas.
+  total Decimal? @db.Decimal(14, 2)
+
+  tenant   Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  store    Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  cliente  Cliente?    @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  vendedor Colaborador @relation("PedidoVendedor", fields: [vendedorId], references: [id], onDelete: Restrict)
+  corretor Corretor?   @relation(fields: [corretorId], references: [id], onDelete: SetNull)
+
+  itens PedidoItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([storeId, numero])
+  @@index([tenantId])
+  @@index([tenantId, storeId])
+  @@index([tenantId, createdAt])
+  @@index([clienteId])
+  @@index([vendedorId])
+  @@index([corretorId])
+}
+
+model PedidoItem {
+  id                String  @id @default(cuid())
+  pedidoId          String
+  produtoVariacaoId String
+  quantidade        Int
+  precoUnitario     Decimal @db.Decimal(14, 2)
+
+  pedido          Pedido          @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  produtoVariacao ProdutoVariacao @relation(fields: [produtoVariacaoId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@index([pedidoId])
+  @@index([produtoVariacaoId])
+}
+
 // Corretor: parceiro externo — não é Colaborador. Limite de crédito (consignado) opcional (null = ilimitado).
 model Corretor {
   id       String @id @default(cuid())
@@ -336,6 +408,7 @@ model Corretor {
   isBlocked Boolean @default(false)
 
   clientes Cliente[]
+  pedidos  Pedido[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -374,6 +447,7 @@ model Cliente {
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   store  Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  pedidos Pedido[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -396,6 +470,7 @@ model Store {
   clientes          Cliente[]
   estoqueSaldos     EstoqueSaldo[]
   movimentosEstoque MovimentoEstoque[]
+  pedidos           Pedido[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 
@@ -424,6 +499,7 @@ model Colaborador {
 
   stores ColaboradorStore[]
   tenant Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  pedidosComoVendedor Pedido[] @relation("PedidoVendedor")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

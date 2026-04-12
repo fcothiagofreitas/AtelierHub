@@ -6,6 +6,8 @@ import {
   StoreKind,
   CorretorPaymentMethod,
   ClienteTipo,
+  PedidoEstado,
+  PedidoModalidade,
 } from "@prisma/client";
 import { buildEan13FromBody12 } from "../src/lib/ean13";
 import { formatNomeGrade } from "../src/lib/produto-grade";
@@ -162,6 +164,7 @@ async function main() {
     );
   }
 
+  await prisma.pedido.deleteMany({ where: { tenantId: tenant.id } });
   await prisma.cliente.deleteMany({ where: { tenantId: tenant.id } });
   await prisma.$transaction([
     prisma.cliente.create({
@@ -310,6 +313,93 @@ async function main() {
   });
 
   const variacaoId = produtoSeed.variacoes[0]!.id;
+
+  const vendedora = await prisma.colaborador.findFirst({
+    where: { tenantId: tenant.id, user: { email: "vendedor@demo.com" } },
+  });
+  const corretorSeed = await prisma.corretor.findFirst({
+    where: { tenantId: tenant.id, name: { contains: "Ilimitado" } },
+  });
+  const clientePf = await prisma.cliente.findFirst({
+    where: { tenantId: tenant.id, storeId: storeAldeia.id, cpf: "12345678909" },
+  });
+  const clientePj = await prisma.cliente.findFirst({
+    where: { tenantId: tenant.id, storeId: storeAldeia.id, cnpj: "11222333000181" },
+  });
+
+  if (vendedora && clientePf && corretorSeed) {
+    await prisma.pedido.create({
+      data: {
+        tenantId: tenant.id,
+        storeId: storeAldeia.id,
+        numero: 1,
+        clienteId: clientePf.id,
+        vendedorId: vendedora.id,
+        corretorId: corretorSeed.id,
+        estado: PedidoEstado.EM_ABERTO,
+        modalidade: PedidoModalidade.DIRETA,
+        total: new Prisma.Decimal("299.90"),
+        itens: {
+          create: [
+            {
+              produtoVariacaoId: variacaoId,
+              quantidade: 1,
+              precoUnitario: new Prisma.Decimal("299.90"),
+            },
+          ],
+        },
+      },
+    });
+    if (clientePj) {
+      await prisma.pedido.create({
+        data: {
+          tenantId: tenant.id,
+          storeId: storeAldeia.id,
+          numero: 2,
+          clienteId: clientePj.id,
+          vendedorId: vendedora.id,
+          corretorId: null,
+          estado: PedidoEstado.EM_ANDAMENTO,
+          modalidade: PedidoModalidade.CONSIGNADA,
+          total: null,
+          itens: {
+            create: [
+              {
+                produtoVariacaoId: variacaoId,
+                quantidade: 2,
+                precoUnitario: new Prisma.Decimal("150.00"),
+              },
+            ],
+          },
+        },
+      });
+    }
+    await prisma.pedido.create({
+      data: {
+        tenantId: tenant.id,
+        storeId: storeAldeia.id,
+        numero: 3,
+        clienteId: clientePf.id,
+        vendedorId: vendedora.id,
+        corretorId: null,
+        estado: PedidoEstado.QUITADO,
+        modalidade: PedidoModalidade.DIRETA,
+        total: new Prisma.Decimal("89.90"),
+        createdAt: new Date("2025-11-10T15:30:00.000Z"),
+        itens: {
+          create: [
+            {
+              produtoVariacaoId: variacaoId,
+              quantidade: 1,
+              precoUnitario: new Prisma.Decimal("89.90"),
+            },
+          ],
+        },
+      },
+    });
+    console.log("✓  Pedidos de exemplo (em aberto, em andamento, quitado)");
+  }
+
   await entradaManualEstoque({
     tenantId: tenant.id,
     userId: null,
