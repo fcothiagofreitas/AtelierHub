@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isAdministrativeStockRole } from "@/modules/estoque/estoque-auth";
 
 export const ACTIVE_STORE_COOKIE = "atelierhub-active-store";
 
@@ -15,10 +16,15 @@ export async function requireSession() {
 export async function getActiveStoreContext() {
   const session = await requireSession();
 
+  /** ADMIN_DA_MARCA / ADMINISTRATIVO: todas as lojas ativas do tenant (não só as ligadas ao colaborador). */
+  const tenantWideAdmin = isAdministrativeStockRole(session.user.role);
+
   const stores = await prisma.store.findMany({
     where: {
       tenantId: session.user.tenantId,
-      id: { in: session.user.storeIds },
+      ...(tenantWideAdmin
+        ? {}
+        : { id: { in: session.user.storeIds } }),
       isActive: true,
     },
     orderBy: [{ kind: "asc" }, { name: "asc" }],

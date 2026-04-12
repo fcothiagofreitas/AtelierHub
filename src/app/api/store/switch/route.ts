@@ -2,7 +2,9 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { ACTIVE_STORE_COOKIE } from "@/lib/session";
+import { isAdministrativeStockRole } from "@/modules/estoque/estoque-auth";
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
@@ -13,7 +15,23 @@ export async function POST(request: Request) {
   const form = await request.formData();
   const storeId = String(form.get("storeId") ?? "");
 
-  if (!storeId || !session.user.storeIds.includes(storeId)) {
+  const store = storeId
+    ? await prisma.store.findFirst({
+        where: {
+          id: storeId,
+          tenantId: session.user.tenantId,
+          isActive: true,
+        },
+        select: { id: true },
+      })
+    : null;
+
+  const allowed =
+    !!store &&
+    (isAdministrativeStockRole(session.user.role) ||
+      session.user.storeIds.includes(storeId));
+
+  if (!allowed) {
     return NextResponse.json({ error: "Invalid store" }, { status: 400 });
   }
 
