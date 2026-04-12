@@ -3,8 +3,10 @@
 import { Prisma } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import type { UserRole } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/authorization";
+import { isAdministrativeStockRole } from "@/modules/estoque/estoque-auth";
 import { parseCreditLimitField } from "@/lib/parse-credit-limit";
 import { flattenZodErrors } from "@/lib/form-utils";
 import { clientePfSchema, clientePjSchema } from "@/modules/clientes/schemas/cliente-schemas";
@@ -15,8 +17,17 @@ export type ClienteActionResult = {
   fieldErrors?: Partial<Record<string, string>>;
 };
 
-/** Verifica se o usuário da sessão tem acesso à loja informada. */
-function hasStoreAccess(session: { user: { storeIds: string[] } }, storeId: string): boolean {
+/** Loja ativa do tenant + (não admin: tem de estar nas lojas do colaborador). */
+async function assertClienteStoreAllowed(
+  session: { user: { tenantId: string; storeIds: string[]; role: UserRole } },
+  storeId: string,
+): Promise<boolean> {
+  const row = await prisma.store.findFirst({
+    where: { id: storeId, tenantId: session.user.tenantId, isActive: true },
+    select: { id: true },
+  });
+  if (!row) return false;
+  if (isAdministrativeStockRole(session.user.role)) return true;
   return session.user.storeIds.includes(storeId);
 }
 
@@ -46,7 +57,7 @@ export async function upsertClientePf(
   }
 
   const data = parsed.data;
-  if (!hasStoreAccess(session, data.storeId)) {
+  if (!(await assertClienteStoreAllowed(session, data.storeId))) {
     return { error: "Você não tem acesso a esta loja." };
   }
 
@@ -66,7 +77,7 @@ export async function upsertClientePf(
       const existing = await prisma.cliente.findFirst({
         where: { id: data.id, tenantId, tipo: "PF" },
       });
-      if (!existing || !hasStoreAccess(session, existing.storeId)) {
+      if (!existing || !(await assertClienteStoreAllowed(session, existing.storeId))) {
         return { error: "Cliente não encontrado." };
       }
       if (existing.storeId !== data.storeId) {
@@ -145,7 +156,7 @@ export async function upsertClientePj(
   }
 
   const data = parsed.data;
-  if (!hasStoreAccess(session, data.storeId)) {
+  if (!(await assertClienteStoreAllowed(session, data.storeId))) {
     return { error: "Você não tem acesso a esta loja." };
   }
 
@@ -161,7 +172,7 @@ export async function upsertClientePj(
       const existing = await prisma.cliente.findFirst({
         where: { id: data.id, tenantId, tipo: "PJ" },
       });
-      if (!existing || !hasStoreAccess(session, existing.storeId)) {
+      if (!existing || !(await assertClienteStoreAllowed(session, existing.storeId))) {
         return { error: "Cliente não encontrado." };
       }
       if (existing.storeId !== data.storeId) {
@@ -225,7 +236,7 @@ export async function toggleClienteBlocked(formData: FormData) {
 
   try {
     const row = await prisma.cliente.findFirst({ where: { id, tenantId } });
-    if (!row || !hasStoreAccess(session, row.storeId)) return;
+    if (!row || !(await assertClienteStoreAllowed(session, row.storeId))) return;
 
     await prisma.cliente.update({
       where: { id },
