@@ -301,6 +301,16 @@ Subir a rastreabilidade de estoque entre administrativo e lojas.
 - Lojas consultam estoque
 - Histórico fica auditável
 
+### Glossário (implementação vs RN-E6/E7)
+
+- **Conferência manual (MVP):** ajuste de inventário com delta inteiro (+/−) por SKU e loja, tipo `AJUSTE_CONFERENCIA` em `MovimentoEstoque`. Cobre conferência de receção simples; **não** substitui o **balanço / inventário físico** completo (contagem por período, rascunho/concluído, relatório de divergências) descrito em RN-E6/E7 — fica para iteração futura.
+- **Saldo administrativo:** mesma tabela de saldo; lojas com `StoreKind.ADMINISTRATIVE` têm posição própria (RN-E8). Transferências a partir do admin usam essa loja como origem ou destino nas telas.
+- **Consulta entre lojas:** perfis `ADMIN_DA_MARCA` / `ADMINISTRATIVO` filtram qualquer loja do tenant; demais perfis só veem lojas do seu vínculo (`ColaboradorStore`). A UI prioriza **disponibilidade** (saldo), sem cruzar métricas gerenciais (RN-E10).
+
+### Status (implementação)
+
+MVP **Sprint 7** entregue no código: migração `EstoqueSaldo` + `MovimentoEstoque`, serviço transacional, entradas/saídas/transferências/ajuste, seed com saldos de exemplo, rotas `/admin/estoque/*` (consulta, histórico, entrada, saída defeito, transferência, conferência), link no menu **Operação** e no painel admin.
+
 ## Sprint 8 — Tela de vendas da loja
 
 ### Objetivo
