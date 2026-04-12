@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DevLoginShortcuts } from "@/modules/auth/components/dev-login-shortcuts";
 
 export function LoginForm() {
   const router = useRouter();
@@ -69,6 +70,14 @@ export function LoginForm() {
           {error}
         </p>
       ) : null}
+
+      <DevLoginShortcuts
+        onPick={(e, p) => {
+          setEmail(e);
+          setPassword(p);
+          setError(null);
+        }}
+      />
 
       <Button type="submit" className="w-full" disabled={loading}>
         {loading ? "Entrando..." : "Entrar"}
