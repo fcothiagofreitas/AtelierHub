@@ -2,6 +2,7 @@ import { Building2, Handshake, LibraryBig, Package, Users, UserCheck } from "luc
 import Link from "next/link";
 import { requireRole } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
+import { countSkusComSaldoPositivo } from "@/modules/estoque/estoque-db-helpers";
 
 export default async function AdminPage() {
   const session = await requireRole(["ADMIN_DA_MARCA", "ADMINISTRATIVO"]);
@@ -24,9 +25,7 @@ export default async function AdminPage() {
     prisma.corretor.count({ where: { tenantId } }),
     prisma.corretor.count({ where: { tenantId, isActive: true, isBlocked: false } }),
     prisma.produto.count({ where: { tenantId } }),
-    prisma.estoqueSaldo.count({
-      where: { tenantId, quantidade: { gt: 0 } },
-    }),
+    countSkusComSaldoPositivo(tenantId),
   ]);
 
   const cards = [
