@@ -1,4 +1,3 @@
-npm warn Unknown env config "devdir". This will stop working in the next major version of npm.
 -- CreateEnum
 CREATE TYPE "UserRole" AS ENUM ('ADMIN_DA_MARCA', 'ADMINISTRATIVO', 'GERENTE_LOJA', 'VENDEDOR');
 

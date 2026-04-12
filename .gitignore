@@ -17,6 +17,9 @@ out/
 build/
 *.tsbuildinfo
 
+# Cursor (planos locais)
+.cursor/plans/
+
 # Misc
 .DS_Store
 *.pem
