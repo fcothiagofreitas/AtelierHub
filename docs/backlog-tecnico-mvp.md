@@ -13,7 +13,7 @@ Documento de execução do MVP, derivado de:
 - UI: `Tailwind CSS` + `shadcn/ui`
 - Auth: `e-mail e senha`
 - Auto cadastro: **não**
-- Criação de usuários: pela área administrativa
+- Criação de acesso ao sistema: pela área administrativa (via colaborador com login opcional)
 - App: fora do Docker
 - Banco: `PostgreSQL` em Docker
 - Redis: fora do MVP
@@ -51,10 +51,10 @@ Documento de execução do MVP, derivado de:
 - `auth`
 - `administrativo`
 - `lojas`
-- `usuarios`
+- `colaboradores` (pessoas; login é opcional e vive em `User`)
 - `clientes`
 - `corretores`
-- `vendedores`
+- `vendedores` (no MVP: perfil `VENDEDOR` dentro de `Colaborador`, não entidade separada)
 - `catalogo`
 - `estoque`
 - `vendas`
@@ -130,31 +130,41 @@ Fazer o sistema entender marca, loja, usuário e perfil.
 - Usuário com várias lojas escolhe contexto
 - Perfis acessam apenas o que podem
 
-## Sprint 3 — Área administrativa e usuários
+## Sprint 3 — Área administrativa e colaboradores
 
 ### Objetivo
 
 Permitir que o administrativo monte a operação da marca.
 
+### Arquitetura entregue (rewrite)
+
+- **Colaborador** é a entidade primária de pessoas (nome, CPF, telefone, perfil `UserRole`, lojas, admissão/demissão, comissão mínima para vendedor, ativo/inativo).
+- **User** guarda só credenciais (e-mail, senha); vínculo 1:1 opcional com `Colaborador` (“dar acesso ao sistema” no formulário).
+- Rotas: `/admin/lojas`, `/admin/colaboradores` (substitui o antigo CRUD de “usuários” isolado).
+
 ### Backlog técnico
 
 - Criar painel administrativo inicial
 - Criar CRUD de lojas
-- Criar CRUD de usuários
-- Permitir definição de perfil do usuário
-- Permitir vínculo de usuário com lojas
-- Permitir ativar/inativar usuário
+- Criar CRUD de colaboradores (com login e perfil)
+- Permitir definição de perfil do colaborador
+- Permitir vínculo de colaborador com lojas
+- Permitir ativar/inativar colaborador (e usuário vinculado, quando existir)
 - Implementar reset de senha administrativo
 - Criar listagem de lojas com filtros básicos
-- Criar listagem de usuários com filtros básicos
+- Criar listagem de colaboradores com filtros básicos
 - Criar formulários de loja
-- Criar formulários de usuário
+- Criar formulários de colaborador
 
 ### Critério de pronto
 
 - Administrativo cria loja
-- Administrativo cria usuário
-- Administrativo vincula usuário às lojas corretas
+- Administrativo cria colaborador (com ou sem acesso ao sistema)
+- Administrativo vincula colaborador às lojas corretas
+
+### Status
+
+Entregue e versionado no branch `rewrite` (ex.: commit `feat: sprint 3 — área administrativa completa`, refactor `Colaborador como entidade primária`, ajustes de UX e redirect de seleção de loja).
 
 ## Sprint 4 — Cadastros centrais
 
@@ -162,23 +172,34 @@ Permitir que o administrativo monte a operação da marca.
 
 Subir os cadastros mestres usados pela operação.
 
-### Backlog técnico
+### Já coberto pelo modelo atual (`Colaborador` + admin)
 
-- Criar CRUD de vendedores
-- Criar CRUD de corretores
-- Implementar status ativo/bloqueado para corretor
-- Implementar status ativo/demitido para vendedor
-- Implementar comissão mínima de vendedor
-- Implementar comissão por corretor
-- Implementar dados Pix/transferência de corretor
-- Implementar datas de admissão/demissão de vendedor
-- Remover vendedor demitido das seleções operacionais
-- Remover corretor bloqueado das seleções operacionais
+Estes itens da sprint original passaram a ser tratados no **CRUD de colaboradores** (em especial com perfil **VENDEDOR**), não como CRUD separado de “vendedor”:
 
-### Critério de pronto
+- Definição de perfil (inclui vendedor) e vínculo com lojas
+- Status ativo/inativo do colaborador
+- Comissão mínima (campo no formulário quando o perfil é vendedor)
+- Datas de admissão e demissão + flags `isDismissed` / `dismissalAt` no schema
+- Login próprio do vendedor (toggle de acesso, quando aplicável)
 
-- Administrativo cria vendedor e corretor
-- Regras de bloqueio e demissão afetam a operação
+### Backlog técnico — ainda pendente
+
+- **Corretor (modelo + CRUD)** — não existe tabela nem telas; é o núcleo restante da sprint.
+- **Status ativo/bloqueado do corretor** e **comissão por corretor**
+- **Dados Pix / transferência do corretor**
+- **Regras na operação** — quando existirem telas de venda, pedido ou seleção de vendedor/corretor:
+  - excluir da seleção colaborador **vendedor** demitido/inativo conforme regra de negócio
+  - excluir corretor **bloqueado** das seleções
+- (Opcional / endurecimento) Garantir validações e mensagens únicas para demissão vs. apenas inativo
+
+### Critério de pronto (atualizado)
+
+- Administrativo cadastra e mantém **corretores** com regras de bloqueio e comissão
+- Regras de bloqueio (corretor) e demissão/inatividade (vendedor como colaborador) **passam a valer nas fluxos operacionais** que consumirem esses cadastros (vendas, comissões, etc.)
+
+### Nota
+
+O critério “administrativo cria vendedor” no sentido de **pessoa com perfil vendedor** já é atendido pelo cadastro de colaborador. O que falta para “fechar” a Sprint 4 no espírito do documento original é sobretudo **corretor** e **integração com a operação** (filtros em seleções).
 
 ## Sprint 5 — Clientes
 
