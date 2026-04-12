@@ -2,6 +2,7 @@
 
 import {
   Building2,
+  Handshake,
   LayoutGrid,
   LayoutDashboard,
   Package,
@@ -59,6 +60,12 @@ const navGroups: NavGroup[] = [
         label: "Colaboradores",
         href: "/admin/colaboradores",
         icon: Users,
+        roles: ADMIN_ROLES,
+      },
+      {
+        label: "Corretores",
+        href: "/admin/corretores",
+        icon: Handshake,
         roles: ADMIN_ROLES,
       },
     ],

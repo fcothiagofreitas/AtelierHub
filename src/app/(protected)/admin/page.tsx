@@ -1,4 +1,4 @@
-import { Building2, Users, UserCheck } from "lucide-react";
+import { Building2, Handshake, Users, UserCheck } from "lucide-react";
 import Link from "next/link";
 import { requireRole } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
@@ -7,13 +7,21 @@ export default async function AdminPage() {
   const session = await requireRole(["ADMIN_DA_MARCA", "ADMINISTRATIVO"]);
   const tenantId = session.user.tenantId;
 
-  const [totalStores, activeStores, totalColaboradores, activeColaboradores] =
-    await Promise.all([
-      prisma.store.count({ where: { tenantId } }),
-      prisma.store.count({ where: { tenantId, isActive: true } }),
-      prisma.colaborador.count({ where: { tenantId } }),
-      prisma.colaborador.count({ where: { tenantId, isActive: true } }),
-    ]);
+  const [
+    totalStores,
+    activeStores,
+    totalColaboradores,
+    activeColaboradores,
+    totalCorretores,
+    activeCorretores,
+  ] = await Promise.all([
+    prisma.store.count({ where: { tenantId } }),
+    prisma.store.count({ where: { tenantId, isActive: true } }),
+    prisma.colaborador.count({ where: { tenantId } }),
+    prisma.colaborador.count({ where: { tenantId, isActive: true } }),
+    prisma.corretor.count({ where: { tenantId } }),
+    prisma.corretor.count({ where: { tenantId, isActive: true, isBlocked: false } }),
+  ]);
 
   const cards = [
     {
@@ -43,6 +51,15 @@ export default async function AdminPage() {
       description: "Todos os cargos",
       cta: "Ver colaboradores",
     },
+    {
+      label: "Corretores ativos",
+      value: activeCorretores,
+      total: totalCorretores,
+      icon: Handshake,
+      href: "/admin/corretores",
+      description: `${totalCorretores - activeCorretores} inativo${totalCorretores - activeCorretores !== 1 ? "s" : ""} ou bloqueado${totalCorretores - activeCorretores !== 1 ? "s" : ""}`,
+      cta: "Gerenciar corretores",
+    },
   ];
 
   return (
@@ -50,11 +67,11 @@ export default async function AdminPage() {
       <div>
         <h2 className="text-xl font-semibold">Painel administrativo</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Configure lojas, usuários e acessos da marca.
+          Configure lojas, colaboradores, corretores e acessos da marca.
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map((card) => (
           <Link
             key={card.label}
@@ -83,6 +100,7 @@ export default async function AdminPage() {
         <div className="mt-3 flex flex-wrap gap-2">
           <QuickLink href="/admin/lojas/new" label="Nova loja" />
           <QuickLink href="/admin/colaboradores/new" label="Novo colaborador" />
+          <QuickLink href="/admin/corretores/new" label="Novo corretor" />
         </div>
       </div>
     </div>

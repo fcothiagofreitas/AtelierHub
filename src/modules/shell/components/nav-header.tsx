@@ -26,6 +26,8 @@ const routeTitles: Record<string, string> = {
   "/admin/lojas/new": "Nova loja",
   "/admin/colaboradores": "Colaboradores",
   "/admin/colaboradores/new": "Novo colaborador",
+  "/admin/corretores": "Corretores",
+  "/admin/corretores/new": "Novo corretor",
   "/vendas": "Vendas",
   "/estoque": "Estoque",
   "/clientes": "Clientes",

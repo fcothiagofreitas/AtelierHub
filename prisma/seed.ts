@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { PrismaClient, UserRole, StoreKind } from "@prisma/client";
+import { Prisma, PrismaClient, UserRole, StoreKind, CorretorPaymentMethod } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -52,6 +52,37 @@ async function main() {
   ]);
 
   console.log(`✓  Lojas: ${storeAdmin.name}, ${storeAldeia.name}, ${storeCentro.name}`);
+
+  await prisma.corretor.deleteMany({ where: { tenantId: tenant.id } });
+  await prisma.corretor.createMany({
+    data: [
+      {
+        tenantId: tenant.id,
+        name: "Corretor Ilimitado (seed)",
+        email: "corretor.ilimitado@demo.com",
+        commissionPercent: 5,
+        paymentMethod: CorretorPaymentMethod.PIX,
+        pixKey: "corretor.ilimitado@demo.com",
+        creditLimitConsignado: null,
+        isActive: true,
+        isBlocked: false,
+      },
+      {
+        tenantId: tenant.id,
+        name: "Corretor Com Teto (seed)",
+        email: "corretor.teto@demo.com",
+        commissionPercent: 4.5,
+        paymentMethod: CorretorPaymentMethod.BANK_TRANSFER,
+        bankName: "Banco Demo",
+        bankBranch: "0001",
+        bankAccount: "12345-6",
+        creditLimitConsignado: new Prisma.Decimal(50000),
+        isActive: true,
+        isBlocked: false,
+      },
+    ],
+  });
+  console.log("✓  Corretores de exemplo (ilimitado + teto R$ 50.000)");
 
   // Dados de cada colaborador: pessoa primeiro, login opcional
   const colaboradoresData = [
