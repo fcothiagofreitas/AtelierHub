@@ -1,6 +1,15 @@
 import type { PedidoEstado, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { clienteNomeCurto } from "@/modules/vendas/lib/cliente-nome";
 import { createdAtWhereFromVendasParams, type VendasSearchParams } from "./lib/date-range";
+
+/** Resumo para atalhos de rascunhos (PDV / lista de vendas). */
+export type PedidoRascunhoResumo = {
+  id: string;
+  numero: number;
+  updatedAt: Date;
+  clienteLabel: string;
+};
 
 const ESTADOS: PedidoEstado[] = [
   "EM_ANDAMENTO",
@@ -111,6 +120,8 @@ export async function getPedidoDetalhe(
       cliente: true,
       vendedor: { select: { id: true, name: true, role: true } },
       corretor: { select: { id: true, name: true } },
+      entreguePor: { select: { id: true, name: true } },
+      movimentoCorretor: { select: { id: true, valor: true, createdAt: true } },
       itens: {
         include: {
           produtoVariacao: {
@@ -164,4 +175,36 @@ export async function getVendasFilterLists(tenantId: string, storeId: string) {
   ]);
 
   return { vendedores, corretores, clientes };
+}
+
+/** Pedidos em rascunho na loja (para trocar de venda sem perder o contexto). */
+export async function listPedidosRascunhoForStore(
+  tenantId: string,
+  storeId: string,
+): Promise<PedidoRascunhoResumo[]> {
+  const rows = await prisma.pedido.findMany({
+    where: { tenantId, storeId, estado: "EM_ANDAMENTO" },
+    select: {
+      id: true,
+      numero: true,
+      updatedAt: true,
+      cliente: {
+        select: {
+          tipo: true,
+          nome: true,
+          fantasia: true,
+          razaoSocial: true,
+        },
+      },
+    },
+    orderBy: { updatedAt: "desc" },
+    take: 20,
+  });
+
+  return rows.map((p) => ({
+    id: p.id,
+    numero: p.numero,
+    updatedAt: p.updatedAt,
+    clienteLabel: p.cliente ? clienteNomeCurto(p.cliente) : "Sem cliente",
+  }));
 }

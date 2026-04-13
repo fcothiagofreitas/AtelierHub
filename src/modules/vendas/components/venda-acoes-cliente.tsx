@@ -31,6 +31,8 @@ type Props = {
   onInitialReceberConsumed?: () => void;
   /** Entrega no balcão / retirada — substitui o toast por omissão. */
   onEntregar?: () => void;
+  /** Quando false, oculta o botão Entregar (ex.: pedido já entregue ou modalidade incompatível). */
+  showEntregar?: boolean;
   /** Após pagamento com sucesso (refrescar dados do pedido). */
   onPagamentoRegistado?: () => void;
 };
@@ -50,6 +52,7 @@ export function VendaAcoesCliente({
   initialReceberOpen = false,
   onInitialReceberConsumed,
   onEntregar,
+  showEntregar = true,
   onPagamentoRegistado,
 }: Props) {
   const [ReceberOpen, setReceberOpen] = React.useState(false);
@@ -98,14 +101,16 @@ export function VendaAcoesCliente({
             {outlineButtonLabel}
           </Button>
         ) : null}
-        <Button
-          variant="outline"
-          size="sm"
-          type="button"
-          onClick={handleEntregar}
-        >
-          Entregar
-        </Button>
+        {showEntregar ? (
+          <Button
+            variant="outline"
+            size="sm"
+            type="button"
+            onClick={handleEntregar}
+          >
+            Entregar
+          </Button>
+        ) : null}
         {showReceber ? (
           <Button
             size="sm"

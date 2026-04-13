@@ -1,8 +1,23 @@
+import { existsSync, statSync } from "node:fs";
+import { join } from "node:path";
 import { PrismaClient } from "@prisma/client";
 
-const globalForPrisma = globalThis as unknown as {
-  prisma?: PrismaClient;
+type GlobalPrisma = typeof globalThis & {
+  __prisma?: PrismaClient;
+  /** `mtimeMs` de `node_modules/.prisma/client/index.js` após o último `prisma generate`. */
+  __prismaGen?: string;
 };
+
+/** Invalida o singleton quando o client gerado no disco muda (evita DMMF antigo após `prisma generate`). */
+function generatedClientMarker(): string {
+  try {
+    const p = join(process.cwd(), "node_modules/.prisma/client/index.js");
+    if (!existsSync(p)) return "0";
+    return String(statSync(p).mtimeMs);
+  } catch {
+    return "0";
+  }
+}
 
 function createPrismaClient() {
   return new PrismaClient({
@@ -11,16 +26,37 @@ function createPrismaClient() {
 }
 
 /**
- * Um único `PrismaClient` por processo Node, sempre em `globalThis`.
- * Importante para Turbopack / HMR no dev: o módulo pode ser reavaliado e, se não
- * guardarmos aqui, cada avaliação abre novas conexões ("too many clients").
- * Em produção também evita duplicar cliente em workers ou re-imports.
+ * Um único `PrismaClient` por processo Node.
+ * Em dev, após `prisma generate`, o ficheiro gerado muda de `mtime` — recriamos o cliente
+ * para o include/select alinhar com o schema (Turbopack mantinha uma instância antiga em `globalThis`).
  */
 function getPrisma(): PrismaClient {
-  if (!globalForPrisma.prisma) {
-    globalForPrisma.prisma = createPrismaClient();
+  const g = globalThis as GlobalPrisma;
+  const marker = generatedClientMarker();
+
+  if (g.__prisma && g.__prismaGen !== marker) {
+    void g.__prisma.$disconnect().catch(() => {});
+    g.__prisma = undefined;
+    g.__prismaGen = undefined;
   }
-  return globalForPrisma.prisma;
+
+  if (!g.__prisma) {
+    g.__prisma = createPrismaClient();
+    g.__prismaGen = marker;
+  }
+  return g.__prisma;
 }
 
-export const prisma = getPrisma();
+/**
+ * Proxy para que cada uso aponte sempre ao cliente actual (útil após `prisma generate` sem reiniciar o `next dev`).
+ */
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, prop, receiver) {
+    const client = getPrisma();
+    const value = Reflect.get(client as unknown as object, prop, receiver);
+    if (typeof value === "function") {
+      return (value as (...args: unknown[]) => unknown).bind(client);
+    }
+    return value;
+  },
+}) as PrismaClient;

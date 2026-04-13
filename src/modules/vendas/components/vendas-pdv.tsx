@@ -23,6 +23,7 @@ import {
   pdvCreateDraft,
   pdvEnsureClienteForCorretor,
   pdvExcluirPedido,
+  pdvEntregarPedido,
   pdvFinalizarPedido,
   pdvGetPedidoParaPdv,
   pdvResolverEan,
@@ -32,6 +33,7 @@ import {
 } from "@/modules/vendas/pdv-actions";
 import { pedidoEstadoLabels, pedidoModalidadeLabels } from "@/modules/vendas/lib/labels";
 import { buildVendasHref } from "@/modules/vendas/lib/build-href";
+import type { PedidoRascunhoResumo } from "@/modules/vendas/vendas-queries";
 import { PedidoResumoLeitura } from "@/modules/vendas/components/pedido-resumo-leitura";
 import { VendaAcoesCliente } from "@/modules/vendas/components/venda-acoes-cliente";
 import {
@@ -67,6 +69,8 @@ export type VendasPdvProps = {
   clientes: SelectOption[];
   vendedores: SelectOption[];
   corretores: SelectOption[];
+  /** Atalhos para outros rascunhos da mesma loja (lista também na página /vendas). */
+  pedidosRascunho?: PedidoRascunhoResumo[];
 };
 
 function moneyFromInput(s: string): number {
@@ -128,6 +132,7 @@ export function VendasPdv(props: VendasPdvProps) {
   return (
     <PdvModalInner
       {...props}
+      pedidosRascunho={props.pedidosRascunho ?? []}
       open={open}
       editPedidoId={editPedidoId}
       viewPedidoId={viewPedidoId}
@@ -144,6 +149,7 @@ function PdvModalInner({
   clientes,
   vendedores,
   corretores,
+  pedidosRascunho = [],
   open,
   editPedidoId,
   viewPedidoId,
@@ -216,6 +222,8 @@ function PdvModalInner({
   const [pdvStep, setPdvStep] = React.useState<"cart" | "pagamento">("cart");
   const [totalFinalizado, setTotalFinalizado] = React.useState<number>(0);
   const [pedidoFinalizadoId, setPedidoFinalizadoId] = React.useState<string | null>(null);
+  /** Abre o modal Receber uma vez após finalizar (evita segundo clique). */
+  const [initialReceberOpen, setInitialReceberOpen] = React.useState(false);
 
   /** Pedido finalizado / não-rascunho: UI só leitura (resumo). */
   const [viewDetalhe, setViewDetalhe] = React.useState<{
@@ -249,6 +257,7 @@ function PdvModalInner({
     setPdvStep("cart");
     setTotalFinalizado(0);
     setPedidoFinalizadoId(null);
+    setInitialReceberOpen(false);
     setViewDetalhe(null);
     setViewLoading(false);
     setSavedCartSnapshot("");
@@ -833,6 +842,7 @@ function PdvModalInner({
         const total = cartTotal(lines);
         setTotalFinalizado(total);
         setPedidoFinalizadoId(pedidoId);
+        setInitialReceberOpen(true);
         setPdvStep("pagamento");
         return true;
       } finally {
@@ -906,6 +916,11 @@ function PdvModalInner({
         ? "Antes de gravar"
         : "Rascunho · em andamento";
 
+  const outrosRascunhos = React.useMemo(
+    () => pedidosRascunho.filter((p) => p.id !== pedidoId),
+    [pedidosRascunho, pedidoId],
+  );
+
   const cartDraftIsDirty = React.useMemo(() => {
     if (!pedidoId || pdvStep !== "cart" || showResumoDetalhe) return false;
     return (
@@ -950,17 +965,82 @@ function PdvModalInner({
     [pdvStep, pedidoFinalizadoId, cartDraftIsDirty, onClose],
   );
 
-  const handleEntregarPdv = React.useCallback(() => {
-    if (!corretorId.trim()) {
+  const handleEntregarPosFinalizar = React.useCallback(() => {
+    if (!pedidoFinalizadoId) return;
+    if (modalidade !== "CONSIGNADA" || !corretorId.trim()) {
       toast.message(
-        "Para entrega a prazo (dívida), seleccione um corretor ou use um cliente com crédito aprovado pela loja (funcionalidade de crédito em evolução).",
+        "Entrega com dívida do corretor: no rascunho, escolha modalidade Consignada e o corretor antes de Receber.",
       );
       return;
     }
-    toast.message(
-      "Entrega a prazo: registo de dívida e prazo negociado será ligado ao pedido em breve.",
-    );
-  }, [corretorId]);
+    void (async () => {
+      if (
+        !window.confirm(
+          "Registar entrega ao cliente? Se houver saldo em aberto, será gerada dívida do corretor por esse valor.",
+        )
+      ) {
+        return;
+      }
+      setActionBusy(true);
+      try {
+        const r = await pdvEntregarPedido({
+          storeId,
+          pedidoId: pedidoFinalizadoId,
+        });
+        if ("error" in r && r.error) {
+          toast.error(r.error);
+          return;
+        }
+        toast.success("Entrega registada.");
+        onClose();
+        router.refresh();
+      } finally {
+        setActionBusy(false);
+      }
+    })();
+  }, [
+    pedidoFinalizadoId,
+    modalidade,
+    corretorId,
+    storeId,
+    onClose,
+    router,
+  ]);
+
+  const handleEntregarVerPedido = React.useCallback(() => {
+    if (!viewDetalhe) return;
+    const pid = viewDetalhe.pedido.id;
+    void (async () => {
+      if (
+        !window.confirm(
+          "Registar entrega ao cliente? Se houver saldo em aberto, será gerada dívida do corretor por esse valor.",
+        )
+      ) {
+        return;
+      }
+      setActionBusy(true);
+      try {
+        const r = await pdvEntregarPedido({ storeId, pedidoId: pid });
+        if ("error" in r && r.error) {
+          toast.error(r.error);
+          return;
+        }
+        toast.success("Entrega registada.");
+        if (viewPedidoId) {
+          const nr = await fetchPedidoParaVerModal(viewPedidoId);
+          if (nr.ok) {
+            setViewDetalhe({
+              storeName: nr.storeName,
+              pedido: nr.pedido,
+            });
+          }
+        }
+        router.refresh();
+      } finally {
+        setActionBusy(false);
+      }
+    })();
+  }, [viewDetalhe, storeId, viewPedidoId, router]);
 
   return (
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
@@ -977,7 +1057,8 @@ function PdvModalInner({
               <DialogHeader className="text-left">
                 <DialogTitle>Venda finalizada</DialogTitle>
                 <DialogDescription>
-                  Stock actualizado. Escolha como prosseguir com este pedido.
+                  Stock actualizado. O recebimento abre em seguida; pode também
+                  usar Em aberto para fechar e cobrar depois.
                 </DialogDescription>
               </DialogHeader>
             </div>
@@ -1006,6 +1087,12 @@ function PdvModalInner({
                   totalJaPago={0}
                   onSalvar={salvarEmAberto}
                   outlineButtonLabel="Em aberto"
+                  initialReceberOpen={initialReceberOpen}
+                  onInitialReceberConsumed={() => setInitialReceberOpen(false)}
+                  showEntregar={
+                    modalidade === "CONSIGNADA" && Boolean(corretorId.trim())
+                  }
+                  onEntregar={handleEntregarPosFinalizar}
                   onPagamentoRegistado={() => {
                     onClose();
                     router.refresh();
@@ -1062,6 +1149,14 @@ function PdvModalInner({
                     (a, p) => a + p.valor,
                     0,
                   )}
+                  showEntregar={
+                    viewDetalhe.pedido.modalidade === "CONSIGNADA" &&
+                    viewDetalhe.pedido.corretor != null &&
+                    !viewDetalhe.pedido.entregueEm &&
+                    (viewDetalhe.pedido.estado === "EM_ABERTO" ||
+                      viewDetalhe.pedido.estado === "PAGO_PARCIAL")
+                  }
+                  onEntregar={handleEntregarVerPedido}
                   showReceber={
                     (viewDetalhe.pedido.estado === "EM_ABERTO" ||
                       viewDetalhe.pedido.estado === "PAGO_PARCIAL") &&
@@ -1098,7 +1193,7 @@ function PdvModalInner({
               <DialogDescription>
                 {readOnly && lockUi
                   ? "Apenas consulta — sem alterações ao carrinho."
-                  : "Escolha cliente e, se precisar, corretor. Use Guardar rascunho para continuar mais tarde; Receber para venda à vista (baixa de stock e pagamento); Entregar para fluxo a prazo (em evolução)."}
+                  : "Escolha cliente e, se precisar, corretor. Guardar rascunho para continuar mais tarde; Receber finaliza o stock e abre o pagamento. Com consignado, no ecrã seguinte use Entregar para registar retirada e dívida do corretor."}
               </DialogDescription>
             </DialogHeader>
           )}
@@ -1136,6 +1231,32 @@ function PdvModalInner({
               <span className="text-muted-foreground">·</span>
               <span className="text-muted-foreground">{fluxoLabel}</span>
             </div>
+            {outrosRascunhos.length > 0 && !showResumoDetalhe ? (
+              <div className="mt-2 flex flex-col gap-1.5 border-t border-border/60 pt-2 sm:flex-row sm:items-center sm:gap-2">
+                <span className="shrink-0 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+                  Outros rascunhos
+                </span>
+                <div className="flex min-w-0 flex-wrap gap-1.5">
+                  {outrosRascunhos.map((r) => (
+                    <Link
+                      key={r.id}
+                      href={buildVendasHref(spForLinks, {
+                        pdv: "1",
+                        edit: r.id,
+                        view: null,
+                      })}
+                      className="inline-flex max-w-full items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-[11px] text-primary hover:bg-muted/60"
+                      title={r.clienteLabel}
+                    >
+                      <span className="font-mono tabular-nums">nº {r.numero}</span>
+                      <span className="line-clamp-1 text-muted-foreground">
+                        {r.clienteLabel}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
@@ -1622,7 +1743,7 @@ function PdvModalInner({
                     onReceberPreparar={async () => {
                       await executarFinalizacaoEPassarPagamento();
                     }}
-                    onEntregar={handleEntregarPdv}
+                    showEntregar={false}
                     onPagamentoRegistado={() => {
                       router.refresh();
                     }}

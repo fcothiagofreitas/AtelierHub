@@ -431,6 +431,98 @@ export async function pdvFinalizarPedido(input: {
   }
 }
 
+/**
+ * Regista entrega física em pedido consignado: bloqueia nova edição do pedido e,
+ * se houver saldo em aberto, gera dívida do corretor.
+ */
+export async function pdvEntregarPedido(input: {
+  storeId: string;
+  pedidoId: string;
+}): Promise<PdvActionOk | PdvActionErr> {
+  const session = await requireRole(ROLES_ACESSO_VENDAS);
+  const tenantId = session.user.tenantId;
+  const entreguePorId = session.user.colaboradorId ?? null;
+  try {
+    assertStoreInSession(session, input.storeId);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Sem permissão." };
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const pedido = await tx.pedido.findFirst({
+        where: {
+          id: input.pedidoId,
+          tenantId,
+          storeId: input.storeId,
+          estado: { in: ["EM_ABERTO", "PAGO_PARCIAL"] },
+          entregueEm: null,
+        },
+        include: { pagamentos: true },
+      });
+
+      if (!pedido) {
+        throw new Error(
+          "Pedido não encontrado, já quitado/cancelado ou entrega já registada.",
+        );
+      }
+
+      if (pedido.modalidade !== "CONSIGNADA") {
+        throw new Error(
+          "Registo de entrega com dívida do corretor aplica-se à modalidade consignada.",
+        );
+      }
+      if (!pedido.corretorId) {
+        throw new Error("O pedido precisa de corretor para entrega consignada.");
+      }
+      if (!pedido.total) {
+        throw new Error("Pedido sem total.");
+      }
+
+      const totalPago = pedido.pagamentos.reduce(
+        (acc, p) => acc.add(p.valor),
+        new Prisma.Decimal(0),
+      );
+      const saldo = pedido.total.sub(totalPago);
+      if (saldo.lt(new Prisma.Decimal(0))) {
+        throw new Error("Inconsistência: total pago superior ao pedido.");
+      }
+
+      await tx.pedido.update({
+        where: { id: pedido.id },
+        data: {
+          entregueEm: new Date(),
+          entreguePorId,
+        },
+      });
+
+      if (saldo.gt(new Prisma.Decimal("0.005"))) {
+        const dup = await tx.movimentoCorretor.findUnique({
+          where: { pedidoId: pedido.id },
+        });
+        if (dup) {
+          throw new Error("Já existe movimento de corretor para este pedido.");
+        }
+        await tx.movimentoCorretor.create({
+          data: {
+            tenantId,
+            corretorId: pedido.corretorId,
+            pedidoId: pedido.id,
+            valor: saldo,
+          },
+        });
+      }
+    });
+
+    revalidateVendas();
+    return { ok: true };
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e.message : "Não foi possível registar a entrega.",
+    };
+  }
+}
+
 export type PdvPedidoCarregado = {
   pedidoId: string;
   clienteId: string | null;

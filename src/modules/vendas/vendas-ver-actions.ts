@@ -18,6 +18,10 @@ export type PedidoVerPayload = {
   modalidade: PedidoModalidade;
   createdAt: string;
   total: number | null;
+  entregueEm: string | null;
+  entreguePor: { id: string; name: string } | null;
+  /** Dívida registada ao corretor na entrega (consignado), se houver. */
+  dividaCorretorValor: number | null;
   cliente: {
     id: string;
     tipo: ClienteTipo;
@@ -56,6 +60,13 @@ function toPayload(
     modalidade: p.modalidade,
     createdAt: p.createdAt.toISOString(),
     total: p.total != null ? Number(p.total) : null,
+    entregueEm: p.entregueEm ? p.entregueEm.toISOString() : null,
+    entreguePor: p.entreguePor
+      ? { id: p.entreguePor.id, name: p.entreguePor.name }
+      : null,
+    dividaCorretorValor: p.movimentoCorretor
+      ? Number(p.movimentoCorretor.valor)
+      : null,
     cliente: p.cliente
       ? {
           id: p.cliente.id,

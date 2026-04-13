@@ -60,6 +60,33 @@ export function PedidoResumoLeitura({
         </div>
       </div>
 
+      {pedido.entregueEm ? (
+        <div className="rounded-lg border border-border bg-muted/20 px-4 py-3 text-sm">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Entrega ao cliente
+          </p>
+          <p className="mt-1 text-foreground">
+            {new Date(pedido.entregueEm).toLocaleString("pt-BR", {
+              dateStyle: "full",
+              timeStyle: "short",
+            })}
+            {pedido.entreguePor ? (
+              <span className="text-muted-foreground">
+                {" "}
+                — {pedido.entreguePor.name}
+              </span>
+            ) : null}
+          </p>
+          {pedido.dividaCorretorValor != null &&
+          pedido.dividaCorretorValor > 0.004 ? (
+            <p className="mt-2 font-medium text-amber-700 dark:text-amber-400">
+              Dívida do corretor (registada na entrega):{" "}
+              {money.format(pedido.dividaCorretorValor)}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
       <div>
         <h2 className="text-sm font-medium">Itens</h2>
         <div className="mt-2 overflow-hidden rounded-lg border">

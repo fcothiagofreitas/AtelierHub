@@ -64,6 +64,7 @@ model Tenant {
   estoqueSaldos     EstoqueSaldo[]
   movimentosEstoque MovimentoEstoque[]
   pedidos           Pedido[]
+  movimentosCorretor MovimentoCorretor[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 }
@@ -361,8 +362,14 @@ model Pedido {
   vendedor Colaborador @relation("PedidoVendedor", fields: [vendedorId], references: [id], onDelete: Restrict)
   corretor Corretor?   @relation(fields: [corretorId], references: [id], onDelete: SetNull)
 
-  itens      PedidoItem[]
-  pagamentos Pagamento[]
+  /// Quando a mercadoria foi entregue ao cliente (consignado / retirada registada).
+  entregueEm    DateTime?
+  entreguePorId String?
+  entreguePor   Colaborador? @relation("PedidoEntrega", fields: [entreguePorId], references: [id], onDelete: SetNull)
+
+  itens               PedidoItem[]
+  pagamentos          Pagamento[]
+  movimentoCorretor   MovimentoCorretor?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -374,6 +381,7 @@ model Pedido {
   @@index([clienteId])
   @@index([vendedorId])
   @@index([corretorId])
+  @@index([entregueEm])
 }
 
 model PedidoItem {
@@ -410,6 +418,22 @@ model Pagamento {
   @@index([tenantId])
 }
 
+/// Dívida do corretor face à loja por pedido consignado (valor em aberto à data da entrega).
+model MovimentoCorretor {
+  id         String   @id @default(cuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  corretorId String
+  corretor   Corretor @relation(fields: [corretorId], references: [id], onDelete: Restrict)
+  pedidoId   String   @unique
+  pedido     Pedido   @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  valor      Decimal  @db.Decimal(14, 2)
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([corretorId])
+}
+
 // Corretor: parceiro externo — não é Colaborador. Limite de crédito (consignado) opcional (null = ilimitado).
 model Corretor {
   id       String @id @default(cuid())
@@ -436,8 +460,9 @@ model Corretor {
   isActive  Boolean @default(true)
   isBlocked Boolean @default(false)
 
-  clientes Cliente[]
-  pedidos  Pedido[]
+  clientes           Cliente[]
+  pedidos            Pedido[]
+  movimentosCorretor MovimentoCorretor[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -528,7 +553,8 @@ model Colaborador {
 
   stores ColaboradorStore[]
   tenant Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  pedidosComoVendedor Pedido[]    @relation("PedidoVendedor")
+  pedidosComoVendedor   Pedido[]    @relation("PedidoVendedor")
+  pedidosEntregaRegistada Pedido[]  @relation("PedidoEntrega")
   pagamentosRegistrados Pagamento[]
 
   createdAt DateTime @default(now())

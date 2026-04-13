@@ -179,24 +179,32 @@ export function ReceberModal({
 
         {/* Resumo fixo no rodapé */}
         <div className="shrink-0 space-y-0 border-t bg-muted/30 px-5 py-4">
-          <div className="mb-3 space-y-1">
+          <div className="mb-3 space-y-1.5">
             <div className="flex justify-between text-sm text-muted-foreground">
               <span>Soma dos itens</span>
-              <span>{fmt(totalPedido)}</span>
+              <span className="tabular-nums">{fmt(totalPedido)}</span>
             </div>
             {totalJaPago > 0 && (
               <div className="flex justify-between text-sm text-muted-foreground">
                 <span>Já pago</span>
-                <span>{fmt(totalJaPago)}</span>
+                <span className="tabular-nums">− {fmt(totalJaPago)}</span>
               </div>
             )}
-            <div className="flex justify-between text-sm font-semibold">
-              <span>Total do pedido</span>
-              <span>{fmt(totalPedido)}</span>
+            <div className="flex justify-between border-b border-border/60 pb-1.5 text-sm text-muted-foreground">
+              <span>Em aberto (antes deste recebimento)</span>
+              <span className="tabular-nums font-medium text-foreground">
+                {fmt(Math.max(0, saldo))}
+              </span>
             </div>
-            <div className="flex justify-between text-sm font-semibold text-amber-500">
-              <span>Saldo em aberto</span>
-              <span>{fmt(Math.max(0, saldoRestante))}</span>
+            <div className="flex justify-between text-sm font-semibold">
+              <span>A receber agora</span>
+              <span className="tabular-nums text-foreground">
+                {fmt(totalRecebendo)}
+              </span>
+            </div>
+            <div className="flex justify-between text-sm font-semibold text-amber-600 dark:text-amber-400">
+              <span>Saldo restante após confirmar</span>
+              <span className="tabular-nums">{fmt(Math.max(0, saldoRestante))}</span>
             </div>
           </div>
 
