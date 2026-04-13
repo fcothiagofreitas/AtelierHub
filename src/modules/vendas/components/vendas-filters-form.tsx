@@ -16,6 +16,7 @@ type Props = {
   filters: {
     preset: string;
     estado: string;
+    estadoAberto: string;
     clienteId: string;
     vendedorId: string;
     corretorId: string;
@@ -95,6 +96,11 @@ export function VendasFiltersForm({
         name="preset"
         defaultValue={filters.preset}
       />
+      <input
+        type="hidden"
+        name="estadoAberto"
+        defaultValue={filters.estadoAberto === "1" ? "1" : ""}
+      />
 
       <div className="space-y-1.5">
         <Label htmlFor="vendas-busca">Buscar</Label>
@@ -133,7 +139,13 @@ export function VendasFiltersForm({
             name="estado"
             defaultValue={filters.estado || ""}
             className={selectClass}
-            onChange={applyFilters}
+            onChange={(e) => {
+              const h = formRef.current?.querySelector<HTMLInputElement>(
+                'input[name="estadoAberto"]',
+              );
+              if (h && e.target.value.trim() !== "") h.value = "";
+              applyFilters();
+            }}
           >
             <option value="">Todos</option>
             {ESTADOS.map((e) => (

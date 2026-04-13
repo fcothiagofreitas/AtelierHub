@@ -1,6 +1,9 @@
+import Link from "next/link";
 import { formasPagamentoLabels } from "@/modules/vendas/lib/labels";
 import { clienteNomeCurto } from "@/modules/vendas/lib/cliente-nome";
 import type { PedidoVerPayload } from "@/modules/vendas/vendas-ver-actions";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const money = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -195,6 +198,19 @@ export function PedidoResumoLeitura({
               </tbody>
             </table>
           </div>
+          <p className="mt-3">
+            <Link
+              href={`/api/vendas/pedido/${pedido.id}/recibo`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                buttonVariants({ variant: "outline", size: "sm" }),
+                "no-underline",
+              )}
+            >
+              Baixar recibo (PDF)
+            </Link>
+          </p>
         </div>
       )}
     </div>

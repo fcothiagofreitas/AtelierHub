@@ -9,6 +9,7 @@ export const VENDAS_FILTER_PARAM_KEYS = [
   "from",
   "to",
   "estado",
+  "estadoAberto",
   "clienteId",
   "vendedorId",
   "corretorId",
@@ -45,6 +46,11 @@ export function mergeVendasFiltersFromForm(
     if (typeof v === "string" && v.trim() !== "") {
       next.set(key, v.trim());
     }
+  }
+  const estadoFd = fd.get("estado");
+  if (!estadoFd || String(estadoFd).trim() === "") {
+    const ea = fd.get("estadoAberto");
+    if (ea === "1") next.set("estadoAberto", "1");
   }
   return next;
 }

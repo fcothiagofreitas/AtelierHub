@@ -5,6 +5,8 @@ export type VendasSearchParams = {
   from?: string;
   to?: string;
   estado?: string;
+  /** `1` = EM_ABERTO e PAGO_PARCIAL (pedidos com saldo típico). Ignorado se `estado` estiver preenchido no formulário. */
+  estadoAberto?: string;
   clienteId?: string;
   vendedorId?: string;
   corretorId?: string;

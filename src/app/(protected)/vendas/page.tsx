@@ -68,7 +68,14 @@ export default async function VendasPage({ searchParams }: Props) {
           <h1 className="text-2xl font-semibold tracking-tight">Vendas</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Pedidos da loja{" "}
-            <span className="font-medium text-foreground">{activeStore.name}</span>.
+            <span className="font-medium text-foreground">{activeStore.name}</span>
+            .{" "}
+            <Link
+              href="/vendas/contas-receber"
+              className="font-medium text-primary underline-offset-4 hover:underline"
+            >
+              Contas a receber
+            </Link>
           </p>
         </div>
         <Link
@@ -243,6 +250,7 @@ export default async function VendasPage({ searchParams }: Props) {
               filters={{
                 preset: filters.preset ?? "",
                 estado: filters.estado ?? "",
+                estadoAberto: filters.estadoAberto ?? "",
                 clienteId: filters.clienteId ?? "",
                 vendedorId: filters.vendedorId ?? "",
                 corretorId: filters.corretorId ?? "",

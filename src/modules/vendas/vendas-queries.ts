@@ -35,6 +35,7 @@ export function parseVendasSearchParams(
     from: g("from") || undefined,
     to: g("to") || undefined,
     estado: g("estado") || undefined,
+    estadoAberto: g("estadoAberto") === "1" ? "1" : undefined,
     clienteId: g("clienteId") || undefined,
     vendedorId: g("vendedorId") || undefined,
     corretorId: g("corretorId") || undefined,
@@ -49,13 +50,18 @@ export async function listPedidosForStore(
 ) {
   const dateWhere = createdAtWhereFromVendasParams(filters);
 
+  const estadoWhere: Prisma.PedidoWhereInput["estado"] | undefined =
+    filters.estado && isPedidoEstado(filters.estado)
+      ? filters.estado
+      : filters.estadoAberto === "1"
+        ? { in: ["EM_ABERTO", "PAGO_PARCIAL"] }
+        : undefined;
+
   const where: Prisma.PedidoWhereInput = {
     tenantId,
     storeId,
     ...(dateWhere ? { createdAt: dateWhere } : {}),
-    ...(filters.estado && isPedidoEstado(filters.estado)
-      ? { estado: filters.estado }
-      : {}),
+    ...(estadoWhere ? { estado: estadoWhere } : {}),
     ...(filters.clienteId ? { clienteId: filters.clienteId } : {}),
     ...(filters.vendedorId ? { vendedorId: filters.vendedorId } : {}),
     ...(filters.corretorId ? { corretorId: filters.corretorId } : {}),

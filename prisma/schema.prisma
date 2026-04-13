@@ -43,6 +43,12 @@ enum PedidoModalidade {
   CONSIGNADA
 }
 
+/// Agrupamento de pedidos para cobrança (por cliente ou por corretor).
+enum GrupoCobrancaTipo {
+  CLIENTE
+  CORRETOR
+}
+
 model Tenant {
   id                String             @id @default(cuid())
   name              String
@@ -65,6 +71,7 @@ model Tenant {
   movimentosEstoque MovimentoEstoque[]
   pedidos           Pedido[]
   movimentosCorretor MovimentoCorretor[]
+  gruposCobranca    GrupoCobranca[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 }
@@ -370,6 +377,7 @@ model Pedido {
   itens               PedidoItem[]
   pagamentos          Pagamento[]
   movimentoCorretor   MovimentoCorretor?
+  grupoCobrancaItens  GrupoCobrancaPedido[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -409,6 +417,10 @@ model Pagamento {
   obs         String?
   criadoPorId String?
 
+  /// Quando o recebimento faz parte de uma quitação de grupo (lote).
+  grupoCobrancaId String?
+  grupoCobranca   GrupoCobranca? @relation(fields: [grupoCobrancaId], references: [id], onDelete: SetNull)
+
   pedido    Pedido       @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
   criadoPor Colaborador? @relation(fields: [criadoPorId], references: [id], onDelete: SetNull)
 
@@ -416,6 +428,48 @@ model Pagamento {
 
   @@index([pedidoId])
   @@index([tenantId])
+  @@index([grupoCobrancaId])
+}
+
+/// Lote de cobrança: vários pedidos do mesmo cliente ou do mesmo corretor.
+model GrupoCobranca {
+  id          String            @id @default(cuid())
+  tenantId    String
+  storeId     String
+  tipo        GrupoCobrancaTipo
+  clienteId   String?
+  corretorId  String?
+  criadoPorId String?
+
+  tenant    Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  store     Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  cliente   Cliente?     @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  corretor  Corretor?    @relation(fields: [corretorId], references: [id], onDelete: Restrict)
+  criadoPor Colaborador? @relation("GrupoCobrancaCriador", fields: [criadoPorId], references: [id], onDelete: SetNull)
+
+  itens      GrupoCobrancaPedido[]
+  pagamentos Pagamento[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, storeId])
+  @@index([tenantId, clienteId])
+  @@index([tenantId, corretorId])
+}
+
+model GrupoCobrancaPedido {
+  id       String @id @default(cuid())
+  grupoId  String
+  pedidoId String
+  /// Ordem de aplicação do valor (FIFO na quitação do grupo).
+  ordem    Int    @default(0)
+
+  grupo  GrupoCobranca @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+  pedido Pedido        @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+
+  @@unique([grupoId, pedidoId])
+  @@index([pedidoId])
 }
 
 /// Dívida do corretor face à loja por pedido consignado (valor em aberto à data da entrega).
@@ -463,6 +517,7 @@ model Corretor {
   clientes           Cliente[]
   pedidos            Pedido[]
   movimentosCorretor MovimentoCorretor[]
+  gruposCobranca     GrupoCobranca[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -502,6 +557,7 @@ model Cliente {
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   store  Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
   pedidos Pedido[]
+  gruposCobrancaCliente GrupoCobranca[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -525,6 +581,7 @@ model Store {
   estoqueSaldos     EstoqueSaldo[]
   movimentosEstoque MovimentoEstoque[]
   pedidos           Pedido[]
+  gruposCobranca    GrupoCobranca[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 
@@ -556,6 +613,7 @@ model Colaborador {
   pedidosComoVendedor   Pedido[]    @relation("PedidoVendedor")
   pedidosEntregaRegistada Pedido[]  @relation("PedidoEntrega")
   pagamentosRegistrados Pagamento[]
+  gruposCobrancaCriados GrupoCobranca[] @relation("GrupoCobrancaCriador")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

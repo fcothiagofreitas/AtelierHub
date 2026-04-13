@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Banknote,
   Building2,
   Handshake,
   LayoutGrid,
@@ -55,6 +56,12 @@ const navGroups: NavGroup[] = [
         label: "Vendas",
         href: "/vendas",
         icon: ShoppingBag,
+        roles: ROLES_COM_CLIENTES,
+      },
+      {
+        label: "Contas a receber",
+        href: "/vendas/contas-receber",
+        icon: Banknote,
         roles: ROLES_COM_CLIENTES,
       },
       {
