@@ -124,6 +124,9 @@ export async function getPedidoDetalhe(
         },
         orderBy: { createdAt: "asc" },
       },
+      pagamentos: {
+        orderBy: { createdAt: "asc" },
+      },
     },
   });
 }

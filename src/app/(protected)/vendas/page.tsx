@@ -18,6 +18,7 @@ import { VendasFiltersForm } from "@/modules/vendas/components/vendas-filters-fo
 import { VendasPresetLinks } from "@/modules/vendas/components/vendas-preset-links";
 import { VendasPdv } from "@/modules/vendas/components/vendas-pdv";
 import { getPdvLojaOptions } from "@/modules/vendas/pdv-data";
+import { buildVendasHref } from "@/modules/vendas/lib/build-href";
 
 const money = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -68,7 +69,10 @@ export default async function VendasPage({ searchParams }: Props) {
             <span className="font-medium text-foreground">{activeStore.name}</span>.
           </p>
         </div>
-        <Link href="/vendas?pdv=1" className={cn(buttonVariants())}>
+        <Link
+          href={buildVendasHref(sp, { pdv: "1", edit: null, view: null })}
+          className={cn(buttonVariants())}
+        >
           Nova venda
         </Link>
       </div>
@@ -145,14 +149,22 @@ export default async function VendasPage({ searchParams }: Props) {
                           <div className="flex flex-wrap justify-end gap-x-3 gap-y-1">
                             {p.estado === "EM_ANDAMENTO" ? (
                               <Link
-                                href={`/vendas?pdv=1&edit=${p.id}`}
+                                href={buildVendasHref(sp, {
+                                  pdv: "1",
+                                  edit: p.id,
+                                  view: null,
+                                })}
                                 className="text-primary text-xs font-medium hover:underline"
                               >
                                 Editar
                               </Link>
                             ) : null}
                             <Link
-                              href={`/vendas/${p.id}`}
+                              href={buildVendasHref(sp, {
+                                pdv: "1",
+                                view: p.id,
+                                edit: null,
+                              })}
                               className="text-primary text-xs font-medium hover:underline"
                             >
                               Ver

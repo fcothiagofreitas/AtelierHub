@@ -524,4 +524,3 @@ Colocar o MVP em operação com segurança.
 - Cada sprint deve entregar **front e back juntos**
 - Cada sprint deve produzir pelo menos **um fluxo funcional testável**
 - O backlog deve ser refinado conforme o projeto evoluir, sem perder as decisões fechadas acima
-

@@ -326,7 +326,17 @@ model MovimentoEstoque {
   @@index([loteTransferenciaId])
 }
 
-/// Pedido de venda na loja (lista / PDV / pagamentos em sprints seguintes).
+enum FormaPagamento {
+  DINHEIRO
+  CARTAO_DEBITO
+  CARTAO_CREDITO
+  PIX
+  TRANSFERENCIA
+  CHEQUE
+  OUTROS
+}
+
+/// Pedido de venda na loja.
 model Pedido {
   id       String @id @default(cuid())
   tenantId String
@@ -351,7 +361,8 @@ model Pedido {
   vendedor Colaborador @relation("PedidoVendedor", fields: [vendedorId], references: [id], onDelete: Restrict)
   corretor Corretor?   @relation(fields: [corretorId], references: [id], onDelete: SetNull)
 
-  itens PedidoItem[]
+  itens      PedidoItem[]
+  pagamentos Pagamento[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -379,6 +390,24 @@ model PedidoItem {
 
   @@index([pedidoId])
   @@index([produtoVariacaoId])
+}
+
+model Pagamento {
+  id          String         @id @default(cuid())
+  tenantId    String
+  pedidoId    String
+  forma       FormaPagamento
+  valor       Decimal        @db.Decimal(14, 2)
+  obs         String?
+  criadoPorId String?
+
+  pedido    Pedido       @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  criadoPor Colaborador? @relation(fields: [criadoPorId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([pedidoId])
+  @@index([tenantId])
 }
 
 // Corretor: parceiro externo — não é Colaborador. Limite de crédito (consignado) opcional (null = ilimitado).
@@ -499,7 +528,8 @@ model Colaborador {
 
   stores ColaboradorStore[]
   tenant Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  pedidosComoVendedor Pedido[] @relation("PedidoVendedor")
+  pedidosComoVendedor Pedido[]    @relation("PedidoVendedor")
+  pagamentosRegistrados Pagamento[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -1,4 +1,8 @@
-/** Parâmetros de filtro da lista de vendas (o resto da query, ex. `pdv`, mantém-se à parte). */
+/**
+ * Parâmetros de filtro da lista de vendas.
+ * Parâmetros de UI do PDV (`pdv`, `edit`, `view`) não estão aqui: preservam-se ao
+ * aplicar filtros via `mergeVendasFiltersFromForm`.
+ */
 export const VENDAS_FILTER_PARAM_KEYS = [
   "preset",
   "busca",
