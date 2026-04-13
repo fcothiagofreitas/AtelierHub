@@ -32,7 +32,6 @@ import {
 } from "@/modules/vendas/pdv-actions";
 import { pedidoEstadoLabels, pedidoModalidadeLabels } from "@/modules/vendas/lib/labels";
 import { buildVendasHref } from "@/modules/vendas/lib/build-href";
-import { ReceberModal } from "@/modules/vendas/components/receber-modal";
 import { PedidoResumoLeitura } from "@/modules/vendas/components/pedido-resumo-leitura";
 import { VendaAcoesCliente } from "@/modules/vendas/components/venda-acoes-cliente";
 import {
@@ -86,6 +85,28 @@ function normLabel(s: string): string {
   return s.trim().toLowerCase();
 }
 
+function snapshotPedidoCart(
+  clienteId: string,
+  corretorId: string,
+  modalidade: string,
+  vendedorId: string,
+  lines: CartLine[],
+): string {
+  return JSON.stringify({
+    clienteId,
+    corretorId,
+    modalidade,
+    vendedorId,
+    lines: lines
+      .map((L) => ({
+        id: L.produtoVariacaoId,
+        q: L.quantidade,
+        p: L.precoUnitario,
+      }))
+      .sort((a, b) => a.id.localeCompare(b.id)),
+  });
+}
+
 export function VendasPdv(props: VendasPdvProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -137,7 +158,8 @@ function PdvModalInner({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [busy, startTransition] = React.useTransition();
+  /** Só acções explícitas do utilizador — sem `useTransition` em segundo plano a bloquear o UI. */
+  const [actionBusy, setActionBusy] = React.useState(false);
   const [addingLine, setAddingLine] = React.useState(false);
 
   const [pedidoId, setPedidoId] = React.useState<string | null>(null);
@@ -163,6 +185,8 @@ function PdvModalInner({
     "DIRETA",
   );
   const [lines, setLines] = React.useState<CartLine[]>([]);
+  /** Alinhado ao último `pdvSavePedido` com sucesso ou carga do servidor; comparação para rascunho sujo. */
+  const [savedCartSnapshot, setSavedCartSnapshot] = React.useState("");
 
   const PDV_PRODUTO_PAGE = 12;
 
@@ -189,14 +213,9 @@ function PdvModalInner({
   const vendedoresRef = React.useRef(vendedores);
   vendedoresRef.current = vendedores;
 
-  const [saveStatus, setSaveStatus] = React.useState<
-    "idle" | "saving" | "saved"
-  >("idle");
-
   const [pdvStep, setPdvStep] = React.useState<"cart" | "pagamento">("cart");
   const [totalFinalizado, setTotalFinalizado] = React.useState<number>(0);
   const [pedidoFinalizadoId, setPedidoFinalizadoId] = React.useState<string | null>(null);
-  const [ReceberModalOpen, setReceberModalOpen] = React.useState(false);
 
   /** Pedido finalizado / não-rascunho: UI só leitura (resumo). */
   const [viewDetalhe, setViewDetalhe] = React.useState<{
@@ -226,14 +245,13 @@ function PdvModalInner({
     produtoHasMoreRef.current = false;
     setProdutoListaAberta(false);
     setEan("");
-    setSaveStatus("idle");
     pedidoIdRef.current = null;
     setPdvStep("cart");
     setTotalFinalizado(0);
     setPedidoFinalizadoId(null);
-    setReceberModalOpen(false);
     setViewDetalhe(null);
     setViewLoading(false);
+    setSavedCartSnapshot("");
   }, [defaultColaboradorId, vendedores]);
 
   React.useEffect(() => {
@@ -276,7 +294,7 @@ function PdvModalInner({
     }
     let cancelled = false;
     const pedidoIdToLoad = editPedidoId;
-    startTransition(async () => {
+    void (async () => {
       const r = await pdvGetPedidoParaPdv({
         storeId,
         pedidoId: pedidoIdToLoad,
@@ -306,9 +324,24 @@ function PdvModalInner({
           saldoRef: L.saldoRef,
         })),
       );
-      setSaveStatus("saved");
+      setSavedCartSnapshot(
+        snapshotPedidoCart(
+          d.clienteId ?? "",
+          d.corretorId ?? "",
+          d.modalidade,
+          d.vendedorId,
+          d.lines.map((L) => ({
+            key: "",
+            produtoVariacaoId: L.produtoVariacaoId,
+            label: "",
+            quantidade: L.quantidade,
+            precoUnitario: L.precoUnitario,
+            saldoRef: 0,
+          })),
+        ),
+      );
       hydratedEditPedidoKeyRef.current = pedidoIdToLoad;
-    });
+    })();
     return () => {
       cancelled = true;
     };
@@ -328,7 +361,7 @@ function PdvModalInner({
     let cancelled = false;
     setViewLoading(true);
     setViewDetalhe(null);
-    startTransition(async () => {
+    void (async () => {
       const draft = await pdvGetPedidoParaPdv({
         storeId,
         pedidoId: viewPedidoId,
@@ -354,7 +387,22 @@ function PdvModalInner({
             saldoRef: L.saldoRef,
           })),
         );
-        setSaveStatus("saved");
+        setSavedCartSnapshot(
+          snapshotPedidoCart(
+            d.clienteId ?? "",
+            d.corretorId ?? "",
+            d.modalidade,
+            d.vendedorId,
+            d.lines.map((L) => ({
+              key: "",
+              produtoVariacaoId: L.produtoVariacaoId,
+              label: "",
+              quantidade: L.quantidade,
+              precoUnitario: L.precoUnitario,
+              saldoRef: 0,
+            })),
+          ),
+        );
         hydratedViewPedidoKeyRef.current = viewPedidoId;
         setViewLoading(false);
         return;
@@ -375,7 +423,7 @@ function PdvModalInner({
       });
       hydratedViewPedidoKeyRef.current = viewPedidoId;
       setViewLoading(false);
-    });
+    })();
     return () => {
       cancelled = true;
     };
@@ -408,12 +456,6 @@ function PdvModalInner({
     document.addEventListener("mousedown", fechar);
     return () => document.removeEventListener("mousedown", fechar);
   }, [produtoListaAberta]);
-
-  React.useEffect(() => {
-    if (saveStatus !== "saved") return;
-    const t = window.setTimeout(() => setSaveStatus("idle"), 3500);
-    return () => window.clearTimeout(t);
-  }, [saveStatus]);
 
   const linhasClienteCorretor = React.useMemo((): ClienteListaRow[] => {
     const rows: ClienteListaRow[] = [
@@ -467,43 +509,53 @@ function PdvModalInner({
       setClienteListaAberta(false);
       return;
     }
-    startTransition(async () => {
-      const r = await pdvEnsureClienteForCorretor({
-        storeId,
-        corretorId: row.id,
-      });
-      if (!("ok" in r) || !r.ok) {
-        toast.error("error" in r ? r.error : "Não foi possível usar o corretor.");
-        return;
+    void (async () => {
+      setActionBusy(true);
+      try {
+        const r = await pdvEnsureClienteForCorretor({
+          storeId,
+          corretorId: row.id,
+        });
+        if (!("ok" in r) || !r.ok) {
+          toast.error("error" in r ? r.error : "Não foi possível usar o corretor.");
+          return;
+        }
+        setClienteId(r.clienteId);
+        setCorretorId(row.id);
+        setClienteNomeResolvido(row.label);
+        setClienteQuery(row.label);
+        setClienteListaAberta(false);
+        router.refresh();
+      } finally {
+        setActionBusy(false);
       }
-      setClienteId(r.clienteId);
-      setCorretorId(row.id);
-      setClienteNomeResolvido(row.label);
-      setClienteQuery(row.label);
-      setClienteListaAberta(false);
-      router.refresh();
-    });
+    })();
   };
 
   const cadastrarNomeRapido = () => {
     const nome = clienteQuery.trim();
     if (nome.length < 2) return;
-    startTransition(async () => {
-      const r = await pdvCreateClienteNomeRapido({ storeId, nome });
-      if (!("ok" in r) || !r.ok) {
-        toast.error("error" in r ? r.error : "Não foi possível cadastrar.");
-        return;
+    void (async () => {
+      setActionBusy(true);
+      try {
+        const r = await pdvCreateClienteNomeRapido({ storeId, nome });
+        if (!("ok" in r) || !r.ok) {
+          toast.error("error" in r ? r.error : "Não foi possível cadastrar.");
+          return;
+        }
+        setClienteId(r.clienteId);
+        setClienteNomeResolvido(nome);
+        setExtraClientes((prev) => [
+          ...prev.filter((p) => p.id !== r.clienteId),
+          { id: r.clienteId, name: nome },
+        ]);
+        setClienteListaAberta(false);
+        toast.success("Cliente cadastrado.");
+        router.refresh();
+      } finally {
+        setActionBusy(false);
       }
-      setClienteId(r.clienteId);
-      setClienteNomeResolvido(nome);
-      setExtraClientes((prev) => [
-        ...prev.filter((p) => p.id !== r.clienteId),
-        { id: r.clienteId, name: nome },
-      ]);
-      setClienteListaAberta(false);
-      toast.success("Cliente cadastrado.");
-      router.refresh();
-    });
+    })();
   };
 
   const persistPedido = React.useCallback(async (): Promise<boolean> => {
@@ -535,41 +587,6 @@ function PdvModalInner({
     modalidade,
     lines,
   ]);
-
-  const salvarAgora = React.useCallback(() => {
-    if (!pedidoId) {
-      toast.message("Ainda não há rascunho — adicione um produto.");
-      return;
-    }
-    setSaveStatus("saving");
-    startTransition(async () => {
-      const ok = await persistPedido();
-      if (ok) {
-        setSaveStatus("saved");
-      } else {
-        setSaveStatus("idle");
-      }
-    });
-  }, [pedidoId, persistPedido]);
-
-  React.useEffect(() => {
-    if (!open || !pedidoId) {
-      setSaveStatus("idle");
-      return;
-    }
-    setSaveStatus("saving");
-    const t = window.setTimeout(() => {
-      startTransition(async () => {
-        const ok = await persistPedido();
-        if (!ok) {
-          setSaveStatus("idle");
-          return;
-        }
-        setSaveStatus("saved");
-      });
-    }, 750);
-    return () => window.clearTimeout(t);
-  }, [open, pedidoId, persistPedido]);
 
   const fetchProdutos = React.useCallback(
     async (opts: { reset: boolean; append: boolean }) => {
@@ -747,30 +764,81 @@ function PdvModalInner({
     [ean, storeId, ensureDraft, pushLine],
   );
 
-  const finalizar = () => {
-    if (!pedidoId) return;
-    if (!clienteId.trim()) {
-      toast.error("Selecione um comprador antes de finalizar a venda.");
-      return;
-    }
-    startTransition(async () => {
-      const r = await pdvFinalizarPedido({ storeId, pedidoId });
-      if ("error" in r && r.error) {
-        toast.error(r.error);
-        return;
-      }
-      const total = cartTotal(lines);
-      setTotalFinalizado(total);
-      setPedidoFinalizadoId(pedidoId);
-      setPdvStep("pagamento");
-    });
-  };
-
   const salvarEmAberto = () => {
     toast.message("Venda em aberto. Registe o pagamento na página do pedido quando necessário.");
     onClose();
     router.refresh();
   };
+
+  const guardarRascunho = React.useCallback(() => {
+    if (!pedidoId) {
+      toast.message(
+        "Ainda não há rascunho — adicione um produto para criar o pedido.",
+      );
+      return;
+    }
+    void (async () => {
+      setActionBusy(true);
+      try {
+        const ok = await persistPedido();
+        if (ok) {
+          setSavedCartSnapshot(
+            snapshotPedidoCart(
+              clienteId,
+              corretorId,
+              modalidade,
+              vendedorId,
+              lines,
+            ),
+          );
+          toast.success("Rascunho guardado na loja.");
+        }
+      } finally {
+        setActionBusy(false);
+      }
+    })();
+  }, [
+    pedidoId,
+    persistPedido,
+    clienteId,
+    corretorId,
+    modalidade,
+    vendedorId,
+    lines,
+  ]);
+
+  const executarFinalizacaoEPassarPagamento =
+    React.useCallback(async (): Promise<boolean> => {
+      setActionBusy(true);
+      try {
+        if (!pedidoId) {
+          toast.message("Ainda não há rascunho — adicione um produto.");
+          return false;
+        }
+        if (lines.length === 0) {
+          toast.error("Adicione pelo menos um item ao carrinho.");
+          return false;
+        }
+        if (!clienteId.trim()) {
+          toast.error("Selecione um comprador antes de concluir a venda.");
+          return false;
+        }
+        const ok = await persistPedido();
+        if (!ok) return false;
+        const r = await pdvFinalizarPedido({ storeId, pedidoId });
+        if ("error" in r && r.error) {
+          toast.error(r.error);
+          return false;
+        }
+        const total = cartTotal(lines);
+        setTotalFinalizado(total);
+        setPedidoFinalizadoId(pedidoId);
+        setPdvStep("pagamento");
+        return true;
+      } finally {
+        setActionBusy(false);
+      }
+    }, [pedidoId, lines, clienteId, storeId, persistPedido]);
 
   const descartar = () => {
     if (!pedidoId) {
@@ -778,16 +846,21 @@ function PdvModalInner({
       return;
     }
     if (!window.confirm("Excluir este pedido em andamento?")) return;
-    startTransition(async () => {
-      const r = await pdvExcluirPedido({ storeId, pedidoId });
-      if ("error" in r && r.error) {
-        toast.error(r.error);
-        return;
+    void (async () => {
+      setActionBusy(true);
+      try {
+        const r = await pdvExcluirPedido({ storeId, pedidoId });
+        if ("error" in r && r.error) {
+          toast.error(r.error);
+          return;
+        }
+        toast.message("Pedido em andamento removido.");
+        onClose();
+        router.refresh();
+      } finally {
+        setActionBusy(false);
       }
-      toast.message("Pedido em andamento removido.");
-      onClose();
-      router.refresh();
-    });
+    })();
   };
 
   const totalFmt = new Intl.NumberFormat("pt-BR", {
@@ -795,8 +868,6 @@ function PdvModalInner({
     currency: "BRL",
   }).format(cartTotal(lines));
 
-
-  const clienteBloqueado = Boolean(pedidoId && clienteId.trim());
 
   const clienteListaVaziaComFiltro =
     clienteListaAberta &&
@@ -810,6 +881,8 @@ function PdvModalInner({
 
   const lockUi =
     readOnly && !viewDetalhe && Boolean(pedidoId) && !viewLoading;
+  /** Só bloquear edição do comprador em modo leitura forçada (não por ter rascunho). */
+  const clienteBloqueado = lockUi && Boolean(pedidoId && clienteId.trim());
   const showResumoDetalhe = Boolean(viewDetalhe);
   const showCartGrid =
     !readOnly ||
@@ -833,17 +906,74 @@ function PdvModalInner({
         ? "Antes de gravar"
         : "Rascunho · em andamento";
 
-  if (pdvStep === "pagamento" && pedidoFinalizadoId) {
+  const cartDraftIsDirty = React.useMemo(() => {
+    if (!pedidoId || pdvStep !== "cart" || showResumoDetalhe) return false;
     return (
-      <>
-        <Dialog open={open} onOpenChange={(v) => !v && salvarEmAberto()}>
-          <DialogContent
-            showCloseButton={false}
-            className={cn(
-              "top-1/2 left-1/2 flex h-auto max-h-[min(80vh,calc(100dvh-2rem))] w-[min(480px,calc(100vw-2rem))] max-w-[min(480px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col gap-0 overflow-hidden p-0",
-            )}
-          >
-            <div className="shrink-0 border-b px-5 py-4">
+      snapshotPedidoCart(
+        clienteId,
+        corretorId,
+        modalidade,
+        vendedorId,
+        lines,
+      ) !== savedCartSnapshot
+    );
+  }, [
+    pedidoId,
+    pdvStep,
+    showResumoDetalhe,
+    clienteId,
+    corretorId,
+    modalidade,
+    vendedorId,
+    lines,
+    savedCartSnapshot,
+  ]);
+
+  const handleDialogOpenChange = React.useCallback(
+    (next: boolean) => {
+      if (next) return;
+      if (pdvStep === "pagamento" && pedidoFinalizadoId) {
+        salvarEmAberto();
+        return;
+      }
+      if (cartDraftIsDirty) {
+        if (
+          !window.confirm(
+            "Existem alterações no rascunho que ainda não gravou. Sair mesmo assim?",
+          )
+        ) {
+          return;
+        }
+      }
+      onClose();
+    },
+    [pdvStep, pedidoFinalizadoId, cartDraftIsDirty, onClose],
+  );
+
+  const handleEntregarPdv = React.useCallback(() => {
+    if (!corretorId.trim()) {
+      toast.message(
+        "Para entrega a prazo (dívida), seleccione um corretor ou use um cliente com crédito aprovado pela loja (funcionalidade de crédito em evolução).",
+      );
+      return;
+    }
+    toast.message(
+      "Entrega a prazo: registo de dívida e prazo negociado será ligado ao pedido em breve.",
+    );
+  }, [corretorId]);
+
+  return (
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
+      <DialogContent
+        showCloseButton={!(pdvStep === "pagamento" && pedidoFinalizadoId)}
+        className={cn(
+          "top-1/2 left-1/2 flex h-[min(80vh,calc(100dvh-2rem))] max-h-[min(80vh,calc(100dvh-2rem))] w-[min(80vw,calc(100vw-2rem))] max-w-[min(80vw,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col gap-0 overflow-hidden p-0",
+          "[&_[data-slot=dialog-close]]:min-h-10 [&_[data-slot=dialog-close]]:min-w-10 [&_[data-slot=dialog-close]]:touch-manipulation",
+        )}
+      >
+        {pdvStep === "pagamento" && pedidoFinalizadoId ? (
+          <>
+            <div className="shrink-0 border-b px-4 py-3 sm:px-5">
               <DialogHeader className="text-left">
                 <DialogTitle>Venda finalizada</DialogTitle>
                 <DialogDescription>
@@ -851,8 +981,7 @@ function PdvModalInner({
                 </DialogDescription>
               </DialogHeader>
             </div>
-
-            <div className="px-5 py-5">
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
               <div className="rounded-lg border bg-muted/30 px-4 py-3 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Total da venda</span>
@@ -868,66 +997,25 @@ function PdvModalInner({
                 </div>
               </div>
             </div>
-
-            <DialogFooter className="shrink-0 border-t bg-muted/30 px-5 py-4">
-              <div className="flex w-full flex-col gap-2 sm:flex-row">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="min-h-10 flex-1 touch-manipulation"
-                  onClick={salvarEmAberto}
-                  disabled={busy}
-                >
-                  Salvar
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="min-h-10 flex-1 touch-manipulation"
-                  disabled
-                  title="Em breve"
-                >
-                  Entregar
-                </Button>
-                <Button
-                  type="button"
-                  className="min-h-10 flex-1 touch-manipulation"
-                  onClick={() => setReceberModalOpen(true)}
-                  disabled={busy}
-                >
-                  Receber
-                </Button>
+            <DialogFooter className="mx-0 mb-0 shrink-0 border-t bg-muted/30 px-5 py-4 sm:px-6">
+              <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:gap-3">
+                <VendaAcoesCliente
+                  storeId={storeId}
+                  pedidoId={pedidoFinalizadoId}
+                  totalPedido={totalFinalizado}
+                  totalJaPago={0}
+                  onSalvar={salvarEmAberto}
+                  outlineButtonLabel="Em aberto"
+                  onPagamentoRegistado={() => {
+                    onClose();
+                    router.refresh();
+                  }}
+                />
               </div>
             </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <ReceberModal
-          open={ReceberModalOpen}
-          onClose={() => setReceberModalOpen(false)}
-          storeId={storeId}
-          pedidoId={pedidoFinalizadoId}
-          totalPedido={totalFinalizado}
-          totalJaPago={0}
-          onConfirm={() => {
-            setReceberModalOpen(false);
-            onClose();
-            router.refresh();
-          }}
-        />
-      </>
-    );
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent
-        showCloseButton
-        className={cn(
-          "top-1/2 left-1/2 flex h-[min(80vh,calc(100dvh-2rem))] max-h-[min(80vh,calc(100dvh-2rem))] w-[min(80vw,calc(100vw-2rem))] max-w-[min(80vw,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col gap-0 overflow-hidden p-0",
-          "[&_[data-slot=dialog-close]]:min-h-10 [&_[data-slot=dialog-close]]:min-w-10 [&_[data-slot=dialog-close]]:touch-manipulation",
-        )}
-      >
+          </>
+        ) : (
+          <>
         <div className="shrink-0 border-b px-4 py-3 sm:px-5">
           {showResumoDetalhe && viewDetalhe ? (
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -962,6 +1050,7 @@ function PdvModalInner({
                 <VendaAcoesCliente
                   storeId={storeId}
                   pedidoId={viewDetalhe.pedido.id}
+                  outlineButtonLabel="Fechar"
                   totalPedido={
                     viewDetalhe.pedido.total ??
                     viewDetalhe.pedido.itens.reduce(
@@ -1009,7 +1098,7 @@ function PdvModalInner({
               <DialogDescription>
                 {readOnly && lockUi
                   ? "Apenas consulta — sem alterações ao carrinho."
-                  : "Equipa de venda e produtos; o comprador pode ficar em branco até finalizar. O rascunho guarda na loja atual (automático ou \"Guardar agora\"). Ao finalizar, exige comprador e aplica baixa de stock (pedido em aberto)."}
+                  : "Escolha cliente e, se precisar, corretor. Use Guardar rascunho para continuar mais tarde; Receber para venda à vista (baixa de stock e pagamento); Entregar para fluxo a prazo (em evolução)."}
               </DialogDescription>
             </DialogHeader>
           )}
@@ -1037,7 +1126,7 @@ function PdvModalInner({
           <>
           <div
             className={cn(
-              "mb-4 flex flex-col gap-2 border-b border-border pb-3 sm:flex-row sm:items-center sm:justify-between",
+              "mb-4 border-b border-border pb-3",
               panelMutedClass,
               "px-3 py-2.5",
             )}
@@ -1046,36 +1135,6 @@ function PdvModalInner({
               <span className="font-medium text-foreground">{storeName}</span>
               <span className="text-muted-foreground">·</span>
               <span className="text-muted-foreground">{fluxoLabel}</span>
-            </div>
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              <span
-                className={cn(
-                  "min-h-[1.25rem] text-xs tabular-nums",
-                  saveStatus === "saving" &&
-                    "text-amber-600 dark:text-amber-500",
-                  saveStatus === "saved" && "text-muted-foreground",
-                  saveStatus === "idle" && "text-muted-foreground",
-                )}
-              >
-                {saveStatus === "saving" && "A guardar…"}
-                {saveStatus === "saved" && "Guardado"}
-                {saveStatus === "idle" &&
-                  !pedidoId &&
-                  "Adicione o primeiro produto para criar o rascunho."}
-                {saveStatus === "idle" &&
-                  pedidoId &&
-                  "Alterações sincronizam ao editar; também podes guardar já."}
-              </span>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                className="min-h-9 touch-manipulation"
-                disabled={!pedidoId || busy || lockUi}
-                onClick={salvarAgora}
-              >
-                Guardar agora
-              </Button>
             </div>
           </div>
 
@@ -1224,7 +1283,7 @@ function PdvModalInner({
                   <p className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
                     Nenhum item. Defina o vendedor, depois busque ou leia um EAN.
                     O comprador pode ser escolhido depois; é obrigatório só para
-                    finalizar.
+                    concluir a venda (Receber).
                   </p>
                 ) : (
                   <div className="overflow-x-auto rounded-lg border border-border bg-card">
@@ -1448,7 +1507,7 @@ function PdvModalInner({
                           size="sm"
                           className="w-full justify-start text-left text-xs"
                           onClick={cadastrarNomeRapido}
-                          disabled={busy || lockUi}
+                          disabled={actionBusy || lockUi}
                         >
                           + Cadastrar &quot;{queryTrim}&quot; só com este nome
                         </Button>
@@ -1506,7 +1565,7 @@ function PdvModalInner({
                       <button
                         key={m}
                         type="button"
-                        disabled={!!pedidoId || lockUi}
+                        disabled={lockUi}
                         onClick={() => setModalidade(m)}
                         className={cn(
                           "min-h-10 rounded-md border px-3 py-2 text-xs font-medium transition-colors touch-manipulation",
@@ -1527,50 +1586,63 @@ function PdvModalInner({
           ) : null}
         </div>
 
-        <DialogFooter className="shrink-0 border-t bg-muted/30 px-5 py-4 sm:px-6">
-          <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <DialogFooter className="mx-0 mb-0 shrink-0 border-t bg-muted/30 px-4 py-3 sm:px-5 sm:py-3.5">
+          <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             {!showResumoDetalhe ? (
               <Button
                 type="button"
                 variant="ghost"
                 className="min-h-10 justify-start text-destructive hover:text-destructive touch-manipulation"
                 onClick={descartar}
-                disabled={busy || lockUi}
+                disabled={actionBusy || lockUi}
               >
                 Descartar
               </Button>
             ) : (
               <span className="hidden sm:block" aria-hidden />
             )}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-4">
-              <Button
-                type="button"
-                variant="outline"
-                className="min-h-10 w-full touch-manipulation sm:w-auto"
-                onClick={onClose}
-              >
-                Fechar
-              </Button>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-2">
               {!showResumoDetalhe ? (
+                <div className="flex w-full flex-wrap items-stretch justify-end gap-2 sm:w-auto sm:items-center [&_button]:min-h-10">
+                  <VendaAcoesCliente
+                    storeId={storeId}
+                    pedidoId={pedidoId ?? ""}
+                    totalPedido={cartTotal(lines)}
+                    totalJaPago={0}
+                    onSalvar={guardarRascunho}
+                    outlineButtonLabel="Guardar rascunho"
+                    salvarDisabled={actionBusy || lockUi || !pedidoId}
+                    receberDisabled={
+                      actionBusy ||
+                      lockUi ||
+                      !pedidoId ||
+                      lines.length === 0 ||
+                      !clienteId.trim()
+                    }
+                    onReceberPreparar={async () => {
+                      await executarFinalizacaoEPassarPagamento();
+                    }}
+                    onEntregar={handleEntregarPdv}
+                    onPagamentoRegistado={() => {
+                      router.refresh();
+                    }}
+                  />
+                </div>
+              ) : (
                 <Button
                   type="button"
+                  variant="outline"
                   className="min-h-10 w-full touch-manipulation sm:w-auto"
-                  onClick={finalizar}
-                  disabled={
-                    !pedidoId ||
-                    lines.length === 0 ||
-                    !clienteId.trim() ||
-                    busy ||
-                    lockUi
-                  }
+                  onClick={onClose}
                 >
-                  {busy && <Loader2 className="mr-2 size-4 animate-spin" />}
-                  Finalizar venda
+                  Fechar
                 </Button>
-              ) : null}
+              )}
             </div>
           </div>
         </DialogFooter>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );
