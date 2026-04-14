@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { format } from "date-fns";
+import { format, subDays } from "date-fns";
 import { Settings2 } from "lucide-react";
 import { requireRole } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
@@ -23,7 +23,7 @@ export default async function AdminComissoesPage({ searchParams }: Props) {
     typeof params.colaboradorId === "string" ? params.colaboradorId : undefined;
   const corretorId = typeof params.corretorId === "string" ? params.corretorId : undefined;
 
-  const defaultDe = deParam ?? format(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), "yyyy-MM-dd");
+  const defaultDe = deParam ?? format(subDays(new Date(), 30), "yyyy-MM-dd");
   const defaultAte = ateParam ?? format(new Date(), "yyyy-MM-dd");
 
   const [rows, colaboradores, corretores] = await Promise.all([

@@ -49,7 +49,9 @@ export function VendasDateRangePicker({
   })
   const appliedCompleteRef = React.useRef(false)
   const dateRef = React.useRef(date)
-  dateRef.current = date
+  React.useEffect(() => {
+    dateRef.current = date
+  }, [date])
 
   const fromInputRef = React.useRef<HTMLInputElement>(null)
   const toInputRef = React.useRef<HTMLInputElement>(null)
