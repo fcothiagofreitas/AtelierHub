@@ -43,7 +43,7 @@ export function ComissoesConsultaFilters({
     if (colab) p.set("colaboradorId", colab);
     if (corr) p.set("corretorId", corr);
     startTransition(() => {
-      router.push(`/admin/comissoes/consulta?${p.toString()}`);
+      router.push(`/admin/comissoes?${p.toString()}`);
     });
   }
 

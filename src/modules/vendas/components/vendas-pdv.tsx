@@ -79,6 +79,8 @@ export type VendasPdvProps = {
   clientes: SelectOption[];
   vendedores: SelectOption[];
   corretores: SelectOption[];
+  /** Gerente/admin podem mudar o vendedor com pedido já iniciado; vendedor comum não. */
+  pdvPodeAlterarVendedorComPedido?: boolean;
 };
 
 function moneyFromInput(s: string): number {
@@ -155,6 +157,7 @@ function PdvModalInner({
   clientes,
   vendedores,
   corretores,
+  pdvPodeAlterarVendedorComPedido = false,
   open,
   editPedidoId,
   viewPedidoId,
@@ -1702,7 +1705,10 @@ function PdvModalInner({
                     id="pdv-vendedor"
                     className="flex h-10 min-h-10 w-full rounded-md border border-input bg-transparent ps-3 pe-10 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                     value={vendedorId}
-                    disabled={!!pedidoId || lockUi}
+                    disabled={
+                      lockUi ||
+                      (!!pedidoId && !pdvPodeAlterarVendedorComPedido)
+                    }
                     onChange={(e) => setVendedorId(e.target.value)}
                   >
                     {vendedores.map((v) => (
@@ -1711,6 +1717,11 @@ function PdvModalInner({
                       </option>
                     ))}
                   </select>
+                  {pdvPodeAlterarVendedorComPedido && pedidoId && !lockUi ? (
+                    <p className="text-[11px] text-muted-foreground">
+                      Pode alterar o vendedor deste pedido antes de finalizar.
+                    </p>
+                  ) : null}
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="pdv-corretor">Corretor (opcional)</Label>

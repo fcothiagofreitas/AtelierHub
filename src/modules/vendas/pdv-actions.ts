@@ -9,7 +9,10 @@ import {
   findVariacaoIdByEan13,
   registrarMovimentosEstoqueInTransaction,
 } from "@/modules/estoque/estoque-service";
-import { ROLES_ACESSO_VENDAS } from "@/modules/vendas/lib/roles";
+import {
+  ROLES_ACESSO_VENDAS,
+  ROLES_ALTERAR_VENDEDOR_PDV,
+} from "@/modules/vendas/lib/roles";
 import { clienteNomeCurto } from "@/modules/vendas/lib/cliente-nome";
 
 export type PdvActionOk = { ok: true };
@@ -554,6 +557,28 @@ export async function pdvSavePedido(input: {
     } catch (e) {
       return { error: e instanceof Error ? e.message : "Preço inválido." };
     }
+  }
+
+  const pedidoExistente = await prisma.pedido.findFirst({
+    where: {
+      id: input.pedidoId,
+      tenantId,
+      storeId: input.storeId,
+      estado: "EM_ANDAMENTO",
+    },
+    select: { vendedorId: true },
+  });
+  if (!pedidoExistente) {
+    return { error: "Pedido não encontrado ou já finalizado." };
+  }
+  if (
+    pedidoExistente.vendedorId !== input.vendedorId &&
+    !ROLES_ALTERAR_VENDEDOR_PDV.includes(session.user.role)
+  ) {
+    return {
+      error:
+        "Só gerente de loja ou administrativo podem alterar o vendedor depois de iniciar o pedido.",
+    };
   }
 
   try {

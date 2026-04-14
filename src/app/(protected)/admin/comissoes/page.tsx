@@ -1,64 +1,78 @@
 import Link from "next/link";
 import { format } from "date-fns";
-import { Table2 } from "lucide-react";
+import { Settings2 } from "lucide-react";
 import { requireRole } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ComissoesBackfillButton } from "@/modules/comissoes/components/comissoes-backfill-button";
-import { ComissoesVendedorPadraoForm } from "@/modules/comissoes/components/comissoes-vendedor-padrao-form";
+import { listLancamentosComissao } from "@/modules/comissoes/comissoes-queries";
+import { ComissoesConsultaFilters } from "@/modules/comissoes/components/comissoes-consulta-filters";
+import { ComissoesLancamentosTable } from "@/modules/comissoes/components/comissoes-lancamentos-table";
 
-export default async function AdminComissoesPage() {
+type Props = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function AdminComissoesPage({ searchParams }: Props) {
   const session = await requireRole(["ADMIN_DA_MARCA", "ADMINISTRATIVO"]);
-  const tenant = await prisma.tenant.findUnique({
-    where: { id: session.user.tenantId },
-    select: { percentualComissaoVendedorPadrao: true },
-  });
+  const params = searchParams ? await searchParams : {};
 
-  const padrao = tenant?.percentualComissaoVendedorPadrao ?? 0;
+  const deParam = typeof params.de === "string" ? params.de : undefined;
+  const ateParam = typeof params.ate === "string" ? params.ate : undefined;
+  const colaboradorId =
+    typeof params.colaboradorId === "string" ? params.colaboradorId : undefined;
+  const corretorId = typeof params.corretorId === "string" ? params.corretorId : undefined;
+
+  const defaultDe = deParam ?? format(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), "yyyy-MM-dd");
+  const defaultAte = ateParam ?? format(new Date(), "yyyy-MM-dd");
+
+  const [rows, colaboradores, corretores] = await Promise.all([
+    listLancamentosComissao(session.user.tenantId, {
+      de: deParam ?? null,
+      ate: ateParam ?? null,
+      colaboradorId: colaboradorId ?? null,
+      corretorId: corretorId ?? null,
+    }),
+    prisma.colaborador.findMany({
+      where: { tenantId: session.user.tenantId, isActive: true },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.corretor.findMany({
+      where: { tenantId: session.user.tenantId, isActive: true, isBlocked: false },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+  ]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold">Comissões</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Parâmetros da marca e consulta de lançamentos gerados quando um pedido fica quitado.
+            Lançamentos gerados automaticamente quando um pedido fica quitado.
           </p>
         </div>
         <Link
-          href={`/admin/comissoes/consulta?de=${format(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), "yyyy-MM-dd")}&ate=${format(new Date(), "yyyy-MM-dd")}`}
+          href="/admin/comissoes/parametros"
           className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}
         >
-          <Table2 className="size-4" />
-          Consultar lançamentos
+          <Settings2 className="size-4" />
+          Parâmetros da marca
         </Link>
       </div>
 
-      <ComissoesVendedorPadraoForm percentualAtual={padrao} />
+      <ComissoesConsultaFilters
+        colaboradores={colaboradores}
+        corretores={corretores}
+        defaultDe={defaultDe}
+        defaultAte={defaultAte}
+        defaultColaboradorId={colaboradorId ?? ""}
+        defaultCorretorId={corretorId ?? ""}
+      />
 
-      <div className="rounded-lg border bg-muted/20 p-5 text-sm text-muted-foreground">
-        <p className="font-medium text-foreground">Como os valores são calculados</p>
-        <ul className="mt-2 list-inside list-disc space-y-1">
-          <li>
-            <strong>Vendedor:</strong> usa a comissão cadastrada no colaborador (campo &quot;Comissão
-            mínima (%)&quot;). Se for zero, usa o percentual padrão da marca acima.
-          </li>
-          <li>
-            <strong>Corretor:</strong> usa o percentual no cadastro do corretor, apenas em pedidos
-            com corretor associado.
-          </li>
-          <li>A base de cálculo é o total do pedido no momento em que fica quitado.</li>
-        </ul>
-        <p className="mt-3 text-xs">
-          Se já quitou vendas antes de configurar o % do vendedor ou o padrão da marca, use o botão
-          abaixo para tentar criar só os lançamentos em falta (pedidos quitados sem linha de
-          vendedor).
-        </p>
-        <div className="mt-3">
-          <ComissoesBackfillButton />
-        </div>
-      </div>
+      <ComissoesLancamentosTable rows={rows} />
     </div>
   );
 }

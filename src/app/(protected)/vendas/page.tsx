@@ -5,7 +5,10 @@ import { requireRole } from "@/lib/authorization";
 import { getActiveStoreContext } from "@/lib/session";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ROLES_ACESSO_VENDAS } from "@/modules/vendas/lib/roles";
+import {
+  ROLES_ACESSO_VENDAS,
+  ROLES_ALTERAR_VENDEDOR_PDV,
+} from "@/modules/vendas/lib/roles";
 import { clienteNomeCurto } from "@/modules/vendas/lib/cliente-nome";
 import {
   getVendasFilterLists,
@@ -98,6 +101,9 @@ export default async function VendasPage({ searchParams }: Props) {
           clientes={pdvClientes}
           vendedores={pdvOpts.vendedores}
           corretores={pdvOpts.corretores}
+          pdvPodeAlterarVendedorComPedido={ROLES_ALTERAR_VENDEDOR_PDV.includes(
+            session.user.role,
+          )}
         />
       </Suspense>
 

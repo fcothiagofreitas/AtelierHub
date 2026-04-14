@@ -44,6 +44,7 @@ export async function atualizarComissaoVendedorPadrao(
   });
 
   revalidatePath("/admin/comissoes");
+  revalidatePath("/admin/comissoes/parametros");
   return { ok: true };
 }
 
@@ -87,6 +88,6 @@ export async function completarComissoesVendedorEmPedidosQuitados(): Promise<
   }
 
   revalidatePath("/admin/comissoes");
-  revalidatePath("/admin/comissoes/consulta");
+  revalidatePath("/admin/comissoes/parametros");
   return { ok: true, pedidosAtualizados };
 }
