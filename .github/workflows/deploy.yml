@@ -6,7 +6,8 @@
 #   VPS_SSH_KEY  (chave privada PEM com acesso SSH à VPS)
 #   VPS_PORT     (ex.: 22)
 #
-# Na VPS: clone em /var/www/atelierhub, .env configurado, git remote para este repo.
+# Na VPS: clone em /var/www/atelierhub, .env configurado, Docker + Docker Compose,
+# e Postgres via docker-compose.yml (porta host 5433 → contentor 5432), alinhado ao dev.
 
 name: Deploy to VPS
 
@@ -48,6 +49,17 @@ jobs:
             git fetch origin
             git checkout rewrite
             git pull origin rewrite
+
+            echo "==> Postgres (Docker)..."
+            docker compose up -d
+            for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+              if docker compose exec -T db pg_isready -U atelierhub -d atelierhub_dev 2>/dev/null; then
+                echo "Postgres pronto."
+                break
+              fi
+              echo "A aguardar Postgres... ($i/15)"
+              sleep 2
+            done
 
             echo "==> Installing dependencies..."
             npm ci
