@@ -45,17 +45,17 @@ const navGroups: NavGroup[] = [
   {
     label: "Operação",
     items: [
+      {
+        label: "Vendas",
+        href: "/vendas",
+        icon: ShoppingBag,
+        roles: ROLES_COM_CLIENTES,
+      },
       { label: "Dashboard", href: "/dashboard", icon: LayoutGrid },
       {
         label: "Clientes",
         href: "/clientes",
         icon: UserCircle,
-        roles: ROLES_COM_CLIENTES,
-      },
-      {
-        label: "Vendas",
-        href: "/vendas",
-        icon: ShoppingBag,
         roles: ROLES_COM_CLIENTES,
       },
       {
