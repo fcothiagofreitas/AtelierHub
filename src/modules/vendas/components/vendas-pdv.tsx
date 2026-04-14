@@ -226,7 +226,12 @@ function PdvModalInner({
   const [finalizaResumo, setFinalizaResumo] = React.useState<{
     totalPedido: number;
     totalPago: number;
-    pagamentos: Array<{ id: string; forma: FormaPagamento; valor: number }>;
+    pagamentos: Array<{
+      id: string;
+      forma: FormaPagamento;
+      valor: number;
+      createdAt?: string;
+    }>;
   } | null>(null);
   /** Após «Entregar» no carrinho: entrega já feita no mesmo passo que finalizar — esconde botão no ecrã seguinte. */
   const [entregaJaRegistadaNestaFinalizacao, setEntregaJaRegistadaNestaFinalizacao] =
@@ -859,9 +864,7 @@ function PdvModalInner({
   );
 
   const salvarEmAberto = () => {
-    toast.message("Venda em aberto. Registe o pagamento na página do pedido quando necessário.");
     onClose();
-    router.refresh();
   };
 
   const guardarRascunho = React.useCallback(() => {
@@ -1164,9 +1167,11 @@ function PdvModalInner({
                       totalPago: r.totalPago,
                       pagamentos: r.pagamentos,
                     });
+                    const restante = r.totalPedido - r.totalPago;
+                    if (restante <= 0.004) {
+                      onClose();
+                    }
                   }
-                  onClose();
-                  router.refresh();
                 })();
               }}
             />

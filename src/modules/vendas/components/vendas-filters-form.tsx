@@ -3,10 +3,15 @@
 import type { PedidoEstado } from "@prisma/client";
 import * as React from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { mergeVendasFiltersFromForm } from "../lib/build-href";
+import {
+  clearVendasFiltersHref,
+  mergeVendasFiltersFromForm,
+  VENDAS_FILTER_PARAM_KEYS,
+} from "../lib/build-href";
 import { pedidoEstadoLabels } from "../lib/labels";
 import { VendasDateRangePicker } from "./vendas-date-range-picker";
 
@@ -81,6 +86,19 @@ export function VendasFiltersForm({
     applyFilters();
   }, [applyFilters]);
 
+  const hasActiveFilters = React.useMemo(() => {
+    for (const key of VENDAS_FILTER_PARAM_KEYS) {
+      const v = searchParams.get(key);
+      if (v != null && String(v).trim() !== "") return true;
+    }
+    return false;
+  }, [searchParams]);
+
+  const limparFiltros = React.useCallback(() => {
+    const href = clearVendasFiltersHref(new URLSearchParams(searchParams.toString()));
+    router.replace(href, { scroll: false });
+  }, [router, searchParams]);
+
   return (
     <form
       ref={formRef}
@@ -90,6 +108,19 @@ export function VendasFiltersForm({
         applyFilters();
       }}
     >
+      {hasActiveFilters ? (
+        <div className="flex justify-end border-b border-border/60 pb-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="touch-manipulation"
+            onClick={limparFiltros}
+          >
+            Limpar filtros
+          </Button>
+        </div>
+      ) : null}
       <input
         ref={presetRef}
         type="hidden"

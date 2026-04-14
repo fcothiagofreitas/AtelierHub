@@ -54,3 +54,13 @@ export function mergeVendasFiltersFromForm(
   }
   return next;
 }
+
+/** Remove todos os parâmetros de filtro da query, mantendo `pdv`, `edit`, `view`, `pagamento`, etc. */
+export function clearVendasFiltersHref(current: URLSearchParams): string {
+  const next = new URLSearchParams(current.toString());
+  for (const key of VENDAS_FILTER_PARAM_KEYS) {
+    next.delete(key);
+  }
+  const s = next.toString();
+  return s ? `/vendas?${s}` : "/vendas";
+}

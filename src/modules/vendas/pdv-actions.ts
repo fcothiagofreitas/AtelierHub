@@ -715,7 +715,13 @@ export async function pdvGetResumoPagamentoPedido(input: {
       ok: true;
       totalPedido: number;
       totalPago: number;
-      pagamentos: Array<{ id: string; forma: FormaPagamento; valor: number }>;
+      pagamentos: Array<{
+        id: string;
+        forma: FormaPagamento;
+        valor: number;
+        /** Data/hora do lançamento (auditoria; não obrigatório na UI do PDV). */
+        createdAt: string;
+      }>;
     }
   | PdvActionErr
 > {
@@ -735,7 +741,7 @@ export async function pdvGetResumoPagamentoPedido(input: {
     },
     include: {
       pagamentos: {
-        select: { id: true, forma: true, valor: true },
+        select: { id: true, forma: true, valor: true, createdAt: true },
         orderBy: { createdAt: "asc" },
       },
     },
@@ -761,6 +767,7 @@ export async function pdvGetResumoPagamentoPedido(input: {
       id: p.id,
       forma: p.forma,
       valor: p.valor.toNumber(),
+      createdAt: p.createdAt.toISOString(),
     })),
   };
 }

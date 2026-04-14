@@ -10,6 +10,9 @@ import { ROLES_ACESSO_VENDAS } from "@/modules/vendas/lib/roles";
 export type PagamentoActionOk = { ok: true };
 export type PagamentoActionErr = { error: string };
 
+/** Resultado de `registrarMultiPagamento` (inclui se o pedido ficou quitado). */
+export type RegistroMultiPagamentoOk = { ok: true; pedidoQuitado: boolean };
+
 const FORMAS_VALIDAS: FormaPagamento[] = [
   "DINHEIRO",
   "CARTAO_DEBITO",
@@ -130,7 +133,7 @@ export async function registrarMultiPagamento(input: {
   storeId: string;
   pedidoId: string;
   linhas: LinhaRecebimento[];
-}): Promise<PagamentoActionOk | PagamentoActionErr> {
+}): Promise<RegistroMultiPagamentoOk | PagamentoActionErr> {
   const session = await requireRole(ROLES_ACESSO_VENDAS);
   const tenantId = session.user.tenantId;
 
@@ -155,6 +158,8 @@ export async function registrarMultiPagamento(input: {
       return { error: "Forma de pagamento inválida." };
     }
   }
+
+  let pedidoQuitado = false;
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -189,6 +194,7 @@ export async function registrarMultiPagamento(input: {
         );
       }
 
+      // Cada linha gera um registo com `createdAt` distinto (@default(now)) — útil para auditoria de recebimentos parciais.
       await tx.pagamento.createMany({
         data: linhas.map((l) => ({
           tenantId,
@@ -201,6 +207,7 @@ export async function registrarMultiPagamento(input: {
 
       const novoTotalPago = totalJaPago.add(totalARegistar);
       const novoEstado = novoTotalPago.gte(pedido.total) ? "QUITADO" : "PAGO_PARCIAL";
+      pedidoQuitado = novoEstado === "QUITADO";
 
       await tx.pedido.update({
         where: { id: pedido.id },
@@ -209,7 +216,7 @@ export async function registrarMultiPagamento(input: {
     });
 
     revalidatePath("/vendas");
-    return { ok: true };
+    return { ok: true, pedidoQuitado };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Não foi possível registrar o pagamento." };
   }

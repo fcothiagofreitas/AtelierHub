@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DialogFooter,
@@ -9,8 +10,13 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { formasPagamentoLabels } from "@/modules/vendas/lib/labels";
+import { aggregatePagamentosPorForma } from "@/modules/vendas/lib/aggregate-pagamentos-por-forma";
 import type { FormaPagamento } from "@prisma/client";
-import { ReceberModal } from "@/modules/vendas/components/receber-modal";
+import {
+  ReceberPagamentoForm,
+  type ReceberPagamentoFormRef,
+} from "@/modules/vendas/components/receber-pagamento-form";
+import { cn } from "@/lib/utils";
 
 type Line = {
   key: string;
@@ -34,6 +40,7 @@ type Props = {
     id: string;
     forma: FormaPagamento;
     valor: number;
+    createdAt?: string;
   }>;
   actionBusy: boolean;
   onCancel: () => void;
@@ -56,7 +63,10 @@ export function PdvVendaFinalizadaPanel({
   onEntregar,
   onPagamentoRegistado,
 }: Props) {
-  const [receberOpen, setReceberOpen] = React.useState(false);
+  const pagamentoRef = React.useRef<ReceberPagamentoFormRef>(null);
+  const [canSubmitPagamento, setCanSubmitPagamento] = React.useState(false);
+  const [pagamentoSubmitting, setPagamentoSubmitting] = React.useState(false);
+
   const moneyFmt = React.useMemo(
     () =>
       new Intl.NumberFormat("pt-BR", {
@@ -67,6 +77,12 @@ export function PdvVendaFinalizadaPanel({
   );
 
   const saldoAberto = Math.max(0, totalPedido - totalJaPago);
+  const temSaldoParaReceber = saldoAberto > 0.004;
+
+  const pagamentosAgregados = React.useMemo(
+    () => aggregatePagamentosPorForma(pagamentosLinhas),
+    [pagamentosLinhas],
+  );
 
   return (
     <>
@@ -108,32 +124,15 @@ export function PdvVendaFinalizadaPanel({
               </ul>
             )}
           </div>
-          <div className="space-y-3">
-            <div className="rounded-lg border bg-muted/30 px-4 py-3 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Total da venda</span>
-                <span className="text-base font-semibold tabular-nums">
-                  {moneyFmt.format(totalPedido)}
-                </span>
-              </div>
-              <div className="mt-1 flex items-center justify-between">
-                <span className="font-medium text-amber-600">Saldo em aberto</span>
-                <span className="font-semibold tabular-nums text-amber-600">
-                  {moneyFmt.format(saldoAberto)}
-                </span>
-              </div>
-            </div>
-            <div className="rounded-lg border bg-card p-3 sm:p-4">
-              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                Pagamentos registados
-              </p>
-              {pagamentosLinhas.length === 0 ? (
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Ainda sem pagamentos.
+
+          <div className="flex min-w-0 flex-col gap-3">
+            {pagamentosAgregados.length > 0 ? (
+              <div className="rounded-lg border bg-card p-3 sm:p-4">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Pagamentos já registados
                 </p>
-              ) : (
                 <ul className="mt-2 space-y-1.5 text-sm">
-                  {pagamentosLinhas.map((p) => (
+                  {pagamentosAgregados.map((p) => (
                     <li
                       key={p.id}
                       className="flex justify-between gap-2 tabular-nums"
@@ -143,8 +142,35 @@ export function PdvVendaFinalizadaPanel({
                     </li>
                   ))}
                 </ul>
-              )}
-            </div>
+              </div>
+            ) : null}
+
+            {temSaldoParaReceber ? (
+              <div
+                className={cn(
+                  "overflow-hidden rounded-lg border bg-card",
+                  "min-h-0 lg:min-h-[280px]",
+                )}
+              >
+                <ReceberPagamentoForm
+                  ref={pagamentoRef}
+                  storeId={storeId}
+                  pedidoId={pedidoId}
+                  totalPedido={totalPedido}
+                  totalJaPago={totalJaPago}
+                  disabled={actionBusy}
+                  resetKey={`${pedidoId}-${totalJaPago}`}
+                  onCanSubmitChange={setCanSubmitPagamento}
+                  onSubmittingChange={setPagamentoSubmitting}
+                  onSuccess={onPagamentoRegistado}
+                />
+              </div>
+            ) : (
+              <div className="rounded-lg border bg-muted/30 px-4 py-6 text-center text-sm text-muted-foreground">
+                <p className="font-medium text-foreground">Sem saldo em aberto</p>
+                <p className="mt-1">Não é necessário registar pagamento neste pedido.</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -176,33 +202,28 @@ export function PdvVendaFinalizadaPanel({
               className="min-h-10 touch-manipulation"
               disabled={
                 actionBusy ||
-                saldoAberto <= 0.004 ||
-                !pedidoId
+                !temSaldoParaReceber ||
+                !pedidoId ||
+                !canSubmitPagamento ||
+                pagamentoSubmitting
               }
               title={
-                saldoAberto <= 0.004
+                !temSaldoParaReceber
                   ? "Sem saldo em aberto para receber."
-                  : undefined
+                  : !canSubmitPagamento
+                    ? "Informe o valor a receber nas formas de pagamento."
+                    : undefined
               }
-              onClick={() => setReceberOpen(true)}
+              onClick={() => pagamentoRef.current?.submit()}
             >
+              {pagamentoSubmitting && (
+                <Loader2 className="mr-2 size-4 animate-spin" />
+              )}
               Confirmar recebimento
             </Button>
           </div>
         </div>
       </DialogFooter>
-      <ReceberModal
-        open={receberOpen}
-        onClose={() => setReceberOpen(false)}
-        storeId={storeId}
-        pedidoId={pedidoId}
-        totalPedido={totalPedido}
-        totalJaPago={totalJaPago}
-        onConfirm={() => {
-          setReceberOpen(false);
-          onPagamentoRegistado();
-        }}
-      />
     </>
   );
 }
