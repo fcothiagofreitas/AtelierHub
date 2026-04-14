@@ -8,6 +8,8 @@ import { requireRole } from "@/lib/authorization";
 import { assertStoreInSession } from "@/modules/estoque/estoque-auth";
 import type { LinhaRecebimento } from "@/modules/vendas/pagamento-actions";
 import { ROLES_ACESSO_VENDAS } from "@/modules/vendas/lib/roles";
+import { resolverDividaCorretorAoQuitarPedido } from "@/modules/vendas/lib/corretor-divida-quit";
+import { garantirEntregaAoQuitarPedido } from "@/modules/vendas/lib/entrega-ao-quitar";
 
 export type CobrancaActionOk = { ok: true; grupoId: string };
 export type CobrancaActionErr = { error: string };
@@ -283,8 +285,18 @@ export async function registrarMultiPagamentoGrupo(input: {
         const novoEstado = pago.gte(ped.total) ? "QUITADO" : "PAGO_PARCIAL";
         await tx.pedido.update({
           where: { id: ped.id },
-          data: { estado: novoEstado },
+          data: {
+            estado: novoEstado,
+            ...(novoEstado === "QUITADO" ? { modalidade: "DIRETA" } : {}),
+          },
         });
+        if (novoEstado === "QUITADO") {
+          await resolverDividaCorretorAoQuitarPedido(tx, ped.id);
+          await garantirEntregaAoQuitarPedido(tx, {
+            pedidoId: ped.id,
+            entreguePorId: session.user.colaboradorId ?? null,
+          });
+        }
       }
     });
 

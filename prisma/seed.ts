@@ -8,6 +8,7 @@ import {
   ClienteTipo,
   PedidoEstado,
   PedidoModalidade,
+  FormaPagamento,
 } from "@prisma/client";
 import { buildEan13FromBody12 } from "../src/lib/ean13";
 import { formatNomeGrade } from "../src/lib/produto-grade";
@@ -395,9 +396,18 @@ async function main() {
             },
           ],
         },
+        pagamentos: {
+          create: [
+            {
+              tenantId: tenant.id,
+              forma: FormaPagamento.PIX,
+              valor: new Prisma.Decimal("89.90"),
+            },
+          ],
+        },
       },
     });
-    console.log("✓  Pedidos de exemplo (em aberto, em andamento, quitado)");
+    console.log("✓  Pedidos de exemplo (em aberto, em andamento, quitado + PIX)");
   }
 
   await entradaManualEstoque({

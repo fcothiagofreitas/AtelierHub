@@ -203,6 +203,7 @@ export function PedidoResumoLeitura({
               href={`/api/vendas/pedido/${pedido.id}/recibo`}
               target="_blank"
               rel="noopener noreferrer"
+              data-testid="vendas-recibo-pdf-resumo"
               className={cn(
                 buttonVariants({ variant: "outline", size: "sm" }),
                 "no-underline",

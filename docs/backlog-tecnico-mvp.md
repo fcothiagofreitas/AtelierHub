@@ -241,6 +241,10 @@ Permitir cadastro operacional de clientes pela loja.
 - Busca rápida funciona
 - Cliente bloqueado fica sinalizado
 
+### Status (implementação)
+
+MVP **Sprint 5** entregue no código: modelo `Cliente` (PF/PJ), formulários, listagem com busca, limite de crédito e vínculo opcional com corretor; cadastro rápido por nome no PDV (`pdvCreateClienteNomeRapido`) para fluxo de venda.
+
 ## Sprint 6 — Catálogo de produto
 
 ### Objetivo
@@ -402,6 +406,10 @@ Fechar o ciclo financeiro básico do pedido.
 - Pedido aceita recebimentos parciais
 - Cobrança agrupada funciona
 - Recibo PDF pode ser emitido
+
+### Status (implementação)
+
+MVP **Sprint 10** entregue no código: modelo `Pagamento` e `GrupoCobranca`, recebimento multi-forma no pedido e em grupo (`pagamento-actions`, `cobranca-actions`), contas a receber e telas de cobrança agrupada, estados `PAGO_PARCIAL` / `QUITADO`, API `GET /api/vendas/pedido/[pedidoId]/recibo` (PDF via `recibo-pdf.ts`). **Recibo na UI:** após existir pelo menos um pagamento registado, o link **Recibo (PDF)** aparece no rodapé do PDV (ver pedido / `VendaAcoesCliente`, `data-testid="vendas-recibo-pdf"`) e no painel **Venda finalizada** (`data-testid="vendas-recibo-pdf-finalizada"`). O componente `PedidoResumoLeitura` mantém o mesmo destino para eventual reutilização. **E2E:** `npm run test:e2e` (Playwright: `e2e/vendas-recibo.spec.ts`, `globalSetup` garante pagamento no pedido #3 se faltar).
 
 ## Sprint 11 — Comissões
 

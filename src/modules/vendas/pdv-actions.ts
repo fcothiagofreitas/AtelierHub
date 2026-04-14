@@ -377,6 +377,10 @@ async function finalizarPedidoInternoTx(
   });
 }
 
+/**
+ * Entrega com saldo em aberto ⇒ consignado + `MovimentoCorretor`. Sem saldo, não altera modalidade.
+ * Quando o pedido depois fica quitado, `pagamento-actions` remove a dívida e fixa modalidade direta.
+ */
 async function registarEntregaFisicaInternoTx(
   tx: Prisma.TransactionClient,
   ctx: {
@@ -873,6 +877,10 @@ export async function pdvGetPedidoParaPdv(input: {
   };
 }
 
+/**
+ * Remove da base um pedido **só em** `EM_ANDAMENTO` (rascunho). Não grava `CANCELADO`;
+ * o registo deixa de existir. Fluxo formal de cancelamento com histórico seria outro.
+ */
 export async function pdvExcluirPedido(input: {
   storeId: string;
   pedidoId: string;

@@ -3,11 +3,10 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import type { PedidoEstado, PedidoModalidade } from "@prisma/client";
-import { Badge } from "@/components/ui/badge";
 import {
-  pedidoEstadoLabels,
   pedidoModalidadeLabels,
 } from "@/modules/vendas/lib/labels";
+import { PedidoEstadoBadge } from "@/modules/vendas/components/pedido-estado-badge";
 import { buildVendasHref } from "@/modules/vendas/lib/build-href";
 import { cn } from "@/lib/utils";
 
@@ -46,7 +45,11 @@ export function VendasPedidosTable({ pedidos, filterQueryString }: Props) {
       if (p.estado === "EM_ANDAMENTO") {
         return buildVendasHref(sp, { pdv: "1", edit: p.id, view: null });
       }
-      if (p.estado === "EM_ABERTO" || p.estado === "PAGO_PARCIAL") {
+      if (
+        p.estado === "EM_ABERTO" ||
+        p.estado === "PAGO_PARCIAL" ||
+        p.estado === "QUITADO"
+      ) {
         return buildVendasHref(sp, {
           pdv: "1",
           view: p.id,
@@ -111,9 +114,7 @@ export function VendasPedidosTable({ pedidos, filterQueryString }: Props) {
               <td className="px-4 py-3">{p.vendedorName}</td>
               <td className="px-4 py-3 text-muted-foreground">{p.corretorName}</td>
               <td className="px-4 py-3 text-left align-middle">
-                <Badge variant="secondary" className="text-[11px] font-normal">
-                  {pedidoEstadoLabels[p.estado]}
-                </Badge>
+                <PedidoEstadoBadge estado={p.estado} />
               </td>
               <td className="px-4 py-3 text-left text-muted-foreground">
                 {pedidoModalidadeLabels[p.modalidade]}

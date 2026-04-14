@@ -6,6 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/authorization";
 import { assertStoreInSession } from "@/modules/estoque/estoque-auth";
 import { ROLES_ACESSO_VENDAS } from "@/modules/vendas/lib/roles";
+import { resolverDividaCorretorAoQuitarPedido } from "@/modules/vendas/lib/corretor-divida-quit";
+import { garantirEntregaAoQuitarPedido } from "@/modules/vendas/lib/entrega-ao-quitar";
 
 export type PagamentoActionOk = { ok: true };
 export type PagamentoActionErr = { error: string };
@@ -96,8 +98,18 @@ export async function registrarPagamento(input: {
 
       await tx.pedido.update({
         where: { id: pedido.id },
-        data: { estado: novoEstado },
+        data: {
+          estado: novoEstado,
+          ...(novoEstado === "QUITADO" ? { modalidade: "DIRETA" } : {}),
+        },
       });
+      if (novoEstado === "QUITADO") {
+        await resolverDividaCorretorAoQuitarPedido(tx, pedido.id);
+        await garantirEntregaAoQuitarPedido(tx, {
+          pedidoId: pedido.id,
+          entreguePorId: session.user.colaboradorId ?? null,
+        });
+      }
     });
 
     revalidatePath("/vendas");
@@ -211,8 +223,18 @@ export async function registrarMultiPagamento(input: {
 
       await tx.pedido.update({
         where: { id: pedido.id },
-        data: { estado: novoEstado },
+        data: {
+          estado: novoEstado,
+          ...(novoEstado === "QUITADO" ? { modalidade: "DIRETA" } : {}),
+        },
       });
+      if (novoEstado === "QUITADO") {
+        await resolverDividaCorretorAoQuitarPedido(tx, pedido.id);
+        await garantirEntregaAoQuitarPedido(tx, {
+          pedidoId: pedido.id,
+          entreguePorId: session.user.colaboradorId ?? null,
+        });
+      }
     });
 
     revalidatePath("/vendas");

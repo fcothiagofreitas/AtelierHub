@@ -2,7 +2,8 @@
 
 /**
  * PDV: um único Dialog em `/vendas?pdv=1`. Query `edit=<pedidoId>` = continuar rascunho;
- * `view=<pedidoId>` = ver pedido (read-only). `pagamento=1` com pedido em aberto abre o painel de venda finalizada.
+ * `view=<pedidoId>` = ver pedido (read-only). `pagamento=1` com pedido em aberto abre o painel de venda finalizada;
+ * com pedido quitado abre o mesmo painel em modo só leitura (itens + pagamentos, sem receber).
  * Se `edit` e `view` vierem juntos, **edit ganha**.
  */
 import * as React from "react";
@@ -38,7 +39,8 @@ import {
   pdvSearchVariacoes,
   type PdvSearchRow,
 } from "@/modules/vendas/pdv-actions";
-import { pedidoEstadoLabels, pedidoModalidadeLabels } from "@/modules/vendas/lib/labels";
+import { pedidoModalidadeLabels } from "@/modules/vendas/lib/labels";
+import { PedidoEstadoBadge } from "@/modules/vendas/components/pedido-estado-badge";
 import { clienteNomeCurto } from "@/modules/vendas/lib/cliente-nome";
 import { buildVendasHref } from "@/modules/vendas/lib/build-href";
 import { PdvVendaFinalizadaPanel } from "@/modules/vendas/components/pdv-venda-finalizada-panel";
@@ -236,6 +238,14 @@ function PdvModalInner({
   /** Após «Entregar» no carrinho: entrega já feita no mesmo passo que finalizar — esconde botão no ecrã seguinte. */
   const [entregaJaRegistadaNestaFinalizacao, setEntregaJaRegistadaNestaFinalizacao] =
     React.useState(false);
+  /** Painel `pagamento=1` para pedido quitado: resumo sem formas de recebimento. */
+  const [pagamentoPainelSomenteLeitura, setPagamentoPainelSomenteLeitura] =
+    React.useState(false);
+  /** Payload completo + loja para o resumo quitado (vendedor, cliente, itens detalhados, etc.). */
+  const [pedidoQuitadoResumo, setPedidoQuitadoResumo] = React.useState<{
+    storeName: string;
+    pedido: PedidoVerPayload;
+  } | null>(null);
 
   /** Pedido finalizado / não-rascunho: UI só leitura (resumo). */
   const [viewDetalhe, setViewDetalhe] = React.useState<{
@@ -270,6 +280,8 @@ function PdvModalInner({
     setPedidoFinalizadoId(null);
     setFinalizaResumo(null);
     setEntregaJaRegistadaNestaFinalizacao(false);
+    setPagamentoPainelSomenteLeitura(false);
+    setPedidoQuitadoResumo(null);
     setViewDetalhe(null);
     setViewLoading(false);
     setSavedCartSnapshot("");
@@ -469,7 +481,9 @@ function PdvModalInner({
 
       if (
         pagamentoAbrir &&
-        (p.estado === "EM_ABERTO" || p.estado === "PAGO_PARCIAL")
+        (p.estado === "EM_ABERTO" ||
+          p.estado === "PAGO_PARCIAL" ||
+          p.estado === "QUITADO")
       ) {
         const sum = await pdvGetResumoPagamentoPedido({
           storeId,
@@ -497,6 +511,15 @@ function PdvModalInner({
         setTotalFinalizado(totalCalc);
         setPedidoFinalizadoId(p.id);
         setEntregaJaRegistadaNestaFinalizacao(Boolean(p.entregueEm));
+        setPagamentoPainelSomenteLeitura(p.estado === "QUITADO");
+        if (p.estado === "QUITADO") {
+          setPedidoQuitadoResumo({
+            storeName: detail.storeName,
+            pedido: p,
+          });
+        } else {
+          setPedidoQuitadoResumo(null);
+        }
         setPdvStep("pagamento");
         setViewDetalhe(null);
         hydratedViewPedidoKeyRef.current = viewPedidoId;
@@ -942,6 +965,7 @@ function PdvModalInner({
         }
         setTotalFinalizado(total);
         setPedidoFinalizadoId(pedidoId);
+        setPagamentoPainelSomenteLeitura(false);
         setPdvStep("pagamento");
         return true;
       } finally {
@@ -1134,7 +1158,13 @@ function PdvModalInner({
   return (
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent
-        showCloseButton={!(pdvStep === "pagamento" && pedidoFinalizadoId)}
+        showCloseButton={
+          !(
+            pdvStep === "pagamento" &&
+            pedidoFinalizadoId &&
+            !pagamentoPainelSomenteLeitura
+          )
+        }
         className={cn(
           "top-1/2 left-1/2 flex h-[min(80vh,calc(100dvh-2rem))] max-h-[min(80vh,calc(100dvh-2rem))] w-[min(80vw,calc(100vw-2rem))] max-w-[min(80vw,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col gap-0 overflow-hidden p-0",
           "[&_[data-slot=dialog-close]]:min-h-10 [&_[data-slot=dialog-close]]:min-w-10 [&_[data-slot=dialog-close]]:touch-manipulation",
@@ -1153,7 +1183,15 @@ function PdvModalInner({
               pagamentosLinhas={finalizaResumo?.pagamentos ?? []}
               actionBusy={actionBusy}
               onCancel={salvarEmAberto}
-              showEntregar={!entregaJaRegistadaNestaFinalizacao}
+              somenteLeitura={pagamentoPainelSomenteLeitura}
+              pedidoResumoCompleto={pedidoQuitadoResumo}
+              cancelarLabel={
+                pagamentoPainelSomenteLeitura ? "Fechar" : "Cancelar"
+              }
+              showEntregar={
+                !pagamentoPainelSomenteLeitura &&
+                !entregaJaRegistadaNestaFinalizacao
+              }
               onEntregar={handleEntregarPosFinalizar}
               onPagamentoRegistado={() => {
                 void (async () => {
@@ -1192,9 +1230,7 @@ function PdvModalInner({
               </DialogHeader>
               <div className="flex w-full flex-col items-stretch gap-2 sm:max-w-xs sm:shrink-0">
                 <div className="flex flex-wrap items-center justify-start gap-2">
-                  <Badge variant="secondary">
-                    {pedidoEstadoLabels[viewDetalhe.pedido.estado]}
-                  </Badge>
+                  <PedidoEstadoBadge estado={viewDetalhe.pedido.estado} />
                   <Badge variant="outline">
                     {pedidoModalidadeLabels[viewDetalhe.pedido.modalidade]}
                   </Badge>

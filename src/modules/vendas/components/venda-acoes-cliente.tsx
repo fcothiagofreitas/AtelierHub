@@ -1,9 +1,11 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { ReceberModal } from "@/modules/vendas/components/receber-modal";
+import { cn } from "@/lib/utils";
 
 /**
  * Acções do pedido no rodapé do PDV: Salvar (outline), Entregar (outline), Finalizar venda (primário).
@@ -85,9 +87,11 @@ export function VendaAcoesCliente({
   const modalMontado =
     Boolean(showReceber && !receberDisabled && pedidoId) && !onReceberPreparar;
 
+  const podeEmitirRecibo = Boolean(pedidoId) && totalJaPago > 0.004;
+
   return (
     <>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {onSalvar ? (
           <Button
             variant="outline"
@@ -129,6 +133,20 @@ export function VendaAcoesCliente({
           >
             {receberButtonLabel}
           </Button>
+        ) : null}
+        {podeEmitirRecibo ? (
+          <Link
+            href={`/api/vendas/pedido/${pedidoId}/recibo`}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="vendas-recibo-pdf"
+            className={cn(
+              buttonVariants({ variant: "outline", size: "sm" }),
+              "no-underline",
+            )}
+          >
+            Recibo (PDF)
+          </Link>
         ) : null}
       </div>
 
