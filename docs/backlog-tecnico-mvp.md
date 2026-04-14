@@ -307,7 +307,7 @@ Subir a rastreabilidade de estoque entre administrativo e lojas.
 
 ### Glossário (implementação vs RN-E6/E7)
 
-- **Conferência manual (MVP):** ajuste de inventário com delta inteiro (+/−) por SKU e loja, tipo `AJUSTE_CONFERENCIA` em `MovimentoEstoque`. Cobre conferência de receção simples; **não** substitui o **balanço / inventário físico** completo (contagem por período, rascunho/concluído, relatório de divergências) descrito em RN-E6/E7 — fica para iteração futura.
+- **Conferência manual (MVP):** ajuste pontual com delta inteiro (+/−) por SKU e loja, tipo `AJUSTE_CONFERENCIA` em `MovimentoEstoque`. O **balanço / inventário físico** por documento (rascunho, importação, contagem, conclusão com ajustes rastreáveis) está em **Sprint 13** (`BalancoEstoque`), alinhado a RN-E6/E7 em escopo MVP.
 - **Saldo administrativo:** mesma tabela de saldo; lojas com `StoreKind.ADMINISTRATIVE` têm posição própria (RN-E8). Transferências a partir do admin usam essa loja como origem ou destino nas telas.
 - **Consulta entre lojas:** perfis `ADMIN_DA_MARCA` / `ADMINISTRATIVO` filtram qualquer loja do tenant; demais perfis só veem lojas do seu vínculo (`ColaboradorStore`). A UI prioriza **disponibilidade** (saldo), sem cruzar métricas gerenciais (RN-E10).
 
@@ -484,6 +484,10 @@ Fechar o controle físico do estoque.
 - Balanço pode ser executado
 - Divergência é exibida
 - Ajuste fica auditável
+
+### Status (implementação)
+
+MVP **Sprint 13** entregue no código: modelos `BalancoEstoque` / `BalancoEstoqueItem`, migração `20260424120000_balanco_estoque`; fluxo rascunho → importação a partir de `EstoqueSaldo` (opção só saldo positivo) → contagens → conclusão com movimentos `AJUSTE_CONFERENCIA` e motivo textual `Balanço #` + número do documento; cancelamento de rascunho. **UI:** `/admin/estoque/balanco` (lista por loja), `/admin/estoque/balanco/novo`, `/admin/estoque/balanco/[id]` (detalhe / relatório), entrada no hub **Estoque**.
 
 ## Sprint 14 — Painel administrativo consolidado
 

@@ -5,6 +5,11 @@ import { ESTOQUE_ROLES_LEITURA } from "@/modules/estoque/estoque-roles";
 
 const links = [
   { href: "/admin/estoque/consulta", title: "Consulta por loja", desc: "Saldos atuais por SKU (variação)." },
+  {
+    href: "/admin/estoque/balanco",
+    title: "Balanço de estoque",
+    desc: "Inventário físico: importação, contagem, divergências e ajuste rastreável.",
+  },
   { href: "/admin/estoque/historico", title: "Histórico de movimentos", desc: "Auditoria por período e loja." },
   { href: "/admin/estoque/entrada", title: "Entrada manual", desc: "Receção de mercadoria (EAN-13)." },
   { href: "/admin/estoque/saida-defeito", title: "Saída por defeito", desc: "Baixa de peças com motivo." },

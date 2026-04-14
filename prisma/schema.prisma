@@ -78,6 +78,7 @@ model Tenant {
   gruposCobranca    GrupoCobranca[]
   lancamentosComissao LancamentoComissao[]
   trocas            Troca[]
+  balancosEstoque   BalancoEstoque[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 }
@@ -133,6 +134,59 @@ model TrocaItem {
 
   @@index([trocaId])
   @@index([pedidoItemId])
+}
+
+enum BalancoEstoqueEstado {
+  RASCUNHO
+  CONCLUIDO
+  CANCELADO
+}
+
+/// Documento de balanço físico por loja (contagem vs sistema).
+model BalancoEstoque {
+  id       String @id @default(cuid())
+  tenantId String
+  storeId  String
+  numero   Int
+
+  estado        BalancoEstoqueEstado @default(RASCUNHO)
+  observacoes   String?
+  criadoPorId   String?
+  concluidoEm   DateTime?
+
+  tenant    Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  store     Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  criadoPor Colaborador? @relation("BalancoEstoqueCriador", fields: [criadoPorId], references: [id], onDelete: SetNull)
+
+  itens BalancoEstoqueItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([storeId, numero])
+  @@index([tenantId, storeId])
+  @@index([tenantId, createdAt])
+}
+
+model BalancoEstoqueItem {
+  id                String @id @default(cuid())
+  balancoId         String
+  produtoVariacaoId String
+  /// Saldo do sistema no momento da importação da linha.
+  saldoSnapshot     Int
+  /// Quantidade contada fisicamente (preenchida antes de concluir).
+  quantidadeContada Int?
+  /// Saldo lido no sistema no momento da conclusão (antes do ajuste).
+  saldoNoFecho      Int?
+  /// Delta aplicado em stock (= quantidadeContada − saldoNoFecho na conclusão).
+  deltaAplicado     Int?
+
+  balanco         BalancoEstoque @relation(fields: [balancoId], references: [id], onDelete: Cascade)
+  produtoVariacao ProdutoVariacao @relation(fields: [produtoVariacaoId], references: [id], onDelete: Restrict)
+
+  @@unique([balancoId, produtoVariacaoId])
+  @@index([balancoId])
+  @@index([produtoVariacaoId])
 }
 
 /// Tipo de beneficiário no lançamento de comissão (vendedor interno ou corretor).
@@ -365,6 +419,7 @@ model ProdutoVariacao {
   estoqueSaldos     EstoqueSaldo[]
   movimentosEstoque MovimentoEstoque[]
   pedidoItens       PedidoItem[]
+  balancoItens      BalancoEstoqueItem[]
 }
 
 enum MovimentoEstoqueTipo {
@@ -701,6 +756,7 @@ model Store {
   gruposCobranca    GrupoCobranca[]
   lancamentosComissao LancamentoComissao[]
   trocas            Troca[]
+  balancosEstoque   BalancoEstoque[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 
@@ -735,6 +791,7 @@ model Colaborador {
   gruposCobrancaCriados GrupoCobranca[] @relation("GrupoCobrancaCriador")
   comissoesComoVendedor LancamentoComissao[] @relation("ComissaoVendedor")
   trocasCriadas         Troca[]              @relation("TrocaCriador")
+  balancosEstoqueCriados BalancoEstoque[]    @relation("BalancoEstoqueCriador")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
