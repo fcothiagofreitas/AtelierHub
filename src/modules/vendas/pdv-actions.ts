@@ -1,6 +1,6 @@
 "use server";
 
-import { Prisma } from "@prisma/client";
+import { type FormaPagamento, Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/authorization";
@@ -625,6 +625,65 @@ export async function pdvEntregarPedido(input: {
       error: e instanceof Error ? e.message : "Não foi possível registar a entrega.",
     };
   }
+}
+
+/** Total do pedido, valor pago e linhas de pagamento (passo Receber após finalizar). */
+export async function pdvGetResumoPagamentoPedido(input: {
+  storeId: string;
+  pedidoId: string;
+}): Promise<
+  | {
+      ok: true;
+      totalPedido: number;
+      totalPago: number;
+      pagamentos: Array<{ id: string; forma: FormaPagamento; valor: number }>;
+    }
+  | PdvActionErr
+> {
+  const session = await requireRole(ROLES_ACESSO_VENDAS);
+  const tenantId = session.user.tenantId;
+  try {
+    assertStoreInSession(session, input.storeId);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Sem permissão." };
+  }
+
+  const pedido = await prisma.pedido.findFirst({
+    where: {
+      id: input.pedidoId,
+      tenantId,
+      storeId: input.storeId,
+    },
+    include: {
+      pagamentos: {
+        select: { id: true, forma: true, valor: true },
+        orderBy: { createdAt: "asc" },
+      },
+    },
+  });
+
+  if (!pedido) {
+    return { error: "Pedido não encontrado." };
+  }
+  if (!pedido.total) {
+    return { error: "Pedido sem total." };
+  }
+
+  const totalPago = pedido.pagamentos.reduce(
+    (acc, p) => acc.add(p.valor),
+    new Prisma.Decimal(0),
+  );
+
+  return {
+    ok: true,
+    totalPedido: pedido.total.toNumber(),
+    totalPago: totalPago.toNumber(),
+    pagamentos: pedido.pagamentos.map((p) => ({
+      id: p.id,
+      forma: p.forma,
+      valor: p.valor.toNumber(),
+    })),
+  };
 }
 
 export type PdvPedidoCarregado = {

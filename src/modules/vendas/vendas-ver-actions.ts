@@ -33,6 +33,7 @@ export type PedidoVerPayload = {
   corretor: { id: string; name: string } | null;
   itens: Array<{
     id: string;
+    produtoVariacaoId: string;
     quantidade: number;
     precoUnitario: number;
     produtoVariacao: {
@@ -80,6 +81,7 @@ function toPayload(
     corretor: p.corretor,
     itens: p.itens.map((it) => ({
       id: it.id,
+      produtoVariacaoId: it.produtoVariacaoId,
       quantidade: it.quantidade,
       precoUnitario: Number(it.precoUnitario),
       produtoVariacao: {
