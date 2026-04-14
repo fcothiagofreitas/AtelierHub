@@ -124,7 +124,7 @@ export function ReceberModal({
         )}
       >
         <DialogHeader className="shrink-0 border-b px-5 py-4 text-left">
-          <DialogTitle>Receber pagamento</DialogTitle>
+          <DialogTitle>Pagamento</DialogTitle>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto">

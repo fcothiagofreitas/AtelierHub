@@ -5,9 +5,7 @@ import { requireRole } from "@/lib/authorization";
 import { getActiveStoreContext } from "@/lib/session";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 import { ROLES_ACESSO_VENDAS } from "@/modules/vendas/lib/roles";
-import { pedidoEstadoLabels, pedidoModalidadeLabels } from "@/modules/vendas/lib/labels";
 import { clienteNomeCurto } from "@/modules/vendas/lib/cliente-nome";
 import {
   getVendasFilterLists,
@@ -20,11 +18,7 @@ import { VendasPresetLinks } from "@/modules/vendas/components/vendas-preset-lin
 import { VendasPdv } from "@/modules/vendas/components/vendas-pdv";
 import { getPdvLojaOptions } from "@/modules/vendas/pdv-data";
 import { buildVendasHref } from "@/modules/vendas/lib/build-href";
-
-const money = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL",
-});
+import { VendasPedidosTable } from "@/modules/vendas/components/vendas-pedidos-table";
 
 type Props = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -59,6 +53,18 @@ export default async function VendasPage({ searchParams }: Props) {
   const pdvClientes = pdvOpts.clientes.map((c) => ({
     id: c.id,
     name: clienteNomeCurto(c),
+  }));
+
+  const pedidosListaVm = pedidos.map((p) => ({
+    id: p.id,
+    numero: p.numero,
+    createdAt: p.createdAt.toISOString(),
+    estado: p.estado,
+    modalidade: p.modalidade,
+    total: p.total != null ? Number(p.total) : null,
+    clienteLabel: p.cliente ? clienteNomeCurto(p.cliente) : "A definir",
+    vendedorName: p.vendedor.name,
+    corretorName: p.corretor?.name ?? "—",
   }));
 
   return (
@@ -130,7 +136,6 @@ export default async function VendasPage({ searchParams }: Props) {
           clientes={pdvClientes}
           vendedores={pdvOpts.vendedores}
           corretores={pdvOpts.corretores}
-          pedidosRascunho={pedidosRascunho}
         />
       </Suspense>
 
@@ -148,80 +153,10 @@ export default async function VendasPage({ searchParams }: Props) {
                 Nenhum pedido encontrado com os filtros atuais.
               </p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[720px] text-sm">
-                  <thead className="bg-muted/50 text-left text-muted-foreground">
-                    <tr>
-                      <th className="px-4 py-3 font-medium">Nº</th>
-                      <th className="px-4 py-3 font-medium">Data</th>
-                      <th className="px-4 py-3 font-medium">Cliente</th>
-                      <th className="px-4 py-3 font-medium">Vendedor</th>
-                      <th className="px-4 py-3 font-medium">Corretor</th>
-                      <th className="px-4 py-3 font-medium">Estado</th>
-                      <th className="px-4 py-3 font-medium">Modalidade</th>
-                      <th className="px-4 py-3 text-right font-medium">Total</th>
-                      <th className="px-4 py-3 font-medium" />
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {pedidos.map((p) => (
-                      <tr key={p.id} className="bg-card">
-                        <td className="px-4 py-3 font-mono tabular-nums">{p.numero}</td>
-                        <td className="px-4 py-3 text-muted-foreground">
-                          {p.createdAt.toLocaleString("pt-BR", {
-                            dateStyle: "short",
-                            timeStyle: "short",
-                          })}
-                        </td>
-                        <td className="px-4 py-3 font-medium">
-                          {p.cliente ? clienteNomeCurto(p.cliente) : "A definir"}
-                        </td>
-                        <td className="px-4 py-3">{p.vendedor.name}</td>
-                        <td className="px-4 py-3 text-muted-foreground">
-                          {p.corretor?.name ?? "—"}
-                        </td>
-                        <td className="px-4 py-3">
-                          <Badge variant="secondary" className="text-[11px] font-normal">
-                            {pedidoEstadoLabels[p.estado]}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground">
-                          {pedidoModalidadeLabels[p.modalidade]}
-                        </td>
-                        <td className="px-4 py-3 text-right tabular-nums">
-                          {p.total != null ? money.format(Number(p.total)) : "—"}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex flex-wrap justify-end gap-x-3 gap-y-1">
-                            {p.estado === "EM_ANDAMENTO" ? (
-                              <Link
-                                href={buildVendasHref(sp, {
-                                  pdv: "1",
-                                  edit: p.id,
-                                  view: null,
-                                })}
-                                className="text-primary text-xs font-medium hover:underline"
-                              >
-                                Editar
-                              </Link>
-                            ) : null}
-                            <Link
-                              href={buildVendasHref(sp, {
-                                pdv: "1",
-                                view: p.id,
-                                edit: null,
-                              })}
-                              className="text-primary text-xs font-medium hover:underline"
-                            >
-                              Ver
-                            </Link>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <VendasPedidosTable
+                pedidos={pedidosListaVm}
+                filterQueryString={sp.toString()}
+              />
             )}
           </div>
         </section>

@@ -33,7 +33,6 @@ import {
 } from "@/modules/vendas/pdv-actions";
 import { pedidoEstadoLabels, pedidoModalidadeLabels } from "@/modules/vendas/lib/labels";
 import { buildVendasHref } from "@/modules/vendas/lib/build-href";
-import type { PedidoRascunhoResumo } from "@/modules/vendas/vendas-queries";
 import { PedidoResumoLeitura } from "@/modules/vendas/components/pedido-resumo-leitura";
 import { VendaAcoesCliente } from "@/modules/vendas/components/venda-acoes-cliente";
 import {
@@ -69,8 +68,6 @@ export type VendasPdvProps = {
   clientes: SelectOption[];
   vendedores: SelectOption[];
   corretores: SelectOption[];
-  /** Atalhos para outros rascunhos da mesma loja (lista também na página /vendas). */
-  pedidosRascunho?: PedidoRascunhoResumo[];
 };
 
 function moneyFromInput(s: string): number {
@@ -132,7 +129,6 @@ export function VendasPdv(props: VendasPdvProps) {
   return (
     <PdvModalInner
       {...props}
-      pedidosRascunho={props.pedidosRascunho ?? []}
       open={open}
       editPedidoId={editPedidoId}
       viewPedidoId={viewPedidoId}
@@ -149,7 +145,6 @@ function PdvModalInner({
   clientes,
   vendedores,
   corretores,
-  pedidosRascunho = [],
   open,
   editPedidoId,
   viewPedidoId,
@@ -916,11 +911,6 @@ function PdvModalInner({
         ? "Antes de gravar"
         : "Rascunho · em andamento";
 
-  const outrosRascunhos = React.useMemo(
-    () => pedidosRascunho.filter((p) => p.id !== pedidoId),
-    [pedidosRascunho, pedidoId],
-  );
-
   const cartDraftIsDirty = React.useMemo(() => {
     if (!pedidoId || pdvStep !== "cart" || showResumoDetalhe) return false;
     return (
@@ -1086,12 +1076,13 @@ function PdvModalInner({
                   totalPedido={totalFinalizado}
                   totalJaPago={0}
                   onSalvar={salvarEmAberto}
-                  outlineButtonLabel="Em aberto"
                   initialReceberOpen={initialReceberOpen}
                   onInitialReceberConsumed={() => setInitialReceberOpen(false)}
-                  showEntregar={
-                    modalidade === "CONSIGNADA" && Boolean(corretorId.trim())
+                  showEntregar
+                  entregarDisabled={
+                    modalidade !== "CONSIGNADA" || !corretorId.trim()
                   }
+                  entregarDisabledTitle="Disponível em venda consignada com corretor selecionado."
                   onEntregar={handleEntregarPosFinalizar}
                   onPagamentoRegistado={() => {
                     onClose();
@@ -1149,20 +1140,35 @@ function PdvModalInner({
                     (a, p) => a + p.valor,
                     0,
                   )}
-                  showEntregar={
-                    viewDetalhe.pedido.modalidade === "CONSIGNADA" &&
-                    viewDetalhe.pedido.corretor != null &&
-                    !viewDetalhe.pedido.entregueEm &&
-                    (viewDetalhe.pedido.estado === "EM_ABERTO" ||
-                      viewDetalhe.pedido.estado === "PAGO_PARCIAL")
+                  showEntregar
+                  entregarDisabled={
+                    !(
+                      viewDetalhe.pedido.modalidade === "CONSIGNADA" &&
+                      viewDetalhe.pedido.corretor != null &&
+                      !viewDetalhe.pedido.entregueEm &&
+                      (viewDetalhe.pedido.estado === "EM_ABERTO" ||
+                        viewDetalhe.pedido.estado === "PAGO_PARCIAL")
+                    )
                   }
+                  entregarDisabledTitle="Disponível para consignado com corretor, com entrega por registar."
                   onEntregar={handleEntregarVerPedido}
-                  showReceber={
-                    (viewDetalhe.pedido.estado === "EM_ABERTO" ||
-                      viewDetalhe.pedido.estado === "PAGO_PARCIAL") &&
-                    (viewDetalhe.pedido.total ?? 0) -
-                      viewDetalhe.pedido.pagamentos.reduce((a, p) => a + p.valor, 0) >
-                      0.004
+                  showReceber
+                  receberDisabled={
+                    !(
+                      (viewDetalhe.pedido.estado === "EM_ABERTO" ||
+                        viewDetalhe.pedido.estado === "PAGO_PARCIAL") &&
+                      (viewDetalhe.pedido.total ?? 0) -
+                        viewDetalhe.pedido.pagamentos.reduce((a, p) => a + p.valor, 0) >
+                        0.004
+                    )
+                  }
+                  receberDisabledTitle={
+                    viewDetalhe.pedido.estado === "EM_ANDAMENTO"
+                      ? "Continue a venda em modo edição (Editar no PDV)."
+                      : viewDetalhe.pedido.estado === "QUITADO" ||
+                          viewDetalhe.pedido.estado === "CANCELADO"
+                        ? "Pedido quitado ou cancelado."
+                        : "Sem saldo em aberto neste pedido."
                   }
                   onSalvar={onClose}
                   onPagamentoRegistado={() => {
@@ -1193,7 +1199,7 @@ function PdvModalInner({
               <DialogDescription>
                 {readOnly && lockUi
                   ? "Apenas consulta — sem alterações ao carrinho."
-                  : "Escolha cliente e, se precisar, corretor. Guardar rascunho para continuar mais tarde; Receber finaliza o stock e abre o pagamento. Com consignado, no ecrã seguinte use Entregar para registar retirada e dívida do corretor."}
+                  : "Escolha cliente e, se precisar, corretor. Salvar para continuar mais tarde; Finalizar venda baixa o stock e abre o pagamento. Com consignado, use Entregar para registar retirada e dívida do corretor."}
               </DialogDescription>
             </DialogHeader>
           )}
@@ -1231,32 +1237,6 @@ function PdvModalInner({
               <span className="text-muted-foreground">·</span>
               <span className="text-muted-foreground">{fluxoLabel}</span>
             </div>
-            {outrosRascunhos.length > 0 && !showResumoDetalhe ? (
-              <div className="mt-2 flex flex-col gap-1.5 border-t border-border/60 pt-2 sm:flex-row sm:items-center sm:gap-2">
-                <span className="shrink-0 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-                  Outros rascunhos
-                </span>
-                <div className="flex min-w-0 flex-wrap gap-1.5">
-                  {outrosRascunhos.map((r) => (
-                    <Link
-                      key={r.id}
-                      href={buildVendasHref(spForLinks, {
-                        pdv: "1",
-                        edit: r.id,
-                        view: null,
-                      })}
-                      className="inline-flex max-w-full items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-[11px] text-primary hover:bg-muted/60"
-                      title={r.clienteLabel}
-                    >
-                      <span className="font-mono tabular-nums">nº {r.numero}</span>
-                      <span className="line-clamp-1 text-muted-foreground">
-                        {r.clienteLabel}
-                      </span>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            ) : null}
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
@@ -1731,7 +1711,6 @@ function PdvModalInner({
                     totalPedido={cartTotal(lines)}
                     totalJaPago={0}
                     onSalvar={guardarRascunho}
-                    outlineButtonLabel="Guardar rascunho"
                     salvarDisabled={actionBusy || lockUi || !pedidoId}
                     receberDisabled={
                       actionBusy ||
@@ -1740,10 +1719,13 @@ function PdvModalInner({
                       lines.length === 0 ||
                       !clienteId.trim()
                     }
+                    receberDisabledTitle="Adicione itens, cliente e grave o rascunho antes de finalizar."
                     onReceberPreparar={async () => {
                       await executarFinalizacaoEPassarPagamento();
                     }}
-                    showEntregar={false}
+                    showEntregar
+                    entregarDisabled
+                    entregarDisabledTitle="Disponível após finalizar a venda, em consignado com corretor."
                     onPagamentoRegistado={() => {
                       router.refresh();
                     }}

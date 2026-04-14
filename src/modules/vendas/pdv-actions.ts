@@ -190,6 +190,109 @@ function parsePreco(s: string): Prisma.Decimal {
   return new Prisma.Decimal(t);
 }
 
+function saldoEmAbertoPedido(p: {
+  total: Prisma.Decimal | null;
+  pagamentos: { valor: Prisma.Decimal }[];
+}): Prisma.Decimal {
+  if (!p.total) return new Prisma.Decimal(0);
+  const pago = p.pagamentos.reduce(
+    (a, x) => a.add(x.valor),
+    new Prisma.Decimal(0),
+  );
+  const s = p.total.sub(pago);
+  return s.gt(0) ? s : new Prisma.Decimal(0);
+}
+
+/**
+ * Valida limite de crédito do cliente e, em consignado, do corretor.
+ * `totalDestePedido` = total das linhas a passar a em aberto.
+ */
+async function assertCreditoParaFinalizar(
+  tx: Prisma.TransactionClient,
+  tenantId: string,
+  storeId: string,
+  pedidoId: string,
+  input: {
+    clienteId: string | null;
+    corretorId: string | null;
+    modalidade: "DIRETA" | "CONSIGNADA";
+    totalDestePedido: Prisma.Decimal;
+  },
+) {
+  if (input.clienteId) {
+    const cliente = await tx.cliente.findFirst({
+      where: { id: input.clienteId, tenantId, storeId },
+      select: { isBlocked: true, creditLimit: true },
+    });
+    if (!cliente) throw new Error("Cliente inválido.");
+    if (cliente.isBlocked) {
+      throw new Error("Operação não autorizada: cliente bloqueado.");
+    }
+    if (cliente.creditLimit != null) {
+      const outros = await tx.pedido.findMany({
+        where: {
+          tenantId,
+          storeId,
+          clienteId: input.clienteId,
+          id: { not: pedidoId },
+          estado: { in: ["EM_ABERTO", "PAGO_PARCIAL"] },
+        },
+        select: {
+          total: true,
+          pagamentos: { select: { valor: true } },
+        },
+      });
+      const emAbertoOutros = outros.reduce(
+        (acc, p) => acc.add(saldoEmAbertoPedido(p)),
+        new Prisma.Decimal(0),
+      );
+      if (emAbertoOutros.add(input.totalDestePedido).gt(cliente.creditLimit)) {
+        throw new Error(
+          "Operação não autorizada: limite de crédito do cliente excedido.",
+        );
+      }
+    }
+  }
+
+  if (input.modalidade === "CONSIGNADA" && input.corretorId) {
+    const corretor = await tx.corretor.findFirst({
+      where: { id: input.corretorId, tenantId },
+      select: { isBlocked: true, creditLimitConsignado: true },
+    });
+    if (!corretor) throw new Error("Corretor inválido.");
+    if (corretor.isBlocked) {
+      throw new Error("Operação não autorizada: corretor bloqueado.");
+    }
+    if (corretor.creditLimitConsignado != null) {
+      const outros = await tx.pedido.findMany({
+        where: {
+          tenantId,
+          storeId,
+          corretorId: input.corretorId,
+          modalidade: "CONSIGNADA",
+          id: { not: pedidoId },
+          estado: { in: ["EM_ABERTO", "PAGO_PARCIAL"] },
+        },
+        select: {
+          total: true,
+          pagamentos: { select: { valor: true } },
+        },
+      });
+      const emAbertoOutros = outros.reduce(
+        (acc, p) => acc.add(saldoEmAbertoPedido(p)),
+        new Prisma.Decimal(0),
+      );
+      if (
+        emAbertoOutros.add(input.totalDestePedido).gt(corretor.creditLimitConsignado)
+      ) {
+        throw new Error(
+          "Operação não autorizada: limite de crédito consignado do corretor excedido.",
+        );
+      }
+    }
+  }
+}
+
 export async function pdvCreateDraft(input: {
   storeId: string;
   /** Opcional no rascunho; obrigatório antes de finalizar. */
@@ -414,6 +517,13 @@ export async function pdvFinalizarPedido(input: {
         (acc, it) => acc.add(it.precoUnitario.mul(it.quantidade)),
         new Prisma.Decimal(0),
       );
+
+      await assertCreditoParaFinalizar(tx, tenantId, input.storeId, pedido.id, {
+        clienteId: pedido.clienteId,
+        corretorId: pedido.corretorId,
+        modalidade: pedido.modalidade,
+        totalDestePedido: total,
+      });
 
       await tx.pedido.update({
         where: { id: pedido.id },

@@ -5,6 +5,9 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ReceberModal } from "@/modules/vendas/components/receber-modal";
 
+/**
+ * Acções do pedido no rodapé do PDV: Salvar (outline), Entregar (outline), Finalizar venda (primário).
+ */
 type Props = {
   storeId: string;
   pedidoId: string;
@@ -12,16 +15,18 @@ type Props = {
   totalJaPago: number;
   /** Fechar / guardar sem receber (ex.: fecha o modal de visualização). */
   onSalvar?: () => void;
-  /** Desativa o primeiro botão outline (guardar rascunho / em aberto). */
+  /** Desativa o primeiro botão outline (Salvar / Fechar). */
   salvarDisabled?: boolean;
   /** Texto do primeiro botão outline. */
   outlineButtonLabel?: string;
   showReceber?: boolean;
-  /** Desativa Receber (ex.: leitura / sem saldo a receber). */
+  /** Rótulo do botão primário (abre pagamento ou corre `onReceberPreparar`). */
+  receberButtonLabel?: string;
+  /** Desativa Finalizar venda (ex.: sem saldo / pedido quitado). */
   receberDisabled?: boolean;
   receberDisabledTitle?: string;
   /**
-   * Quando definido (ex.: carrinho em rascunho), o clique em Receber corre isto
+   * Quando definido (ex.: carrinho em rascunho), o clique em Finalizar venda corre isto
    * em vez de abrir o modal — o pai pode finalizar o pedido e abrir o modal no passo seguinte.
    */
   onReceberPreparar?: () => void | Promise<void>;
@@ -31,8 +36,11 @@ type Props = {
   onInitialReceberConsumed?: () => void;
   /** Entrega no balcão / retirada — substitui o toast por omissão. */
   onEntregar?: () => void;
-  /** Quando false, oculta o botão Entregar (ex.: pedido já entregue ou modalidade incompatível). */
+  /** Quando false, oculta Entregar (só em ecrãs que não usam o trio completo). */
   showEntregar?: boolean;
+  /** Desativa Entregar (ex.: ainda no carrinho ou sem consignado/corretor). */
+  entregarDisabled?: boolean;
+  entregarDisabledTitle?: string;
   /** Após pagamento com sucesso (refrescar dados do pedido). */
   onPagamentoRegistado?: () => void;
 };
@@ -46,6 +54,7 @@ export function VendaAcoesCliente({
   salvarDisabled = false,
   outlineButtonLabel = "Salvar",
   showReceber = true,
+  receberButtonLabel = "Finalizar venda",
   receberDisabled = false,
   receberDisabledTitle,
   onReceberPreparar,
@@ -53,6 +62,8 @@ export function VendaAcoesCliente({
   onInitialReceberConsumed,
   onEntregar,
   showEntregar = true,
+  entregarDisabled = false,
+  entregarDisabledTitle,
   onPagamentoRegistado,
 }: Props) {
   const [ReceberOpen, setReceberOpen] = React.useState(false);
@@ -66,6 +77,7 @@ export function VendaAcoesCliente({
   }, [initialReceberOpen, onInitialReceberConsumed]);
 
   const handleEntregar = () => {
+    if (entregarDisabled) return;
     if (onEntregar) {
       onEntregar();
       return;
@@ -106,6 +118,12 @@ export function VendaAcoesCliente({
             variant="outline"
             size="sm"
             type="button"
+            disabled={entregarDisabled}
+            title={
+              entregarDisabled
+                ? entregarDisabledTitle ?? "Indisponível"
+                : undefined
+            }
             onClick={handleEntregar}
           >
             Entregar
@@ -123,7 +141,7 @@ export function VendaAcoesCliente({
             }
             onClick={() => void handleReceber()}
           >
-            Receber
+            {receberButtonLabel}
           </Button>
         ) : null}
       </div>
