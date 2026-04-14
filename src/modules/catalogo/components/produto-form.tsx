@@ -180,7 +180,7 @@ export function ProdutoForm({
                   id="categoriaId"
                   name="categoriaId"
                   defaultValue={produto?.categoriaId ?? ""}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent ps-3 pe-10 py-1 text-sm shadow-sm"
                 >
                   <option value="">—</option>
                   {categorias.map((c) => (
@@ -196,7 +196,7 @@ export function ProdutoForm({
                   id="subcategoriaId"
                   name="subcategoriaId"
                   defaultValue={produto?.subcategoriaId ?? ""}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent ps-3 pe-10 py-1 text-sm shadow-sm"
                 >
                   <option value="">—</option>
                   {subcategorias.map((s) => (
@@ -212,7 +212,7 @@ export function ProdutoForm({
                   id="tipoId"
                   name="tipoId"
                   defaultValue={produto?.tipoId ?? ""}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent ps-3 pe-10 py-1 text-sm shadow-sm"
                 >
                   <option value="">—</option>
                   {tipos.map((t) => (
@@ -228,7 +228,7 @@ export function ProdutoForm({
                   id="colecaoId"
                   name="colecaoId"
                   defaultValue={produto?.colecaoId ?? ""}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent ps-3 pe-10 py-1 text-sm shadow-sm"
                 >
                   <option value="">—</option>
                   {colecoes.map((c) => (
@@ -252,7 +252,7 @@ export function ProdutoForm({
                   id="gradeTamanhoSelect"
                   value={gradeId}
                   onChange={(e) => setGradeId(e.target.value)}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent ps-3 pe-10 py-1 text-sm shadow-sm"
                 >
                   <option value="">— Selecione —</option>
                   {gradesTamanho.map((g) => (

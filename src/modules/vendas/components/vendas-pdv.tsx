@@ -1650,7 +1650,7 @@ function PdvModalInner({
                   <Label htmlFor="pdv-vendedor">Vendedor</Label>
                   <select
                     id="pdv-vendedor"
-                    className="flex h-10 min-h-10 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                    className="flex h-10 min-h-10 w-full rounded-md border border-input bg-transparent ps-3 pe-10 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                     value={vendedorId}
                     disabled={!!pedidoId || lockUi}
                     onChange={(e) => setVendedorId(e.target.value)}
@@ -1666,7 +1666,7 @@ function PdvModalInner({
                   <Label htmlFor="pdv-corretor">Corretor (opcional)</Label>
                   <select
                     id="pdv-corretor"
-                    className="flex h-10 min-h-10 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                    className="flex h-10 min-h-10 w-full rounded-md border border-input bg-transparent ps-3 pe-10 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                     value={corretorId}
                     disabled={lockUi}
                     onChange={(e) => setCorretorId(e.target.value)}

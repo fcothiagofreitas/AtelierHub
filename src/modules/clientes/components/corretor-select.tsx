@@ -23,7 +23,7 @@ export function CorretorSelect({
       name={name}
       disabled={disabled}
       defaultValue={defaultValue ?? ""}
-      className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
+      className="flex h-8 w-full rounded-lg border border-input bg-transparent ps-2.5 pe-10 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
     >
       <option value="">Nenhum</option>
       {options.map((o) => (

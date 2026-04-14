@@ -117,7 +117,7 @@ export function CorretorForm({ corretor }: CorretorFormProps) {
           id="paymentMethod"
           name="paymentMethod"
           defaultValue={corretor?.paymentMethod ?? "PIX"}
-          className="flex h-8 w-full max-w-md rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="flex h-8 w-full max-w-md rounded-lg border border-input bg-transparent ps-2.5 pe-10 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           {PAYMENT_METHODS.map((m) => (
             <option key={m} value={m}>

@@ -39,7 +39,7 @@ export function EstoqueEntradaForm({ stores, defaultStoreId }: Props) {
           name="storeId"
           required
           defaultValue={defaultStoreId ?? stores[0]?.id}
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          className="flex h-10 w-full rounded-md border border-input bg-background ps-3 pe-10 py-2 text-sm"
         >
           {stores.map((s) => (
             <option key={s.id} value={s.id}>

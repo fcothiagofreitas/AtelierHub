@@ -152,7 +152,7 @@ export function ProdutoVariacoesEditor({
                 value={row.opcaoTamanhoId}
                 onChange={(e) => patch(i, { opcaoTamanhoId: e.target.value })}
                 disabled={catalogoVazio}
-                className="mt-1 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                className="mt-1 flex h-9 w-full rounded-md border border-input bg-transparent ps-3 pe-10 py-1 text-sm shadow-sm"
               >
                 <option value="">—</option>
                 {opcoesTamanho.map((t) => (
@@ -171,7 +171,7 @@ export function ProdutoVariacoesEditor({
                 value={row.corCatalogoId}
                 onChange={(e) => patch(i, { corCatalogoId: e.target.value })}
                 disabled={catalogoVazio}
-                className="mt-1 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                className="mt-1 flex h-9 w-full rounded-md border border-input bg-transparent ps-3 pe-10 py-1 text-sm shadow-sm"
               >
                 <option value="">—</option>
                 {cores.map((c) => (
