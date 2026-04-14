@@ -10,7 +10,7 @@ CREATE TABLE "Pedido" (
     "tenantId" TEXT NOT NULL,
     "storeId" TEXT NOT NULL,
     "numero" INTEGER NOT NULL,
-    "clienteId" TEXT NOT NULL,
+    "clienteId" TEXT,
     "vendedorId" TEXT NOT NULL,
     "corretorId" TEXT,
     "estado" "PedidoEstado" NOT NULL,
