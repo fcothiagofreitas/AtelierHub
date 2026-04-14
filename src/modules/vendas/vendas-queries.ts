@@ -1,15 +1,6 @@
 import type { PedidoEstado, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { clienteNomeCurto } from "@/modules/vendas/lib/cliente-nome";
 import { createdAtWhereFromVendasParams, type VendasSearchParams } from "./lib/date-range";
-
-/** Resumo para atalhos de rascunhos (PDV / lista de vendas). */
-export type PedidoRascunhoResumo = {
-  id: string;
-  numero: number;
-  updatedAt: Date;
-  clienteLabel: string;
-};
 
 const ESTADOS: PedidoEstado[] = [
   "EM_ANDAMENTO",
@@ -167,7 +158,13 @@ export async function getVendasFilterLists(tenantId: string, storeId: string) {
       orderBy: { name: "asc" },
     }),
     prisma.cliente.findMany({
-      where: { tenantId, storeId, isActive: true },
+      where: {
+        tenantId,
+        storeId,
+        isActive: true,
+        /** Espelho PF do corretor: não listar como cliente (filtros alinham ao PDV). */
+        corretorId: null,
+      },
       select: {
         id: true,
         tipo: true,
@@ -181,36 +178,4 @@ export async function getVendasFilterLists(tenantId: string, storeId: string) {
   ]);
 
   return { vendedores, corretores, clientes };
-}
-
-/** Pedidos em rascunho na loja (para trocar de venda sem perder o contexto). */
-export async function listPedidosRascunhoForStore(
-  tenantId: string,
-  storeId: string,
-): Promise<PedidoRascunhoResumo[]> {
-  const rows = await prisma.pedido.findMany({
-    where: { tenantId, storeId, estado: "EM_ANDAMENTO" },
-    select: {
-      id: true,
-      numero: true,
-      updatedAt: true,
-      cliente: {
-        select: {
-          tipo: true,
-          nome: true,
-          fantasia: true,
-          razaoSocial: true,
-        },
-      },
-    },
-    orderBy: { updatedAt: "desc" },
-    take: 20,
-  });
-
-  return rows.map((p) => ({
-    id: p.id,
-    numero: p.numero,
-    updatedAt: p.updatedAt,
-    clienteLabel: p.cliente ? clienteNomeCurto(p.cliente) : "Sem cliente",
-  }));
 }

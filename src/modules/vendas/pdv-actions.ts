@@ -291,6 +291,165 @@ async function assertCreditoParaFinalizar(
   }
 }
 
+async function finalizarPedidoInternoTx(
+  tx: Prisma.TransactionClient,
+  ctx: {
+    tenantId: string;
+    storeId: string;
+    pedidoId: string;
+    userId: string;
+  },
+): Promise<void> {
+  const pedido = await tx.pedido.findFirst({
+    where: {
+      id: ctx.pedidoId,
+      tenantId: ctx.tenantId,
+      storeId: ctx.storeId,
+      estado: "EM_ANDAMENTO",
+    },
+    include: {
+      itens: true,
+    },
+  });
+
+  if (!pedido) {
+    throw new Error("Pedido não encontrado ou já finalizado.");
+  }
+
+  if (!pedido.clienteId) {
+    throw new Error("Selecione um comprador antes de finalizar a venda.");
+  }
+
+  if (pedido.itens.length === 0) {
+    throw new Error("Inclua pelo menos um item para finalizar.");
+  }
+
+  for (const it of pedido.itens) {
+    const saldo = await tx.estoqueSaldo.findUnique({
+      where: {
+        storeId_produtoVariacaoId: {
+          storeId: ctx.storeId,
+          produtoVariacaoId: it.produtoVariacaoId,
+        },
+      },
+      select: { quantidade: true },
+    });
+    const disp = saldo?.quantidade ?? 0;
+    if (disp < it.quantidade) {
+      throw new Error(
+        "Saldo insuficiente para um ou mais itens. Ajuste quantidades ou o stock.",
+      );
+    }
+  }
+
+  const linhas = pedido.itens.map((it) => ({
+    storeId: ctx.storeId,
+    produtoVariacaoId: it.produtoVariacaoId,
+    delta: -it.quantidade,
+    tipo: "VENDA" as const,
+    motivo: `Pedido nº ${pedido.numero} (${pedido.id})`,
+    loteTransferenciaId: null,
+  }));
+
+  await registrarMovimentosEstoqueInTransaction(tx, {
+    tenantId: ctx.tenantId,
+    userId: ctx.userId,
+    linhas,
+  });
+
+  const total = pedido.itens.reduce(
+    (acc, it) => acc.add(it.precoUnitario.mul(it.quantidade)),
+    new Prisma.Decimal(0),
+  );
+
+  await assertCreditoParaFinalizar(tx, ctx.tenantId, ctx.storeId, pedido.id, {
+    clienteId: pedido.clienteId,
+    corretorId: pedido.corretorId,
+    totalDestePedido: total,
+  });
+
+  await tx.pedido.update({
+    where: { id: pedido.id },
+    data: {
+      estado: "EM_ABERTO",
+      total,
+    },
+  });
+}
+
+async function registarEntregaFisicaInternoTx(
+  tx: Prisma.TransactionClient,
+  ctx: {
+    tenantId: string;
+    storeId: string;
+    pedidoId: string;
+    entreguePorId: string | null;
+  },
+): Promise<void> {
+  const pedido = await tx.pedido.findFirst({
+    where: {
+      id: ctx.pedidoId,
+      tenantId: ctx.tenantId,
+      storeId: ctx.storeId,
+      estado: { in: ["EM_ABERTO", "PAGO_PARCIAL"] },
+      entregueEm: null,
+    },
+    include: { pagamentos: true },
+  });
+
+  if (!pedido) {
+    throw new Error(
+      "Pedido não encontrado, já quitado/cancelado ou entrega já registada.",
+    );
+  }
+
+  if (!pedido.total) {
+    throw new Error("Pedido sem total.");
+  }
+
+  const totalPago = pedido.pagamentos.reduce(
+    (acc, p) => acc.add(p.valor),
+    new Prisma.Decimal(0),
+  );
+  const saldo = pedido.total.sub(totalPago);
+  if (saldo.lt(new Prisma.Decimal(0))) {
+    throw new Error("Inconsistência: total pago superior ao pedido.");
+  }
+
+  const saldoAberto = saldo.gt(new Prisma.Decimal("0.005"));
+  if (saldoAberto && !pedido.corretorId) {
+    throw new Error(
+      "Para registar entrega com saldo em aberto, o pedido precisa de um corretor.",
+    );
+  }
+
+  await tx.pedido.update({
+    where: { id: pedido.id },
+    data: {
+      entregueEm: new Date(),
+      entreguePorId: ctx.entreguePorId,
+      ...(saldoAberto ? { modalidade: "CONSIGNADA" } : {}),
+    },
+  });
+
+  if (saldoAberto) {
+    const dup = await tx.movimentoCorretor.findUnique({
+      where: { pedidoId: pedido.id },
+    });
+    if (dup) {
+      throw new Error("Já existe movimento de corretor para este pedido.");
+    }
+    await tx.movimentoCorretor.create({
+      data: {
+        tenantId: ctx.tenantId,
+        corretorId: pedido.corretorId!,
+        pedidoId: pedido.id,
+        valor: saldo,
+      },
+    });
+  }
+}
+
 export async function pdvCreateDraft(input: {
   storeId: string;
   /** Opcional no rascunho; obrigatório antes de finalizar. */
@@ -452,80 +611,11 @@ export async function pdvFinalizarPedido(input: {
 
   try {
     await prisma.$transaction(async (tx) => {
-      const pedido = await tx.pedido.findFirst({
-        where: {
-          id: input.pedidoId,
-          tenantId,
-          storeId: input.storeId,
-          estado: "EM_ANDAMENTO",
-        },
-        include: {
-          itens: true,
-        },
-      });
-
-      if (!pedido) {
-        throw new Error("Pedido não encontrado ou já finalizado.");
-      }
-
-      if (!pedido.clienteId) {
-        throw new Error("Selecione um comprador antes de finalizar a venda.");
-      }
-
-      if (pedido.itens.length === 0) {
-        throw new Error("Inclua pelo menos um item para finalizar.");
-      }
-
-      for (const it of pedido.itens) {
-        const saldo = await tx.estoqueSaldo.findUnique({
-          where: {
-            storeId_produtoVariacaoId: {
-              storeId: input.storeId,
-              produtoVariacaoId: it.produtoVariacaoId,
-            },
-          },
-          select: { quantidade: true },
-        });
-        const disp = saldo?.quantidade ?? 0;
-        if (disp < it.quantidade) {
-          throw new Error(
-            "Saldo insuficiente para um ou mais itens. Ajuste quantidades ou o stock.",
-          );
-        }
-      }
-
-      const linhas = pedido.itens.map((it) => ({
-        storeId: input.storeId,
-        produtoVariacaoId: it.produtoVariacaoId,
-        delta: -it.quantidade,
-        tipo: "VENDA" as const,
-        motivo: `Pedido nº ${pedido.numero} (${pedido.id})`,
-        loteTransferenciaId: null,
-      }));
-
-      await registrarMovimentosEstoqueInTransaction(tx, {
+      await finalizarPedidoInternoTx(tx, {
         tenantId,
+        storeId: input.storeId,
+        pedidoId: input.pedidoId,
         userId,
-        linhas,
-      });
-
-      const total = pedido.itens.reduce(
-        (acc, it) => acc.add(it.precoUnitario.mul(it.quantidade)),
-        new Prisma.Decimal(0),
-      );
-
-      await assertCreditoParaFinalizar(tx, tenantId, input.storeId, pedido.id, {
-        clienteId: pedido.clienteId,
-        corretorId: pedido.corretorId,
-        totalDestePedido: total,
-      });
-
-      await tx.pedido.update({
-        where: { id: pedido.id },
-        data: {
-          estado: "EM_ABERTO",
-          total,
-        },
       });
     });
 
@@ -533,6 +623,51 @@ export async function pdvFinalizarPedido(input: {
     return { ok: true };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Não foi possível finalizar." };
+  }
+}
+
+/**
+ * Finaliza o pedido (stock, EM_ABERTO) e regista entrega na mesma transação — para uso no carrinho do PDV.
+ */
+export async function pdvFinalizarEEntregarPedido(input: {
+  storeId: string;
+  pedidoId: string;
+}): Promise<PdvActionOk | PdvActionErr> {
+  const session = await requireRole(ROLES_ACESSO_VENDAS);
+  const tenantId = session.user.tenantId;
+  const userId = session.user.id;
+  const entreguePorId = session.user.colaboradorId ?? null;
+  try {
+    assertStoreInSession(session, input.storeId);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Sem permissão." };
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      await finalizarPedidoInternoTx(tx, {
+        tenantId,
+        storeId: input.storeId,
+        pedidoId: input.pedidoId,
+        userId,
+      });
+      await registarEntregaFisicaInternoTx(tx, {
+        tenantId,
+        storeId: input.storeId,
+        pedidoId: input.pedidoId,
+        entreguePorId,
+      });
+    });
+
+    revalidateVendas();
+    return { ok: true };
+  } catch (e) {
+    return {
+      error:
+        e instanceof Error
+          ? e.message
+          : "Não foi possível finalizar e registar entrega.",
+    };
   }
 }
 
@@ -554,68 +689,12 @@ export async function pdvEntregarPedido(input: {
 
   try {
     await prisma.$transaction(async (tx) => {
-      const pedido = await tx.pedido.findFirst({
-        where: {
-          id: input.pedidoId,
-          tenantId,
-          storeId: input.storeId,
-          estado: { in: ["EM_ABERTO", "PAGO_PARCIAL"] },
-          entregueEm: null,
-        },
-        include: { pagamentos: true },
+      await registarEntregaFisicaInternoTx(tx, {
+        tenantId,
+        storeId: input.storeId,
+        pedidoId: input.pedidoId,
+        entreguePorId,
       });
-
-      if (!pedido) {
-        throw new Error(
-          "Pedido não encontrado, já quitado/cancelado ou entrega já registada.",
-        );
-      }
-
-      if (!pedido.total) {
-        throw new Error("Pedido sem total.");
-      }
-
-      const totalPago = pedido.pagamentos.reduce(
-        (acc, p) => acc.add(p.valor),
-        new Prisma.Decimal(0),
-      );
-      const saldo = pedido.total.sub(totalPago);
-      if (saldo.lt(new Prisma.Decimal(0))) {
-        throw new Error("Inconsistência: total pago superior ao pedido.");
-      }
-
-      const saldoAberto = saldo.gt(new Prisma.Decimal("0.005"));
-      if (saldoAberto && !pedido.corretorId) {
-        throw new Error(
-          "Para registar entrega com saldo em aberto, o pedido precisa de um corretor.",
-        );
-      }
-
-      await tx.pedido.update({
-        where: { id: pedido.id },
-        data: {
-          entregueEm: new Date(),
-          entreguePorId,
-          ...(saldoAberto ? { modalidade: "CONSIGNADA" } : {}),
-        },
-      });
-
-      if (saldoAberto) {
-        const dup = await tx.movimentoCorretor.findUnique({
-          where: { pedidoId: pedido.id },
-        });
-        if (dup) {
-          throw new Error("Já existe movimento de corretor para este pedido.");
-        }
-        await tx.movimentoCorretor.create({
-          data: {
-            tenantId,
-            corretorId: pedido.corretorId!,
-            pedidoId: pedido.id,
-            valor: saldo,
-          },
-        });
-      }
     });
 
     revalidateVendas();

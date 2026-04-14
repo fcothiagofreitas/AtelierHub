@@ -42,10 +42,20 @@ export function VendasPedidosTable({ pedidos, filterQueryString }: Props) {
   );
 
   const hrefParaPedido = React.useCallback(
-    (p: VendasPedidoRowVm) =>
-      p.estado === "EM_ANDAMENTO"
-        ? buildVendasHref(sp, { pdv: "1", edit: p.id, view: null })
-        : buildVendasHref(sp, { pdv: "1", view: p.id, edit: null }),
+    (p: VendasPedidoRowVm) => {
+      if (p.estado === "EM_ANDAMENTO") {
+        return buildVendasHref(sp, { pdv: "1", edit: p.id, view: null });
+      }
+      if (p.estado === "EM_ABERTO" || p.estado === "PAGO_PARCIAL") {
+        return buildVendasHref(sp, {
+          pdv: "1",
+          view: p.id,
+          edit: null,
+          pagamento: "1",
+        });
+      }
+      return buildVendasHref(sp, { pdv: "1", view: p.id, edit: null });
+    },
     [sp],
   );
 
@@ -66,8 +76,8 @@ export function VendasPedidosTable({ pedidos, filterQueryString }: Props) {
             <th className="px-4 py-3 font-medium">Cliente</th>
             <th className="px-4 py-3 font-medium">Vendedor</th>
             <th className="px-4 py-3 font-medium">Corretor</th>
-            <th className="px-4 py-3 font-medium">Estado</th>
-            <th className="px-4 py-3 font-medium">Modalidade</th>
+            <th className="px-4 py-3 text-left font-medium">Estado</th>
+            <th className="px-4 py-3 text-left font-medium">Modalidade</th>
             <th className="px-4 py-3 text-right font-medium">Total</th>
           </tr>
         </thead>
@@ -100,12 +110,12 @@ export function VendasPedidosTable({ pedidos, filterQueryString }: Props) {
               <td className="px-4 py-3 font-medium">{p.clienteLabel}</td>
               <td className="px-4 py-3">{p.vendedorName}</td>
               <td className="px-4 py-3 text-muted-foreground">{p.corretorName}</td>
-              <td className="px-4 py-3">
+              <td className="px-4 py-3 text-left align-middle">
                 <Badge variant="secondary" className="text-[11px] font-normal">
                   {pedidoEstadoLabels[p.estado]}
                 </Badge>
               </td>
-              <td className="px-4 py-3 text-muted-foreground">
+              <td className="px-4 py-3 text-left text-muted-foreground">
                 {pedidoModalidadeLabels[p.modalidade]}
               </td>
               <td className="px-4 py-3 text-right tabular-nums">

@@ -119,113 +119,106 @@ export function ReceberModal({
     <Dialog open={open} onOpenChange={(v) => !v && !busy && onClose()}>
       <DialogContent
         className={cn(
-          "flex flex-col gap-0 overflow-hidden p-0",
-          "w-[min(520px,calc(100vw-2rem))] max-w-none",
+          "flex max-h-[min(90vh,calc(100dvh-2rem))] flex-col gap-0 overflow-hidden p-0",
+          "w-[min(920px,calc(100vw-2rem))] max-w-none",
         )}
       >
         <DialogHeader className="shrink-0 border-b px-5 py-4 text-left">
           <DialogTitle>Pagamento</DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto">
-          {/* Tabela de formas de pagamento */}
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-muted-foreground">
-                <th className="px-5 py-3 text-left font-medium">Forma de pagamento</th>
-                <th className="px-5 py-3 text-right font-medium">Valor</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {formasPagamentoOrdem.map((forma) => (
-                <tr key={forma}>
-                  <td className="px-5 py-3 text-sm">{formasPagamentoLabels[forma]}</td>
-                  <td className="px-5 py-3">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <span className="shrink-0 text-muted-foreground">R$</span>
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        value={values[forma]}
-                        onChange={(e) => handleSetValue(forma, e.target.value)}
-                        placeholder="0,00"
-                        disabled={busy}
-                        className={cn(
-                          "w-28 rounded-md border bg-muted/40 px-3 py-1.5 text-right text-sm outline-none",
-                          "transition-[box-shadow,border-color] placeholder:text-muted-foreground/50",
-                          "focus:border-ring focus:ring-2 focus:ring-ring/30",
-                          busy && "opacity-50 cursor-not-allowed",
-                        )}
-                      />
-                    </div>
-                  </td>
+        <div className="grid min-h-0 flex-1 grid-cols-1 divide-y lg:grid-cols-2 lg:divide-x lg:divide-y-0">
+          <div className="flex min-h-0 flex-col overflow-y-auto">
+            <p className="shrink-0 px-5 pt-4 pb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              Forma de pagamento
+            </p>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-muted-foreground">
+                  <th className="px-5 py-2 text-left font-medium">Meio</th>
+                  <th className="px-5 py-2 text-right font-medium">Valor</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y">
+                {formasPagamentoOrdem.map((forma) => (
+                  <tr key={forma}>
+                    <td className="px-5 py-2.5 text-sm">{formasPagamentoLabels[forma]}</td>
+                    <td className="px-5 py-2.5">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <span className="shrink-0 text-muted-foreground">R$</span>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={values[forma]}
+                          onChange={(e) => handleSetValue(forma, e.target.value)}
+                          placeholder="0,00"
+                          disabled={busy}
+                          className={cn(
+                            "w-28 rounded-md border bg-muted/40 px-3 py-1.5 text-right text-sm outline-none",
+                            "transition-[box-shadow,border-color] placeholder:text-muted-foreground/50",
+                            "focus:border-ring focus:ring-2 focus:ring-ring/30",
+                            busy && "cursor-not-allowed opacity-50",
+                          )}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {temTroco ? (
+              <div className="mx-5 my-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3">
+                <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                  Troco a devolver: {fmt(troco)}
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  O cliente entregou mais dinheiro do que o saldo em aberto. Devolva o troco.
+                </p>
+              </div>
+            ) : null}
+          </div>
 
-          {/* Aviso de troco */}
-          {temTroco && (
-            <div className="mx-5 my-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3">
-              <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
-                Troco a devolver: {fmt(troco)}
-              </p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                O cliente entregou mais dinheiro do que o saldo em aberto. Devolva o troco.
-              </p>
+          <div className="flex min-h-0 flex-col overflow-y-auto bg-muted/25 lg:max-h-none">
+            <p className="shrink-0 px-5 pt-4 pb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              Resumo da compra
+            </p>
+            <div className="space-y-1.5 px-5 pb-4">
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>Soma dos itens</span>
+                <span className="tabular-nums">{fmt(totalPedido)}</span>
+              </div>
+              {totalJaPago > 0 ? (
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>Já pago</span>
+                  <span className="tabular-nums">− {fmt(totalJaPago)}</span>
+                </div>
+              ) : null}
+              <div className="flex justify-between border-b border-border/60 pb-1.5 text-sm text-muted-foreground">
+                <span>Em aberto (antes deste recebimento)</span>
+                <span className="tabular-nums font-medium text-foreground">
+                  {fmt(Math.max(0, saldo))}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm font-semibold">
+                <span>A receber agora</span>
+                <span className="tabular-nums text-foreground">{fmt(totalRecebendo)}</span>
+              </div>
+              <div className="flex justify-between text-sm font-semibold text-amber-600 dark:text-amber-400">
+                <span>Saldo restante após confirmar</span>
+                <span className="tabular-nums">{fmt(Math.max(0, saldoRestante))}</span>
+              </div>
             </div>
-          )}
+          </div>
         </div>
 
-        {/* Resumo fixo no rodapé */}
-        <div className="shrink-0 space-y-0 border-t bg-muted/30 px-5 py-4">
-          <div className="mb-3 space-y-1.5">
-            <div className="flex justify-between text-sm text-muted-foreground">
-              <span>Soma dos itens</span>
-              <span className="tabular-nums">{fmt(totalPedido)}</span>
-            </div>
-            {totalJaPago > 0 && (
-              <div className="flex justify-between text-sm text-muted-foreground">
-                <span>Já pago</span>
-                <span className="tabular-nums">− {fmt(totalJaPago)}</span>
-              </div>
-            )}
-            <div className="flex justify-between border-b border-border/60 pb-1.5 text-sm text-muted-foreground">
-              <span>Em aberto (antes deste recebimento)</span>
-              <span className="tabular-nums font-medium text-foreground">
-                {fmt(Math.max(0, saldo))}
-              </span>
-            </div>
-            <div className="flex justify-between text-sm font-semibold">
-              <span>A receber agora</span>
-              <span className="tabular-nums text-foreground">
-                {fmt(totalRecebendo)}
-              </span>
-            </div>
-            <div className="flex justify-between text-sm font-semibold text-amber-600 dark:text-amber-400">
-              <span>Saldo restante após confirmar</span>
-              <span className="tabular-nums">{fmt(Math.max(0, saldoRestante))}</span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={onClose}
-              disabled={busy}
-              className="flex-1"
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleConfirm}
-              disabled={busy || !temAlgumValor}
-              className="flex-1"
-            >
-              {busy && <Loader2 className="mr-2 size-4 animate-spin" />}
-              {temTroco ? `Aceitar e dar troco ${fmt(troco)}` : "Confirmar recebimento"}
-            </Button>
-          </div>
+        <div className="flex shrink-0 items-center gap-2 border-t bg-muted/30 px-5 py-4">
+          <Button variant="outline" onClick={onClose} disabled={busy} className="flex-1">
+            Cancelar
+          </Button>
+          <Button onClick={handleConfirm} disabled={busy || !temAlgumValor} className="flex-1">
+            {busy && <Loader2 className="mr-2 size-4 animate-spin" />}
+            {temTroco ? `Aceitar e dar troco ${fmt(troco)}` : "Confirmar recebimento"}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

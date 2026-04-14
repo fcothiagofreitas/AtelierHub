@@ -36,9 +36,9 @@ type Props = {
     valor: number;
   }>;
   actionBusy: boolean;
-  initialReceberOpen: boolean;
-  onInitialReceberConsumed: () => void;
   onCancel: () => void;
+  /** Quando false, a entrega já foi feita no carrinho — não mostrar o botão. */
+  showEntregar?: boolean;
   onEntregar: () => void;
   onPagamentoRegistado: () => void;
 };
@@ -51,14 +51,12 @@ export function PdvVendaFinalizadaPanel({
   totalJaPago,
   pagamentosLinhas,
   actionBusy,
-  initialReceberOpen,
-  onInitialReceberConsumed,
   onCancel,
+  showEntregar = true,
   onEntregar,
   onPagamentoRegistado,
 }: Props) {
   const [receberOpen, setReceberOpen] = React.useState(false);
-  const initialReceberConsumido = React.useRef(false);
   const moneyFmt = React.useMemo(
     () =>
       new Intl.NumberFormat("pt-BR", {
@@ -70,21 +68,15 @@ export function PdvVendaFinalizadaPanel({
 
   const saldoAberto = Math.max(0, totalPedido - totalJaPago);
 
-  React.useEffect(() => {
-    if (!initialReceberOpen || initialReceberConsumido.current) return;
-    initialReceberConsumido.current = true;
-    setReceberOpen(true);
-    onInitialReceberConsumed();
-  }, [initialReceberOpen, onInitialReceberConsumed]);
-
   return (
     <>
       <div className="shrink-0 border-b px-4 py-3 sm:px-5">
         <DialogHeader className="text-left">
           <DialogTitle>Venda finalizada</DialogTitle>
           <DialogDescription>
-            Stock actualizado. Confirme o recebimento ou registe entrega; pode
-            cancelar para fechar e cobrar depois.
+            Stock actualizado. Confirme o recebimento
+            {showEntregar ? " ou registe entrega" : ""}; pode cancelar para fechar
+            e cobrar depois.
           </DialogDescription>
         </DialogHeader>
       </div>
@@ -168,15 +160,17 @@ export function PdvVendaFinalizadaPanel({
             Cancelar
           </Button>
           <div className="flex w-full flex-wrap items-stretch justify-end gap-2 sm:w-auto sm:items-center">
-            <Button
-              type="button"
-              variant="outline"
-              className="min-h-10 touch-manipulation"
-              disabled={actionBusy}
-              onClick={onEntregar}
-            >
-              Entregar
-            </Button>
+            {showEntregar ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-10 touch-manipulation"
+                disabled={actionBusy}
+                onClick={onEntregar}
+              >
+                Entregar
+              </Button>
+            ) : null}
             <Button
               type="button"
               className="min-h-10 touch-manipulation"

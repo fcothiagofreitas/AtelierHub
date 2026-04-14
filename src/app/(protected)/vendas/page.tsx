@@ -10,7 +10,6 @@ import { clienteNomeCurto } from "@/modules/vendas/lib/cliente-nome";
 import {
   getVendasFilterLists,
   listPedidosForStore,
-  listPedidosRascunhoForStore,
   parseVendasSearchParams,
 } from "@/modules/vendas/vendas-queries";
 import { VendasFiltersForm } from "@/modules/vendas/components/vendas-filters-form";
@@ -38,11 +37,10 @@ export default async function VendasPage({ searchParams }: Props) {
 
   const hasCustomRange = Boolean(filters.from?.trim()) || Boolean(filters.to?.trim());
 
-  const [pedidos, filterLists, pdvOpts, pedidosRascunho] = await Promise.all([
+  const [pedidos, filterLists, pdvOpts] = await Promise.all([
     listPedidosForStore(activeStore.tenantId, activeStore.id, filters),
     getVendasFilterLists(activeStore.tenantId, activeStore.id),
     getPdvLojaOptions(activeStore.tenantId, activeStore.id),
-    listPedidosRascunhoForStore(activeStore.tenantId, activeStore.id),
   ]);
 
   const clienteOptions = filterLists.clientes.map((c) => ({
@@ -91,42 +89,6 @@ export default async function VendasPage({ searchParams }: Props) {
           Nova venda
         </Link>
       </div>
-
-      {pedidosRascunho.length > 0 ? (
-        <div
-          className="rounded-lg border border-border bg-muted/20 px-4 py-3"
-          role="region"
-          aria-label="Rascunhos em andamento"
-        >
-          <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-            Rascunhos em andamento
-          </p>
-          <ul className="mt-2 flex flex-wrap gap-2">
-            {pedidosRascunho.map((r) => (
-              <li key={r.id}>
-                <Link
-                  href={buildVendasHref(sp, {
-                    pdv: "1",
-                    edit: r.id,
-                    view: null,
-                  })}
-                  className={cn(
-                    buttonVariants({ variant: "outline", size: "sm" }),
-                    "h-auto min-h-9 max-w-full flex-col items-start gap-0 py-1.5 text-left font-normal sm:inline-flex sm:max-w-none sm:flex-row sm:items-center sm:gap-2 sm:py-2",
-                  )}
-                >
-                  <span className="font-mono text-xs font-medium tabular-nums">
-                    nº {r.numero}
-                  </span>
-                  <span className="line-clamp-1 text-xs text-muted-foreground">
-                    {r.clienteLabel}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
 
       <Suspense fallback={null}>
         <VendasPdv

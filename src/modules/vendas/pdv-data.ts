@@ -9,6 +9,8 @@ export async function getPdvLojaOptions(tenantId: string, storeId: string) {
         storeId,
         isActive: true,
         isBlocked: false,
+        /** Evita duplicar no PDV: o PF ligado ao corretor aparece só como «corretor». */
+        corretorId: null,
       },
       select: {
         id: true,

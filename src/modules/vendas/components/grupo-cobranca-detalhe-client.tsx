@@ -94,7 +94,7 @@ export function GrupoCobrancaDetalheClient({
                 </td>
                 <td className="px-4 py-3 text-right">
                   <Link
-                    href={`/vendas?pdv=1&view=${encodeURIComponent(it.pedidoId)}`}
+                    href={`/vendas?pdv=1&view=${encodeURIComponent(it.pedidoId)}&pagamento=1`}
                     className={cn(
                       buttonVariants({ variant: "ghost", size: "sm" }),
                       "text-primary",

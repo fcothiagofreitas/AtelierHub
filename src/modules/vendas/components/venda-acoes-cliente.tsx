@@ -30,10 +30,6 @@ type Props = {
    * em vez de abrir o modal — o pai pode finalizar o pedido e abrir o modal no passo seguinte.
    */
   onReceberPreparar?: () => void | Promise<void>;
-  /** Abre o modal de recebimento uma vez ao montar (ex.: após finalizar vindo do carrinho). */
-  initialReceberOpen?: boolean;
-  /** Chamado depois de consumir `initialReceberOpen` (abrir o modal). */
-  onInitialReceberConsumed?: () => void;
   /** Entrega no balcão / retirada — substitui o toast por omissão. */
   onEntregar?: () => void;
   /** Quando false, oculta Entregar (só em ecrãs que não usam o trio completo). */
@@ -58,8 +54,6 @@ export function VendaAcoesCliente({
   receberDisabled = false,
   receberDisabledTitle,
   onReceberPreparar,
-  initialReceberOpen = false,
-  onInitialReceberConsumed,
   onEntregar,
   showEntregar = true,
   entregarDisabled = false,
@@ -67,14 +61,6 @@ export function VendaAcoesCliente({
   onPagamentoRegistado,
 }: Props) {
   const [ReceberOpen, setReceberOpen] = React.useState(false);
-  const initialConsumido = React.useRef(false);
-
-  React.useEffect(() => {
-    if (!initialReceberOpen || initialConsumido.current) return;
-    initialConsumido.current = true;
-    setReceberOpen(true);
-    onInitialReceberConsumed?.();
-  }, [initialReceberOpen, onInitialReceberConsumed]);
 
   const handleEntregar = () => {
     if (entregarDisabled) return;
