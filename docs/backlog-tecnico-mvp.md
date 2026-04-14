@@ -99,6 +99,10 @@ Deixar a base técnica pronta para iniciar o MVP com segurança.
 - Sessão autenticada funciona
 - CI roda com sucesso
 
+### Status (implementação)
+
+MVP **Sprint 1** entregue no código: projeto Next.js com TypeScript, Tailwind, shadcn/ui, Prisma e PostgreSQL; auth por e-mail e senha; layout autenticado e fluxo de login; migrations iniciais (`Tenant`, `Store`, `User`, vínculos); CI em `.github/workflows/ci.yml` (lint, typecheck, build).
+
 ## Sprint 2 — Identidade, perfis e contexto
 
 ### Objetivo
@@ -129,6 +133,10 @@ Fazer o sistema entender marca, loja, usuário e perfil.
 - Usuário com 1 loja entra direto
 - Usuário com várias lojas escolhe contexto
 - Perfis acessam apenas o que podem
+
+### Status (implementação)
+
+MVP **Sprint 2** entregue no código: enum `UserRole`, vínculo de utilizador a tenant e a uma ou mais lojas (`ColaboradorStore`); sessão NextAuth, `requireRole` e rotas protegidas; seleção de loja ativa e contexto em `src/lib/session.ts` (header/shell); redirecionamentos conforme número de lojas.
 
 ## Sprint 3 — Área administrativa e colaboradores
 
@@ -272,6 +280,10 @@ Preparar o catálogo para estoque e venda.
 - Administrativo cria produto com variações
 - Produto recebe código `EAN-13`
 - Produto está pronto para receber estoque
+
+### Status (implementação)
+
+MVP **Sprint 6** entregue no código: CRUD de categorias, subcategorias, tipos, coleções, cores e grades/tamanhos; modelo `Produto` e `ProdutoVariacao` com geração de `EAN-13`, dados fiscais e código externo; UI sob `/admin/catalogo` e lista/formulário em `/admin/catalogo/produtos`.
 
 ## Sprint 7 — Estoque
 
@@ -508,6 +520,10 @@ Entregar visão consolidada para o perfil administrativo.
 
 - Administrativo enxerga a marca de forma consolidada
 - Lojas seguem sem visão gerencial cruzada
+
+### Status (implementação)
+
+MVP **Sprint 14** entregue no código: snapshot `getAdminConsolidadoSnapshot` em `src/modules/admin/admin-consolidado-queries.ts` (vendas por período e valores quitados, totais de estoque e top lojas por peças, pendências: pedidos em andamento / pagamento aberto, balanços em rascunho, contagem de grupos de cobrança). **UI:** `/admin` com secções Vendas da marca, Estoque da marca, Pendências e alertas (destaque quando há itens), atalhos para vendas, clientes, contas a receber, trocas e comissões; acesso restrito a `ADMIN_DA_MARCA` / `ADMINISTRATIVO`.
 
 ## Sprint 15 — Staging, produção e go-live
 
