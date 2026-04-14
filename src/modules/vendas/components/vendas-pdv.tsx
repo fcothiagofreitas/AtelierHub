@@ -89,14 +89,12 @@ function normLabel(s: string): string {
 function snapshotPedidoCart(
   clienteId: string,
   corretorId: string,
-  modalidade: string,
   vendedorId: string,
   lines: CartLine[],
 ): string {
   return JSON.stringify({
     clienteId,
     corretorId,
-    modalidade,
     vendedorId,
     lines: lines
       .map((L) => ({
@@ -182,9 +180,6 @@ function PdvModalInner({
     return vendedores[0]?.id ?? "";
   });
   const [corretorId, setCorretorId] = React.useState("");
-  const [modalidade, setModalidade] = React.useState<"DIRETA" | "CONSIGNADA">(
-    "DIRETA",
-  );
   const [lines, setLines] = React.useState<CartLine[]>([]);
   /** Alinhado ao último `pdvSavePedido` com sucesso ou carga do servidor; comparação para rascunho sujo. */
   const [savedCartSnapshot, setSavedCartSnapshot] = React.useState("");
@@ -240,7 +235,6 @@ function PdvModalInner({
         : (vendedores[0]?.id ?? ""),
     );
     setCorretorId("");
-    setModalidade("DIRETA");
     setLines([]);
     setQ("");
     setHits([]);
@@ -316,7 +310,6 @@ function PdvModalInner({
       setClienteNomeResolvido(d.clienteNomeExibicao);
       setClienteQuery(d.clienteNomeExibicao);
       setCorretorId(d.corretorId ?? "");
-      setModalidade(d.modalidade);
       setVendedorId(d.vendedorId);
       setLines(
         d.lines.map((L) => ({
@@ -332,7 +325,6 @@ function PdvModalInner({
         snapshotPedidoCart(
           d.clienteId ?? "",
           d.corretorId ?? "",
-          d.modalidade,
           d.vendedorId,
           d.lines.map((L) => ({
             key: "",
@@ -379,7 +371,6 @@ function PdvModalInner({
         setClienteNomeResolvido(d.clienteNomeExibicao);
         setClienteQuery(d.clienteNomeExibicao);
         setCorretorId(d.corretorId ?? "");
-        setModalidade(d.modalidade);
         setVendedorId(d.vendedorId);
         setLines(
           d.lines.map((L) => ({
@@ -395,7 +386,6 @@ function PdvModalInner({
           snapshotPedidoCart(
             d.clienteId ?? "",
             d.corretorId ?? "",
-            d.modalidade,
             d.vendedorId,
             d.lines.map((L) => ({
               key: "",
@@ -570,7 +560,6 @@ function PdvModalInner({
       clienteId: clienteId.trim() ? clienteId : null,
       vendedorId,
       corretorId: corretorId || null,
-      modalidade,
       itens: lines.map((L) => ({
         produtoVariacaoId: L.produtoVariacaoId,
         quantidade: L.quantidade,
@@ -588,7 +577,6 @@ function PdvModalInner({
     clienteId,
     vendedorId,
     corretorId,
-    modalidade,
     lines,
   ]);
 
@@ -682,7 +670,6 @@ function PdvModalInner({
       clienteId: clienteId.trim() ? clienteId : null,
       vendedorId,
       corretorId: corretorId || null,
-      modalidade,
     });
     if (!("ok" in r) || !r.ok) {
       toast.error("error" in r ? r.error : "Não foi possível criar o rascunho.");
@@ -691,7 +678,7 @@ function PdvModalInner({
     pedidoIdRef.current = r.pedidoId;
     setPedidoId(r.pedidoId);
     return true;
-  }, [storeId, clienteId, vendedorId, corretorId, modalidade]);
+  }, [storeId, clienteId, vendedorId, corretorId]);
 
   const pushLine = React.useCallback((row: PdvSearchRow) => {
     const price = row.precoSugerido ?? "0";
@@ -787,13 +774,7 @@ function PdvModalInner({
         const ok = await persistPedido();
         if (ok) {
           setSavedCartSnapshot(
-            snapshotPedidoCart(
-              clienteId,
-              corretorId,
-              modalidade,
-              vendedorId,
-              lines,
-            ),
+            snapshotPedidoCart(clienteId, corretorId, vendedorId, lines),
           );
           toast.success("Rascunho guardado na loja.");
         }
@@ -806,7 +787,6 @@ function PdvModalInner({
     persistPedido,
     clienteId,
     corretorId,
-    modalidade,
     vendedorId,
     lines,
   ]);
@@ -914,13 +894,8 @@ function PdvModalInner({
   const cartDraftIsDirty = React.useMemo(() => {
     if (!pedidoId || pdvStep !== "cart" || showResumoDetalhe) return false;
     return (
-      snapshotPedidoCart(
-        clienteId,
-        corretorId,
-        modalidade,
-        vendedorId,
-        lines,
-      ) !== savedCartSnapshot
+      snapshotPedidoCart(clienteId, corretorId, vendedorId, lines) !==
+      savedCartSnapshot
     );
   }, [
     pedidoId,
@@ -928,7 +903,6 @@ function PdvModalInner({
     showResumoDetalhe,
     clienteId,
     corretorId,
-    modalidade,
     vendedorId,
     lines,
     savedCartSnapshot,
@@ -957,9 +931,10 @@ function PdvModalInner({
 
   const handleEntregarPosFinalizar = React.useCallback(() => {
     if (!pedidoFinalizadoId) return;
-    if (modalidade !== "CONSIGNADA" || !corretorId.trim()) {
+    const saldoAberto = totalFinalizado > 0.005;
+    if (saldoAberto && !corretorId.trim()) {
       toast.message(
-        "Entrega com dívida do corretor: no rascunho, escolha modalidade Consignada e o corretor antes de Receber.",
+        "Para entregar com saldo em aberto, escolha o corretor em Equipa de venda antes de Receber.",
       );
       return;
     }
@@ -990,7 +965,7 @@ function PdvModalInner({
     })();
   }, [
     pedidoFinalizadoId,
-    modalidade,
+    totalFinalizado,
     corretorId,
     storeId,
     onClose,
@@ -1080,9 +1055,9 @@ function PdvModalInner({
                   onInitialReceberConsumed={() => setInitialReceberOpen(false)}
                   showEntregar
                   entregarDisabled={
-                    modalidade !== "CONSIGNADA" || !corretorId.trim()
+                    totalFinalizado > 0.005 && !corretorId.trim()
                   }
-                  entregarDisabledTitle="Disponível em venda consignada com corretor selecionado."
+                  entregarDisabledTitle="Com saldo em aberto, indique o corretor em Equipa de venda."
                   onEntregar={handleEntregarPosFinalizar}
                   onPagamentoRegistado={() => {
                     onClose();
@@ -1141,16 +1116,26 @@ function PdvModalInner({
                     0,
                   )}
                   showEntregar
-                  entregarDisabled={
-                    !(
-                      viewDetalhe.pedido.modalidade === "CONSIGNADA" &&
-                      viewDetalhe.pedido.corretor != null &&
-                      !viewDetalhe.pedido.entregueEm &&
-                      (viewDetalhe.pedido.estado === "EM_ABERTO" ||
-                        viewDetalhe.pedido.estado === "PAGO_PARCIAL")
-                    )
-                  }
-                  entregarDisabledTitle="Disponível para consignado com corretor, com entrega por registar."
+                  entregarDisabled={(() => {
+                    const p = viewDetalhe.pedido;
+                    if (p.entregueEm) return true;
+                    if (
+                      p.estado !== "EM_ABERTO" &&
+                      p.estado !== "PAGO_PARCIAL"
+                    ) {
+                      return true;
+                    }
+                    const total =
+                      p.total ??
+                      p.itens.reduce(
+                        (a, it) => a + it.quantidade * it.precoUnitario,
+                        0,
+                      );
+                    const pago = p.pagamentos.reduce((a, x) => a + x.valor, 0);
+                    const saldoAberto = total - pago > 0.004;
+                    return saldoAberto && !p.corretor;
+                  })()}
+                  entregarDisabledTitle="Saldo em aberto exige corretor no pedido; se já estiver pago, pode registar entrega."
                   onEntregar={handleEntregarVerPedido}
                   showReceber
                   receberDisabled={
@@ -1199,7 +1184,7 @@ function PdvModalInner({
               <DialogDescription>
                 {readOnly && lockUi
                   ? "Apenas consulta — sem alterações ao carrinho."
-                  : "Escolha cliente e, se precisar, corretor. Salvar para continuar mais tarde; Finalizar venda baixa o stock e abre o pagamento. Com consignado, use Entregar para registar retirada e dívida do corretor."}
+                  : "Escolha cliente e, se precisar, corretor. Salvar para continuar mais tarde; Finalizar venda baixa o stock e abre o pagamento. Entregar com saldo em aberto regista consignado e dívida do corretor."}
               </DialogDescription>
             </DialogHeader>
           )}
@@ -1658,27 +1643,6 @@ function PdvModalInner({
                       </option>
                     ))}
                   </select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Modalidade</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {(["DIRETA", "CONSIGNADA"] as const).map((m) => (
-                      <button
-                        key={m}
-                        type="button"
-                        disabled={lockUi}
-                        onClick={() => setModalidade(m)}
-                        className={cn(
-                          "min-h-10 rounded-md border px-3 py-2 text-xs font-medium transition-colors touch-manipulation",
-                          modalidade === m
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-border bg-card hover:bg-muted/60",
-                        )}
-                      >
-                        {pedidoModalidadeLabels[m]}
-                      </button>
-                    ))}
-                  </div>
                 </div>
               </section>
             </div>

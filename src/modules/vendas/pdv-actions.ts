@@ -204,7 +204,7 @@ function saldoEmAbertoPedido(p: {
 }
 
 /**
- * Valida limite de crédito do cliente e, em consignado, do corretor.
+ * Valida limite de crédito do cliente e do corretor (exposição em pedidos em aberto).
  * `totalDestePedido` = total das linhas a passar a em aberto.
  */
 async function assertCreditoParaFinalizar(
@@ -215,7 +215,6 @@ async function assertCreditoParaFinalizar(
   input: {
     clienteId: string | null;
     corretorId: string | null;
-    modalidade: "DIRETA" | "CONSIGNADA";
     totalDestePedido: Prisma.Decimal;
   },
 ) {
@@ -254,7 +253,7 @@ async function assertCreditoParaFinalizar(
     }
   }
 
-  if (input.modalidade === "CONSIGNADA" && input.corretorId) {
+  if (input.corretorId) {
     const corretor = await tx.corretor.findFirst({
       where: { id: input.corretorId, tenantId },
       select: { isBlocked: true, creditLimitConsignado: true },
@@ -269,7 +268,6 @@ async function assertCreditoParaFinalizar(
           tenantId,
           storeId,
           corretorId: input.corretorId,
-          modalidade: "CONSIGNADA",
           id: { not: pedidoId },
           estado: { in: ["EM_ABERTO", "PAGO_PARCIAL"] },
         },
@@ -299,7 +297,6 @@ export async function pdvCreateDraft(input: {
   clienteId: string | null;
   vendedorId: string;
   corretorId: string | null;
-  modalidade: "DIRETA" | "CONSIGNADA";
 }): Promise<PdvCreateResult> {
   const session = await requireRole(ROLES_ACESSO_VENDAS);
   const tenantId = session.user.tenantId;
@@ -341,7 +338,7 @@ export async function pdvCreateDraft(input: {
           vendedorId: input.vendedorId,
           corretorId: input.corretorId || null,
           estado: "EM_ANDAMENTO",
-          modalidade: input.modalidade,
+          modalidade: "DIRETA",
           total: null,
         },
         select: { id: true },
@@ -361,7 +358,6 @@ export async function pdvSavePedido(input: {
   clienteId: string | null;
   vendedorId: string;
   corretorId: string | null;
-  modalidade: "DIRETA" | "CONSIGNADA";
   itens: { produtoVariacaoId: string; quantidade: number; precoUnitario: string }[];
 }): Promise<PdvActionOk | PdvActionErr> {
   const session = await requireRole(ROLES_ACESSO_VENDAS);
@@ -428,7 +424,7 @@ export async function pdvSavePedido(input: {
           clienteId,
           vendedorId: input.vendedorId,
           corretorId: input.corretorId || null,
-          modalidade: input.modalidade,
+          modalidade: "DIRETA",
           total,
         },
       });
@@ -521,7 +517,6 @@ export async function pdvFinalizarPedido(input: {
       await assertCreditoParaFinalizar(tx, tenantId, input.storeId, pedido.id, {
         clienteId: pedido.clienteId,
         corretorId: pedido.corretorId,
-        modalidade: pedido.modalidade,
         totalDestePedido: total,
       });
 
@@ -542,8 +537,7 @@ export async function pdvFinalizarPedido(input: {
 }
 
 /**
- * Regista entrega física em pedido consignado: bloqueia nova edição do pedido e,
- * se houver saldo em aberto, gera dívida do corretor.
+ * Regista entrega física: com saldo em aberto, passa a consignado e gera dívida do corretor.
  */
 export async function pdvEntregarPedido(input: {
   storeId: string;
@@ -577,14 +571,6 @@ export async function pdvEntregarPedido(input: {
         );
       }
 
-      if (pedido.modalidade !== "CONSIGNADA") {
-        throw new Error(
-          "Registo de entrega com dívida do corretor aplica-se à modalidade consignada.",
-        );
-      }
-      if (!pedido.corretorId) {
-        throw new Error("O pedido precisa de corretor para entrega consignada.");
-      }
       if (!pedido.total) {
         throw new Error("Pedido sem total.");
       }
@@ -598,15 +584,23 @@ export async function pdvEntregarPedido(input: {
         throw new Error("Inconsistência: total pago superior ao pedido.");
       }
 
+      const saldoAberto = saldo.gt(new Prisma.Decimal("0.005"));
+      if (saldoAberto && !pedido.corretorId) {
+        throw new Error(
+          "Para registar entrega com saldo em aberto, o pedido precisa de um corretor.",
+        );
+      }
+
       await tx.pedido.update({
         where: { id: pedido.id },
         data: {
           entregueEm: new Date(),
           entreguePorId,
+          ...(saldoAberto ? { modalidade: "CONSIGNADA" } : {}),
         },
       });
 
-      if (saldo.gt(new Prisma.Decimal("0.005"))) {
+      if (saldoAberto) {
         const dup = await tx.movimentoCorretor.findUnique({
           where: { pedidoId: pedido.id },
         });
@@ -616,7 +610,7 @@ export async function pdvEntregarPedido(input: {
         await tx.movimentoCorretor.create({
           data: {
             tenantId,
-            corretorId: pedido.corretorId,
+            corretorId: pedido.corretorId!,
             pedidoId: pedido.id,
             valor: saldo,
           },
@@ -639,7 +633,6 @@ export type PdvPedidoCarregado = {
   clienteNomeExibicao: string;
   vendedorId: string;
   corretorId: string | null;
-  modalidade: "DIRETA" | "CONSIGNADA";
   lines: {
     produtoVariacaoId: string;
     label: string;
@@ -730,7 +723,6 @@ export async function pdvGetPedidoParaPdv(input: {
       clienteNomeExibicao,
       vendedorId: pedido.vendedorId,
       corretorId: pedido.corretorId,
-      modalidade: pedido.modalidade,
       lines,
     },
   };
