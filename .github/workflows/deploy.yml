@@ -1,0 +1,69 @@
+# Deploy automático na VPS (SSH), alinhado ao fluxo do erpcostura.
+#
+# Segredos em GitHub → Settings → Secrets → Actions:
+#   VPS_HOST     (ex.: 187.77.246.162)
+#   VPS_USER     (ex.: root ou deploy)
+#   VPS_SSH_KEY  (chave privada PEM com acesso SSH à VPS)
+#   VPS_PORT     (ex.: 22)
+#
+# Na VPS: clone em /var/www/atelierhub, .env configurado, git remote para este repo.
+
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - rewrite
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to VPS
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          command_timeout: 20m
+          script: |
+            set -e
+
+            PROJECT_DIR="/var/www/atelierhub"
+            cd "$PROJECT_DIR"
+
+            echo "==> Pulling rewrite..."
+            git fetch origin
+            git checkout rewrite
+            git pull origin rewrite
+
+            echo "==> Installing dependencies..."
+            npm ci
+
+            echo "==> Prisma migrate + generate..."
+            npx prisma migrate deploy
+
+            echo "==> Build Next.js..."
+            npm run build
+
+            echo "==> PM2..."
+            if pm2 describe atelierhub > /dev/null 2>&1; then
+              pm2 restart atelierhub --update-env
+            else
+              pm2 start ecosystem.config.cjs
+            fi
+            pm2 save
+
+            echo "==> Deploy completed."
