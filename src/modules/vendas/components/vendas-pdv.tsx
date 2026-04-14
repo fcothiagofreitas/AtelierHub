@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * PDV: um único Dialog em `/vendas?pdv=1`. Query `edit=<pedidoId>` = continuar rascunho;
+ * `view=<pedidoId>` = ver pedido (read-only). Se `edit` e `view` vierem juntos, **edit ganha**.
+ */
 import * as React from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -26,15 +30,18 @@ import {
   pdvEntregarPedido,
   pdvFinalizarPedido,
   pdvGetPedidoParaPdv,
+  pdvGetResumoPagamentoPedido,
   pdvResolverEan,
   pdvSavePedido,
   pdvSearchVariacoes,
   type PdvSearchRow,
 } from "@/modules/vendas/pdv-actions";
 import { pedidoEstadoLabels, pedidoModalidadeLabels } from "@/modules/vendas/lib/labels";
+import { clienteNomeCurto } from "@/modules/vendas/lib/cliente-nome";
 import { buildVendasHref } from "@/modules/vendas/lib/build-href";
-import { PedidoResumoLeitura } from "@/modules/vendas/components/pedido-resumo-leitura";
+import { PdvVendaFinalizadaPanel } from "@/modules/vendas/components/pdv-venda-finalizada-panel";
 import { VendaAcoesCliente } from "@/modules/vendas/components/venda-acoes-cliente";
+import type { FormaPagamento } from "@prisma/client";
 import {
   fetchPedidoParaVerModal,
   type PedidoVerPayload,
@@ -214,6 +221,12 @@ function PdvModalInner({
   const [pedidoFinalizadoId, setPedidoFinalizadoId] = React.useState<string | null>(null);
   /** Abre o modal Receber uma vez após finalizar (evita segundo clique). */
   const [initialReceberOpen, setInitialReceberOpen] = React.useState(false);
+  /** Totais e pagamentos após finalizar (ecrã «Venda finalizada»). */
+  const [finalizaResumo, setFinalizaResumo] = React.useState<{
+    totalPedido: number;
+    totalPago: number;
+    pagamentos: Array<{ id: string; forma: FormaPagamento; valor: number }>;
+  } | null>(null);
 
   /** Pedido finalizado / não-rascunho: UI só leitura (resumo). */
   const [viewDetalhe, setViewDetalhe] = React.useState<{
@@ -247,6 +260,7 @@ function PdvModalInner({
     setTotalFinalizado(0);
     setPedidoFinalizadoId(null);
     setInitialReceberOpen(false);
+    setFinalizaResumo(null);
     setViewDetalhe(null);
     setViewLoading(false);
     setSavedCartSnapshot("");
@@ -408,9 +422,40 @@ function PdvModalInner({
         setViewLoading(false);
         return;
       }
-      pedidoIdRef.current = null;
-      setPedidoId(null);
-      setLines([]);
+      const p = detail.pedido;
+      pedidoIdRef.current = p.id;
+      setPedidoId(p.id);
+      setClienteId(p.cliente?.id ?? "");
+      const nomeCli = p.cliente ? clienteNomeCurto(p.cliente) : "";
+      setClienteNomeResolvido(nomeCli);
+      setClienteQuery(nomeCli);
+      setVendedorId(p.vendedor.id);
+      setCorretorId(p.corretor?.id ?? "");
+      setLines(
+        p.itens.map((it) => ({
+          key: crypto.randomUUID(),
+          produtoVariacaoId: it.produtoVariacaoId,
+          label: `${it.produtoVariacao.produto.nome} — ${it.produtoVariacao.nome}`,
+          quantidade: it.quantidade,
+          precoUnitario: it.precoUnitario.toFixed(2),
+          saldoRef: 0,
+        })),
+      );
+      setSavedCartSnapshot(
+        snapshotPedidoCart(
+          p.cliente?.id ?? "",
+          p.corretor?.id ?? "",
+          p.vendedor.id,
+          p.itens.map((it) => ({
+            key: "",
+            produtoVariacaoId: it.produtoVariacaoId,
+            label: "",
+            quantidade: it.quantidade,
+            precoUnitario: it.precoUnitario.toFixed(2),
+            saldoRef: 0,
+          })),
+        ),
+      );
       setViewDetalhe({
         storeName: detail.storeName,
         pedido: detail.pedido,
@@ -777,6 +822,8 @@ function PdvModalInner({
             snapshotPedidoCart(clienteId, corretorId, vendedorId, lines),
           );
           toast.success("Rascunho guardado na loja.");
+          onClose();
+          router.refresh();
         }
       } finally {
         setActionBusy(false);
@@ -789,6 +836,8 @@ function PdvModalInner({
     corretorId,
     vendedorId,
     lines,
+    onClose,
+    router,
   ]);
 
   const executarFinalizacaoEPassarPagamento =
@@ -814,7 +863,21 @@ function PdvModalInner({
           toast.error(r.error);
           return false;
         }
+        const sum = await pdvGetResumoPagamentoPedido({ storeId, pedidoId });
         const total = cartTotal(lines);
+        if ("ok" in sum && sum.ok) {
+          setFinalizaResumo({
+            totalPedido: sum.totalPedido,
+            totalPago: sum.totalPago,
+            pagamentos: sum.pagamentos,
+          });
+        } else {
+          setFinalizaResumo({
+            totalPedido: total,
+            totalPago: 0,
+            pagamentos: [],
+          });
+        }
         setTotalFinalizado(total);
         setPedidoFinalizadoId(pedidoId);
         setInitialReceberOpen(true);
@@ -859,19 +922,13 @@ function PdvModalInner({
     queryTrim.length > 0 &&
     linhasClienteFiltradas.length === 0;
 
-  const moneyFmt = new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  });
-
-  const lockUi =
-    readOnly && !viewDetalhe && Boolean(pedidoId) && !viewLoading;
+  /** Modo `view`: mesmo layout que edit, sem edição (ver query no topo do ficheiro). */
+  const lockUi = readOnly && !viewLoading && Boolean(viewPedidoId);
   /** Só bloquear edição do comprador em modo leitura forçada (não por ter rascunho). */
   const clienteBloqueado = lockUi && Boolean(pedidoId && clienteId.trim());
   const showResumoDetalhe = Boolean(viewDetalhe);
   const showCartGrid =
-    !readOnly ||
-    (readOnly && !viewDetalhe && Boolean(pedidoId) && !viewLoading);
+    !readOnly || (readOnly && Boolean(viewPedidoId) && !viewLoading);
   const showViewLoadError =
     readOnly &&
     !viewDetalhe &&
@@ -892,12 +949,14 @@ function PdvModalInner({
         : "Rascunho · em andamento";
 
   const cartDraftIsDirty = React.useMemo(() => {
+    if (readOnly) return false;
     if (!pedidoId || pdvStep !== "cart" || showResumoDetalhe) return false;
     return (
       snapshotPedidoCart(clienteId, corretorId, vendedorId, lines) !==
       savedCartSnapshot
     );
   }, [
+    readOnly,
     pedidoId,
     pdvStep,
     showResumoDetalhe,
@@ -931,13 +990,6 @@ function PdvModalInner({
 
   const handleEntregarPosFinalizar = React.useCallback(() => {
     if (!pedidoFinalizadoId) return;
-    const saldoAberto = totalFinalizado > 0.005;
-    if (saldoAberto && !corretorId.trim()) {
-      toast.message(
-        "Para entregar com saldo em aberto, escolha o corretor em Equipa de venda antes de Receber.",
-      );
-      return;
-    }
     void (async () => {
       if (
         !window.confirm(
@@ -963,14 +1015,7 @@ function PdvModalInner({
         setActionBusy(false);
       }
     })();
-  }, [
-    pedidoFinalizadoId,
-    totalFinalizado,
-    corretorId,
-    storeId,
-    onClose,
-    router,
-  ]);
+  }, [pedidoFinalizadoId, storeId, onClose, router]);
 
   const handleEntregarVerPedido = React.useCallback(() => {
     if (!viewDetalhe) return;
@@ -1017,56 +1062,40 @@ function PdvModalInner({
         )}
       >
         {pdvStep === "pagamento" && pedidoFinalizadoId ? (
-          <>
-            <div className="shrink-0 border-b px-4 py-3 sm:px-5">
-              <DialogHeader className="text-left">
-                <DialogTitle>Venda finalizada</DialogTitle>
-                <DialogDescription>
-                  Stock actualizado. O recebimento abre em seguida; pode também
-                  usar Em aberto para fechar e cobrar depois.
-                </DialogDescription>
-              </DialogHeader>
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
-              <div className="rounded-lg border bg-muted/30 px-4 py-3 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Total da venda</span>
-                  <span className="text-base font-semibold tabular-nums">
-                    {moneyFmt.format(totalFinalizado)}
-                  </span>
-                </div>
-                <div className="mt-1 flex items-center justify-between">
-                  <span className="font-medium text-amber-500">Saldo em aberto</span>
-                  <span className="font-semibold tabular-nums text-amber-500">
-                    {moneyFmt.format(totalFinalizado)}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <DialogFooter className="mx-0 mb-0 shrink-0 border-t bg-muted/30 px-5 py-4 sm:px-6">
-              <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:gap-3">
-                <VendaAcoesCliente
-                  storeId={storeId}
-                  pedidoId={pedidoFinalizadoId}
-                  totalPedido={totalFinalizado}
-                  totalJaPago={0}
-                  onSalvar={salvarEmAberto}
-                  initialReceberOpen={initialReceberOpen}
-                  onInitialReceberConsumed={() => setInitialReceberOpen(false)}
-                  showEntregar
-                  entregarDisabled={
-                    totalFinalizado > 0.005 && !corretorId.trim()
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <PdvVendaFinalizadaPanel
+              storeId={storeId}
+              pedidoId={pedidoFinalizadoId}
+              lines={lines}
+              totalPedido={
+                finalizaResumo?.totalPedido ?? totalFinalizado
+              }
+              totalJaPago={finalizaResumo?.totalPago ?? 0}
+              pagamentosLinhas={finalizaResumo?.pagamentos ?? []}
+              actionBusy={actionBusy}
+              initialReceberOpen={initialReceberOpen}
+              onInitialReceberConsumed={() => setInitialReceberOpen(false)}
+              onCancel={salvarEmAberto}
+              onEntregar={handleEntregarPosFinalizar}
+              onPagamentoRegistado={() => {
+                void (async () => {
+                  const r = await pdvGetResumoPagamentoPedido({
+                    storeId,
+                    pedidoId: pedidoFinalizadoId,
+                  });
+                  if ("ok" in r && r.ok) {
+                    setFinalizaResumo({
+                      totalPedido: r.totalPedido,
+                      totalPago: r.totalPago,
+                      pagamentos: r.pagamentos,
+                    });
                   }
-                  entregarDisabledTitle="Com saldo em aberto, indique o corretor em Equipa de venda."
-                  onEntregar={handleEntregarPosFinalizar}
-                  onPagamentoRegistado={() => {
-                    onClose();
-                    router.refresh();
-                  }}
-                />
-              </div>
-            </DialogFooter>
-          </>
+                  onClose();
+                  router.refresh();
+                })();
+              }}
+            />
+          </div>
         ) : (
           <>
         <div className="shrink-0 border-b px-4 py-3 sm:px-5">
@@ -1100,76 +1129,6 @@ function PdvModalInner({
                     Editar no PDV
                   </Link>
                 ) : null}
-                <VendaAcoesCliente
-                  storeId={storeId}
-                  pedidoId={viewDetalhe.pedido.id}
-                  outlineButtonLabel="Fechar"
-                  totalPedido={
-                    viewDetalhe.pedido.total ??
-                    viewDetalhe.pedido.itens.reduce(
-                      (a, it) => a + it.quantidade * it.precoUnitario,
-                      0,
-                    )
-                  }
-                  totalJaPago={viewDetalhe.pedido.pagamentos.reduce(
-                    (a, p) => a + p.valor,
-                    0,
-                  )}
-                  showEntregar
-                  entregarDisabled={(() => {
-                    const p = viewDetalhe.pedido;
-                    if (p.entregueEm) return true;
-                    if (
-                      p.estado !== "EM_ABERTO" &&
-                      p.estado !== "PAGO_PARCIAL"
-                    ) {
-                      return true;
-                    }
-                    const total =
-                      p.total ??
-                      p.itens.reduce(
-                        (a, it) => a + it.quantidade * it.precoUnitario,
-                        0,
-                      );
-                    const pago = p.pagamentos.reduce((a, x) => a + x.valor, 0);
-                    const saldoAberto = total - pago > 0.004;
-                    return saldoAberto && !p.corretor;
-                  })()}
-                  entregarDisabledTitle="Saldo em aberto exige corretor no pedido; se já estiver pago, pode registar entrega."
-                  onEntregar={handleEntregarVerPedido}
-                  showReceber
-                  receberDisabled={
-                    !(
-                      (viewDetalhe.pedido.estado === "EM_ABERTO" ||
-                        viewDetalhe.pedido.estado === "PAGO_PARCIAL") &&
-                      (viewDetalhe.pedido.total ?? 0) -
-                        viewDetalhe.pedido.pagamentos.reduce((a, p) => a + p.valor, 0) >
-                        0.004
-                    )
-                  }
-                  receberDisabledTitle={
-                    viewDetalhe.pedido.estado === "EM_ANDAMENTO"
-                      ? "Continue a venda em modo edição (Editar no PDV)."
-                      : viewDetalhe.pedido.estado === "QUITADO" ||
-                          viewDetalhe.pedido.estado === "CANCELADO"
-                        ? "Pedido quitado ou cancelado."
-                        : "Sem saldo em aberto neste pedido."
-                  }
-                  onSalvar={onClose}
-                  onPagamentoRegistado={() => {
-                    if (!viewPedidoId) return;
-                    void (async () => {
-                      const r = await fetchPedidoParaVerModal(viewPedidoId);
-                      if (r.ok) {
-                        setViewDetalhe({
-                          storeName: r.storeName,
-                          pedido: r.pedido,
-                        });
-                      }
-                      router.refresh();
-                    })();
-                  }}
-                />
               </div>
             </div>
           ) : (
@@ -1191,12 +1150,6 @@ function PdvModalInner({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
-          {showResumoDetalhe && viewDetalhe ? (
-            <PedidoResumoLeitura
-              storeName={viewDetalhe.storeName}
-              pedido={viewDetalhe.pedido}
-            />
-          ) : null}
           {readOnly && viewLoading ? (
             <div className="flex flex-col items-center justify-center gap-2 py-20 text-muted-foreground">
               <Loader2 className="size-8 animate-spin" />
@@ -1667,7 +1620,7 @@ function PdvModalInner({
               <span className="hidden sm:block" aria-hidden />
             )}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-2">
-              {!showResumoDetalhe ? (
+              {!viewDetalhe ? (
                 <div className="flex w-full flex-wrap items-stretch justify-end gap-2 sm:w-auto sm:items-center [&_button]:min-h-10">
                   <VendaAcoesCliente
                     storeId={storeId}
@@ -1696,14 +1649,75 @@ function PdvModalInner({
                   />
                 </div>
               ) : (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="min-h-10 w-full touch-manipulation sm:w-auto"
-                  onClick={onClose}
-                >
-                  Fechar
-                </Button>
+                <div className="flex w-full flex-wrap items-stretch justify-end gap-2 sm:w-auto sm:items-center [&_button]:min-h-10">
+                  <VendaAcoesCliente
+                    storeId={storeId}
+                    pedidoId={viewDetalhe.pedido.id}
+                    outlineButtonLabel="Fechar"
+                    totalPedido={
+                      viewDetalhe.pedido.total ??
+                      viewDetalhe.pedido.itens.reduce(
+                        (a, it) => a + it.quantidade * it.precoUnitario,
+                        0,
+                      )
+                    }
+                    totalJaPago={viewDetalhe.pedido.pagamentos.reduce(
+                      (a, p) => a + p.valor,
+                      0,
+                    )}
+                    showEntregar
+                    entregarDisabled={actionBusy}
+                    entregarDisabledTitle="Aguarde."
+                    onEntregar={handleEntregarVerPedido}
+                    showReceber
+                    receberDisabled={
+                      actionBusy ||
+                      !(
+                        (viewDetalhe.pedido.estado === "EM_ABERTO" ||
+                          viewDetalhe.pedido.estado === "PAGO_PARCIAL") &&
+                        (viewDetalhe.pedido.total ?? 0) -
+                          viewDetalhe.pedido.pagamentos.reduce(
+                            (a, p) => a + p.valor,
+                            0,
+                          ) >
+                          0.004
+                      )
+                    }
+                    receberDisabledTitle={
+                      viewDetalhe.pedido.estado === "EM_ANDAMENTO"
+                        ? "Continue a venda em modo edição (Editar no PDV)."
+                        : viewDetalhe.pedido.estado === "QUITADO" ||
+                            viewDetalhe.pedido.estado === "CANCELADO"
+                          ? "Pedido quitado ou cancelado."
+                          : "Sem saldo em aberto neste pedido."
+                    }
+                    onSalvar={onClose}
+                    onPagamentoRegistado={() => {
+                      if (!viewPedidoId) return;
+                      void (async () => {
+                        const r = await fetchPedidoParaVerModal(viewPedidoId);
+                        if (r.ok) {
+                          setViewDetalhe({
+                            storeName: r.storeName,
+                            pedido: r.pedido,
+                          });
+                          const p = r.pedido;
+                          setLines(
+                            p.itens.map((it) => ({
+                              key: crypto.randomUUID(),
+                              produtoVariacaoId: it.produtoVariacaoId,
+                              label: `${it.produtoVariacao.produto.nome} — ${it.produtoVariacao.nome}`,
+                              quantidade: it.quantidade,
+                              precoUnitario: it.precoUnitario.toFixed(2),
+                              saldoRef: 0,
+                            })),
+                          );
+                        }
+                        router.refresh();
+                      })();
+                    }}
+                  />
+                </div>
               )}
             </div>
           </div>
