@@ -57,6 +57,8 @@ model Tenant {
   eanSequence       Int                @default(0)
   /// Percentual de comissão do vendedor quando o colaborador não tem taxa própria (`minCommission` = 0).
   percentualComissaoVendedorPadrao Float @default(0)
+  /// Prazo máximo (dias após o pedido) para troca de venda quitada; null = sem limite no sistema.
+  prazoTrocaDias                   Int?
   stores            Store[]
   colaboradores     Colaborador[]
   corretores        Corretor[]
@@ -75,8 +77,62 @@ model Tenant {
   movimentosCorretor MovimentoCorretor[]
   gruposCobranca    GrupoCobranca[]
   lancamentosComissao LancamentoComissao[]
+  trocas            Troca[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
+}
+
+/// Registo de troca / devolução com crédito ao cliente e reposição de stock.
+model Troca {
+  id       String @id @default(cuid())
+  tenantId String
+  storeId  String
+  /// Número sequencial por loja (comprovante interno).
+  numero   Int
+
+  clienteId      String
+  pedidoOrigemId String
+  tipoFluxo      TrocaTipoFluxo
+  estado         TrocaEstado @default(CONCLUIDA)
+
+  /// Valor creditado ao cliente (`Cliente.creditoTroca`).
+  valorCredito Decimal @db.Decimal(14, 2)
+  obs          String?
+
+  /// Pedido posterior associado manualmente (opcional).
+  pedidoNovoId String? @unique
+  criadoPorId  String?
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  store        Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  cliente      Cliente      @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  pedidoOrigem Pedido       @relation("TrocaPedidoOrigem", fields: [pedidoOrigemId], references: [id], onDelete: Restrict)
+  pedidoNovo   Pedido?      @relation("TrocaPedidoNovo", fields: [pedidoNovoId], references: [id], onDelete: SetNull)
+  criadoPor    Colaborador? @relation("TrocaCriador", fields: [criadoPorId], references: [id], onDelete: SetNull)
+
+  itens TrocaItem[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([storeId, numero])
+  @@index([tenantId, createdAt])
+  @@index([pedidoOrigemId])
+  @@index([clienteId])
+}
+
+model TrocaItem {
+  id           String @id @default(cuid())
+  trocaId      String
+  pedidoItemId String
+  quantidade   Int
+  /// Preço unitário da linha no pedido (referência para o crédito).
+  valorUnitario Decimal @db.Decimal(14, 2)
+
+  troca      Troca      @relation(fields: [trocaId], references: [id], onDelete: Cascade)
+  pedidoItem PedidoItem @relation(fields: [pedidoItemId], references: [id], onDelete: Restrict)
+
+  @@index([trocaId])
+  @@index([pedidoItemId])
 }
 
 /// Tipo de beneficiário no lançamento de comissão (vendedor interno ou corretor).
@@ -324,6 +380,20 @@ enum MovimentoEstoqueTipo {
   TRANSFERENCIA_ENTRADA
   /// Ajuste por conferência de recebimento ou inventário (delta pode ser + ou -).
   AJUSTE_CONFERENCIA
+  /// Entrada por devolução de mercadoria numa troca (repor stock na loja).
+  TROCA_DEVOLUCAO
+}
+
+/// Estado do registo de troca (MVP: concluído na mesma operação).
+enum TrocaEstado {
+  CONCLUIDA
+  CANCELADA
+}
+
+/// Origem da regra de elegibilidade (venda já quitada vs consignado ainda em aberto).
+enum TrocaTipoFluxo {
+  VENDA_QUITADA
+  CONSIGNADO_NAO_QUITADO
 }
 
 /// Saldo agregado por loja e SKU (variação).
@@ -418,6 +488,8 @@ model Pedido {
   movimentoCorretor   MovimentoCorretor?
   grupoCobrancaItens  GrupoCobrancaPedido[]
   lancamentosComissao LancamentoComissao[]
+  trocasDevolucao     Troca[]             @relation("TrocaPedidoOrigem")
+  trocaComoSeguinte   Troca?              @relation("TrocaPedidoNovo")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -441,6 +513,7 @@ model PedidoItem {
 
   pedido          Pedido          @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
   produtoVariacao ProdutoVariacao @relation(fields: [produtoVariacaoId], references: [id], onDelete: Restrict)
+  trocasItens     TrocaItem[]
 
   createdAt DateTime @default(now())
 
@@ -589,6 +662,8 @@ model Cliente {
   email    String?
 
   creditLimit Decimal? @db.Decimal(14, 2)
+  /// Crédito de trocas (loja) — acumulado ao concluir trocas; pode ser usado em vendas futuras (integração futura).
+  creditoTroca Decimal @default(0) @db.Decimal(14, 2)
   isBlocked   Boolean  @default(false)
   isActive    Boolean  @default(true)
 
@@ -599,6 +674,7 @@ model Cliente {
   store  Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
   pedidos Pedido[]
   gruposCobrancaCliente GrupoCobranca[]
+  trocas  Troca[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -624,6 +700,7 @@ model Store {
   pedidos           Pedido[]
   gruposCobranca    GrupoCobranca[]
   lancamentosComissao LancamentoComissao[]
+  trocas            Troca[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 
@@ -657,6 +734,7 @@ model Colaborador {
   pagamentosRegistrados Pagamento[]
   gruposCobrancaCriados GrupoCobranca[] @relation("GrupoCobrancaCriador")
   comissoesComoVendedor LancamentoComissao[] @relation("ComissaoVendedor")
+  trocasCriadas         Troca[]              @relation("TrocaCriador")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

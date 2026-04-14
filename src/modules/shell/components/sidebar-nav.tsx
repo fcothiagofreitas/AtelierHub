@@ -9,6 +9,7 @@ import {
   LibraryBig,
   Package,
   Percent,
+  Repeat2,
   Settings2,
   ShoppingBag,
   UserCircle,
@@ -63,6 +64,12 @@ const navGroups: NavGroup[] = [
         label: "Contas a receber",
         href: "/vendas/contas-receber",
         icon: Banknote,
+        roles: ROLES_COM_CLIENTES,
+      },
+      {
+        label: "Trocas",
+        href: "/vendas/trocas",
+        icon: Repeat2,
         roles: ROLES_COM_CLIENTES,
       },
       {

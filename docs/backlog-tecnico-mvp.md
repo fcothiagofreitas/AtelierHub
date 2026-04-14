@@ -459,6 +459,10 @@ Suportar trocas dentro das regras do MVP.
 - Cliente recebe crédito
 - Troca pode originar novo pedido
 
+### Status (implementação)
+
+MVP **Sprint 12** entregue no código: modelos `Troca` / `TrocaItem`, `Cliente.creditoTroca`, `Tenant.prazoTrocaDias`, movimento `TROCA_DEVOLUCAO`; fluxos **venda quitada** (prazo configurável) e **consignado não quitado** (com `MovimentoCorretor`); crédito ao cliente e reposição de stock; acção `vincularPedidoNovoATroca` para associar pedido novo. **UI:** `/vendas/trocas` (lista + prazo), `/vendas/trocas/nova`, menu **Trocas**.
+
 ## Sprint 13 — Balanço de estoque
 
 ### Objetivo
