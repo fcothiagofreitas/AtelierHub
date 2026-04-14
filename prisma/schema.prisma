@@ -55,6 +55,8 @@ model Tenant {
   slug              String             @unique
   /// Sequência interna para gerar EAN-13 de uso operacional (prefixo 789 + 9 dígitos + DV).
   eanSequence       Int                @default(0)
+  /// Percentual de comissão do vendedor quando o colaborador não tem taxa própria (`minCommission` = 0).
+  percentualComissaoVendedorPadrao Float @default(0)
   stores            Store[]
   colaboradores     Colaborador[]
   corretores        Corretor[]
@@ -72,8 +74,45 @@ model Tenant {
   pedidos           Pedido[]
   movimentosCorretor MovimentoCorretor[]
   gruposCobranca    GrupoCobranca[]
+  lancamentosComissao LancamentoComissao[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
+}
+
+/// Tipo de beneficiário no lançamento de comissão (vendedor interno ou corretor).
+enum ComissaoTipo {
+  VENDEDOR
+  CORRETOR
+}
+
+/// Lançamento gerado quando o pedido fica quitado (base × percentual).
+model LancamentoComissao {
+  id        String @id @default(cuid())
+  tenantId  String
+  storeId   String
+  pedidoId  String
+  tipo      ComissaoTipo
+
+  colaboradorId String?
+  corretorId    String?
+
+  baseCalculo Decimal @db.Decimal(14, 2)
+  percentual  Float
+  valor       Decimal @db.Decimal(14, 2)
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  store        Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  pedido       Pedido       @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  colaborador  Colaborador? @relation("ComissaoVendedor", fields: [colaboradorId], references: [id], onDelete: Restrict)
+  corretor     Corretor?    @relation("ComissaoCorretor", fields: [corretorId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@unique([pedidoId, tipo])
+  @@index([tenantId, createdAt])
+  @@index([tenantId, storeId])
+  @@index([colaboradorId])
+  @@index([corretorId])
 }
 
 /// Conjunto de tamanhos (ex.: letras, numérico infantil) — o produto referencia uma grade; as opções ficam abaixo.
@@ -378,6 +417,7 @@ model Pedido {
   pagamentos          Pagamento[]
   movimentoCorretor   MovimentoCorretor?
   grupoCobrancaItens  GrupoCobrancaPedido[]
+  lancamentosComissao LancamentoComissao[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -518,6 +558,7 @@ model Corretor {
   pedidos            Pedido[]
   movimentosCorretor MovimentoCorretor[]
   gruposCobranca     GrupoCobranca[]
+  comissoesComoCorretor LancamentoComissao[] @relation("ComissaoCorretor")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -582,6 +623,7 @@ model Store {
   movimentosEstoque MovimentoEstoque[]
   pedidos           Pedido[]
   gruposCobranca    GrupoCobranca[]
+  lancamentosComissao LancamentoComissao[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 
@@ -614,6 +656,7 @@ model Colaborador {
   pedidosEntregaRegistada Pedido[]  @relation("PedidoEntrega")
   pagamentosRegistrados Pagamento[]
   gruposCobrancaCriados GrupoCobranca[] @relation("GrupoCobrancaCriador")
+  comissoesComoVendedor LancamentoComissao[] @relation("ComissaoVendedor")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

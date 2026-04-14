@@ -10,6 +10,7 @@ import type { LinhaRecebimento } from "@/modules/vendas/pagamento-actions";
 import { ROLES_ACESSO_VENDAS } from "@/modules/vendas/lib/roles";
 import { resolverDividaCorretorAoQuitarPedido } from "@/modules/vendas/lib/corretor-divida-quit";
 import { garantirEntregaAoQuitarPedido } from "@/modules/vendas/lib/entrega-ao-quitar";
+import { gerarLancamentosComissaoPedidoQuitado } from "@/modules/comissoes/gerar-lancamentos-comissao";
 
 export type CobrancaActionOk = { ok: true; grupoId: string };
 export type CobrancaActionErr = { error: string };
@@ -296,6 +297,7 @@ export async function registrarMultiPagamentoGrupo(input: {
             pedidoId: ped.id,
             entreguePorId: session.user.colaboradorId ?? null,
           });
+          await gerarLancamentosComissaoPedidoQuitado(tx, ped.id);
         }
       }
     });

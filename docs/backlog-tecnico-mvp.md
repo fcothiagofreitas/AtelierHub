@@ -433,6 +433,10 @@ Registrar e consultar comissões do MVP.
 - Venda gera comissão
 - Administrativo consulta e configura parâmetros
 
+### Status (implementação)
+
+MVP **Sprint 11** entregue no código: modelo `LancamentoComissao` (tipos `VENDEDOR` / `CORRETOR`), geração na quitação do pedido (`gerarLancamentosComissaoPedidoQuitado` em `pagamento-actions` e `cobranca-actions`), base = total do pedido; vendedor usa `Colaborador.minCommission` ou `Tenant.percentualComissaoVendedorPadrao`; corretor usa `Corretor.commissionPercent` quando o pedido tem corretor. **Admin:** `/admin/comissoes` (percentual padrão da marca) e `/admin/comissoes/consulta` (filtros por período, vendedor e corretor).
+
 ## Sprint 12 — Trocas
 
 ### Objetivo

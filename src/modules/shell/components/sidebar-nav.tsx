@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   LibraryBig,
   Package,
+  Percent,
   Settings2,
   ShoppingBag,
   UserCircle,
@@ -98,6 +99,12 @@ const navGroups: NavGroup[] = [
         label: "Corretores",
         href: "/admin/corretores",
         icon: Handshake,
+        roles: ADMIN_ROLES,
+      },
+      {
+        label: "Comissões",
+        href: "/admin/comissoes",
+        icon: Percent,
         roles: ADMIN_ROLES,
       },
       {

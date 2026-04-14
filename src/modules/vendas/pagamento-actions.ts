@@ -8,6 +8,7 @@ import { assertStoreInSession } from "@/modules/estoque/estoque-auth";
 import { ROLES_ACESSO_VENDAS } from "@/modules/vendas/lib/roles";
 import { resolverDividaCorretorAoQuitarPedido } from "@/modules/vendas/lib/corretor-divida-quit";
 import { garantirEntregaAoQuitarPedido } from "@/modules/vendas/lib/entrega-ao-quitar";
+import { gerarLancamentosComissaoPedidoQuitado } from "@/modules/comissoes/gerar-lancamentos-comissao";
 
 export type PagamentoActionOk = { ok: true };
 export type PagamentoActionErr = { error: string };
@@ -109,6 +110,7 @@ export async function registrarPagamento(input: {
           pedidoId: pedido.id,
           entreguePorId: session.user.colaboradorId ?? null,
         });
+        await gerarLancamentosComissaoPedidoQuitado(tx, pedido.id);
       }
     });
 
@@ -234,6 +236,7 @@ export async function registrarMultiPagamento(input: {
           pedidoId: pedido.id,
           entreguePorId: session.user.colaboradorId ?? null,
         });
+        await gerarLancamentosComissaoPedidoQuitado(tx, pedido.id);
       }
     });
 
