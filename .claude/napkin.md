@@ -33,6 +33,8 @@
    Do instead: em cada sprint entregar tela, regra, banco e fluxo funcional testável, evitando separar backend completo de frontend completo.
 6. **[2026-04-11] Vendas da loja listam só pedidos da loja ativa; PDV em `/vendas?pdv=1`**
    Do instead: escopo `storeId` + `tenantId` como em Clientes; finalizar venda usa `MovimentoEstoqueTipo.VENDA` na mesma transação que passa o pedido a `EM_ABERTO`.
+7. **[2026-04-14] “Vendas” sem contexto pode ser lista em `/vendas` ou o PDV (modal `?pdv=1`)**
+   Do instead: se o pedido não disser explicitamente **lista/tabela** vs **PDV/carrinho/modal**, **perguntar antes** de implementar para não aplicar no sítio errado.
 
 ## User Directives
 1. **[2026-04-12] Tema claro/escuro/sistema via `@ecosy/next-themes` (fork compatível React 19) no layout + toggle no `NavHeader`**

@@ -1431,10 +1431,24 @@ function PdvModalInner({
                           const sub =
                             moneyFromInput(L.precoUnitario) * L.quantidade;
                           return (
-                            <tr key={L.key} className="bg-card">
+                            <tr
+                              key={L.key}
+                              className={cn(
+                                "bg-card",
+                                L.saldoRef <= 0 &&
+                                  "bg-destructive/10 dark:bg-destructive/15",
+                              )}
+                            >
                               <td className="px-2 py-1.5 align-middle sm:px-3 sm:py-2">
                                 <span className="font-medium">{L.label}</span>
-                                <span className="ml-2 text-[11px] text-muted-foreground">
+                                <span
+                                  className={cn(
+                                    "ml-2 text-[11px]",
+                                    L.saldoRef <= 0
+                                      ? "font-medium text-destructive"
+                                      : "text-muted-foreground",
+                                  )}
+                                >
                                   (stock {L.saldoRef})
                                 </span>
                               </td>
