@@ -28,6 +28,7 @@
     "@ecosy/next-themes": "^0.4.6",
     "@prisma/client": "^5.22.0",
     "@radix-ui/react-popover": "^1.1.15",
+    "@sentry/nextjs": "^10.48.0",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
