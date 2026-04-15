@@ -524,6 +524,8 @@ export async function pdvSavePedido(input: {
   clienteId: string | null;
   vendedorId: string;
   corretorId: string | null;
+  /** Notas do pedido (opcional). */
+  observacoes?: string | null;
   itens: { produtoVariacaoId: string; quantidade: number; precoUnitario: string }[];
 }): Promise<PdvActionOk | PdvActionErr> {
   const session = await requireRole(ROLES_ACESSO_VENDAS);
@@ -535,6 +537,10 @@ export async function pdvSavePedido(input: {
   }
 
   const clienteId = input.clienteId?.trim() ? input.clienteId.trim() : null;
+  const observacoesNorm =
+    input.observacoes != null && String(input.observacoes).trim()
+      ? String(input.observacoes).trim()
+      : null;
 
   try {
     await validateClienteSeInformado(tenantId, input.storeId, clienteId);
@@ -614,6 +620,7 @@ export async function pdvSavePedido(input: {
           corretorId: input.corretorId || null,
           modalidade: "DIRETA",
           total,
+          observacoes: observacoesNorm,
         },
       });
     });
@@ -622,6 +629,47 @@ export async function pdvSavePedido(input: {
     return { ok: true };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Não foi possível guardar o pedido." };
+  }
+}
+
+/** Actualiza só as observações (ex.: painel «Venda finalizada» sem regravar linhas). */
+export async function pdvAtualizarObservacoesPedido(input: {
+  storeId: string;
+  pedidoId: string;
+  observacoes: string | null;
+}): Promise<PdvActionOk | PdvActionErr> {
+  const session = await requireRole(ROLES_ACESSO_VENDAS);
+  const tenantId = session.user.tenantId;
+  try {
+    assertStoreInSession(session, input.storeId);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Sem permissão." };
+  }
+
+  const observacoesNorm =
+    input.observacoes != null && String(input.observacoes).trim()
+      ? String(input.observacoes).trim()
+      : null;
+
+  try {
+    const r = await prisma.pedido.updateMany({
+      where: {
+        id: input.pedidoId,
+        tenantId,
+        storeId: input.storeId,
+        estado: { not: "CANCELADO" },
+      },
+      data: { observacoes: observacoesNorm },
+    });
+    if (r.count === 0) {
+      return { error: "Pedido não encontrado ou cancelado." };
+    }
+    revalidateVendas();
+    return { ok: true };
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e.message : "Não foi possível guardar as observações.",
+    };
   }
 }
 
@@ -807,6 +855,7 @@ export type PdvPedidoCarregado = {
   clienteNomeExibicao: string;
   vendedorId: string;
   corretorId: string | null;
+  observacoes: string | null;
   lines: {
     produtoVariacaoId: string;
     label: string;
@@ -897,6 +946,7 @@ export async function pdvGetPedidoParaPdv(input: {
       clienteNomeExibicao,
       vendedorId: pedido.vendedorId,
       corretorId: pedido.corretorId,
+      observacoes: pedido.observacoes,
       lines,
     },
   };

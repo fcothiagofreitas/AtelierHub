@@ -527,6 +527,9 @@ model Pedido {
   /// Total líquido do pedido; em andamento pode ser null até fechar linhas.
   total Decimal? @db.Decimal(14, 2)
 
+  /// Notas internas da venda (PDV e painel finalizado — mesmo campo).
+  observacoes String? @db.Text
+
   tenant   Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   store    Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
   cliente  Cliente?    @relation(fields: [clienteId], references: [id], onDelete: Restrict)

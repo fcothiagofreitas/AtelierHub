@@ -35,6 +35,7 @@ import {
   pdvGetPedidoParaPdv,
   pdvGetResumoPagamentoPedido,
   pdvResolverEan,
+  pdvAtualizarObservacoesPedido,
   pdvSavePedido,
   pdvSearchVariacoes,
   type PdvSearchRow,
@@ -103,12 +104,14 @@ function snapshotPedidoCart(
   clienteId: string,
   corretorId: string,
   vendedorId: string,
+  observacoes: string,
   lines: CartLine[],
 ): string {
   return JSON.stringify({
     clienteId,
     corretorId,
     vendedorId,
+    observacoes,
     lines: lines
       .map((L) => ({
         id: L.produtoVariacaoId,
@@ -195,6 +198,7 @@ function PdvModalInner({
     return vendedores[0]?.id ?? "";
   });
   const [corretorId, setCorretorId] = React.useState("");
+  const [pedidoObservacoes, setPedidoObservacoes] = React.useState("");
   const [lines, setLines] = React.useState<CartLine[]>([]);
   /** Alinhado ao último `pdvSavePedido` com sucesso ou carga do servidor; comparação para rascunho sujo. */
   const [savedCartSnapshot, setSavedCartSnapshot] = React.useState("");
@@ -270,6 +274,7 @@ function PdvModalInner({
         : (vendedores[0]?.id ?? ""),
     );
     setCorretorId("");
+    setPedidoObservacoes("");
     setLines([]);
     setQ("");
     setHits([]);
@@ -349,6 +354,7 @@ function PdvModalInner({
       setClienteQuery(d.clienteNomeExibicao);
       setCorretorId(d.corretorId ?? "");
       setVendedorId(d.vendedorId);
+      setPedidoObservacoes(d.observacoes ?? "");
       setLines(
         d.lines.map((L) => ({
           key: clientRandomId(),
@@ -364,6 +370,7 @@ function PdvModalInner({
           d.clienteId ?? "",
           d.corretorId ?? "",
           d.vendedorId,
+          d.observacoes ?? "",
           d.lines.map((L) => ({
             key: "",
             produtoVariacaoId: L.produtoVariacaoId,
@@ -411,6 +418,7 @@ function PdvModalInner({
         setClienteQuery(d.clienteNomeExibicao);
         setCorretorId(d.corretorId ?? "");
         setVendedorId(d.vendedorId);
+        setPedidoObservacoes(d.observacoes ?? "");
         setLines(
           d.lines.map((L) => ({
             key: clientRandomId(),
@@ -426,6 +434,7 @@ function PdvModalInner({
             d.clienteId ?? "",
             d.corretorId ?? "",
             d.vendedorId,
+            d.observacoes ?? "",
             d.lines.map((L) => ({
               key: "",
               produtoVariacaoId: L.produtoVariacaoId,
@@ -456,6 +465,7 @@ function PdvModalInner({
       setClienteQuery(nomeCli);
       setVendedorId(p.vendedor.id);
       setCorretorId(p.corretor?.id ?? "");
+      setPedidoObservacoes(p.observacoes ?? "");
       setLines(
         p.itens.map((it) => ({
           key: clientRandomId(),
@@ -471,6 +481,7 @@ function PdvModalInner({
           p.cliente?.id ?? "",
           p.corretor?.id ?? "",
           p.vendedor.id,
+          p.observacoes ?? "",
           p.itens.map((it) => ({
             key: "",
             produtoVariacaoId: it.produtoVariacaoId,
@@ -694,6 +705,7 @@ function PdvModalInner({
       clienteId: clienteId.trim() ? clienteId : null,
       vendedorId,
       corretorId: corretorId || null,
+      observacoes: pedidoObservacoes || null,
       itens: lines.map((L) => ({
         produtoVariacaoId: L.produtoVariacaoId,
         quantidade: L.quantidade,
@@ -711,6 +723,7 @@ function PdvModalInner({
     clienteId,
     vendedorId,
     corretorId,
+    pedidoObservacoes,
     lines,
   ]);
 
@@ -906,7 +919,13 @@ function PdvModalInner({
         const ok = await persistPedido();
         if (ok) {
           setSavedCartSnapshot(
-            snapshotPedidoCart(clienteId, corretorId, vendedorId, lines),
+            snapshotPedidoCart(
+              clienteId,
+              corretorId,
+              vendedorId,
+              pedidoObservacoes,
+              lines,
+            ),
           );
           toast.success("Rascunho guardado na loja.");
           onClose();
@@ -922,6 +941,7 @@ function PdvModalInner({
     clienteId,
     corretorId,
     vendedorId,
+    pedidoObservacoes,
     lines,
     onClose,
     router,
@@ -1014,6 +1034,62 @@ function PdvModalInner({
   const lockUi = readOnly && !viewLoading && Boolean(viewPedidoId);
   /** Só bloquear edição do comprador em modo leitura forçada (não por ter rascunho). */
   const clienteBloqueado = lockUi && Boolean(pedidoId && clienteId.trim());
+
+  const flushObservacoesCarrinho = React.useCallback(async () => {
+    if (!pedidoId || lockUi) return;
+    const r = await pdvAtualizarObservacoesPedido({
+      storeId,
+      pedidoId,
+      observacoes: pedidoObservacoes || null,
+    });
+    if ("error" in r && r.error) {
+      toast.error(r.error);
+      return;
+    }
+    setSavedCartSnapshot(
+      snapshotPedidoCart(
+        clienteId,
+        corretorId,
+        vendedorId,
+        pedidoObservacoes,
+        lines,
+      ),
+    );
+  }, [
+    pedidoId,
+    lockUi,
+    storeId,
+    pedidoObservacoes,
+    clienteId,
+    corretorId,
+    vendedorId,
+    lines,
+  ]);
+
+  const flushObservacoesPainel = React.useCallback(async () => {
+    const pid = pedidoFinalizadoId;
+    if (!pid) return;
+    const r = await pdvAtualizarObservacoesPedido({
+      storeId,
+      pedidoId: pid,
+      observacoes: pedidoObservacoes || null,
+    });
+    if ("error" in r && r.error) {
+      toast.error(r.error);
+      return;
+    }
+    setPedidoQuitadoResumo((prev) =>
+      prev && prev.pedido.id === pid
+        ? {
+            ...prev,
+            pedido: {
+              ...prev.pedido,
+              observacoes: pedidoObservacoes || null,
+            },
+          }
+        : prev,
+    );
+  }, [pedidoFinalizadoId, storeId, pedidoObservacoes]);
   const showResumoDetalhe = Boolean(viewDetalhe);
   const showCartGrid =
     !readOnly || (readOnly && Boolean(viewPedidoId) && !viewLoading);
@@ -1040,8 +1116,13 @@ function PdvModalInner({
     if (readOnly) return false;
     if (!pedidoId || pdvStep !== "cart" || showResumoDetalhe) return false;
     return (
-      snapshotPedidoCart(clienteId, corretorId, vendedorId, lines) !==
-      savedCartSnapshot
+      snapshotPedidoCart(
+        clienteId,
+        corretorId,
+        vendedorId,
+        pedidoObservacoes,
+        lines,
+      ) !== savedCartSnapshot
     );
   }, [
     readOnly,
@@ -1051,6 +1132,7 @@ function PdvModalInner({
     clienteId,
     corretorId,
     vendedorId,
+    pedidoObservacoes,
     lines,
     savedCartSnapshot,
   ]);
@@ -1182,6 +1264,11 @@ function PdvModalInner({
                     }
                   }
                 })();
+              }}
+              observacoes={pedidoObservacoes}
+              onObservacoesChange={setPedidoObservacoes}
+              onObservacoesBlur={() => {
+                void flushObservacoesPainel();
               }}
             />
           </div>
@@ -1707,6 +1794,25 @@ function PdvModalInner({
                       </option>
                     ))}
                   </select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="pdv-observacoes">Observações</Label>
+                  <textarea
+                    id="pdv-observacoes"
+                    rows={3}
+                    value={pedidoObservacoes}
+                    onChange={(e) => setPedidoObservacoes(e.target.value)}
+                    onBlur={() => {
+                      void flushObservacoesCarrinho();
+                    }}
+                    disabled={lockUi || actionBusy}
+                    placeholder="Notas sobre a venda (opcional)"
+                    className={cn(
+                      "min-h-[4.5rem] w-full resize-y rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none",
+                      "placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+                      "disabled:cursor-not-allowed disabled:opacity-50",
+                    )}
+                  />
                 </div>
               </section>
             </div>

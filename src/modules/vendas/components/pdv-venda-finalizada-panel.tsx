@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
   DialogFooter,
   DialogHeader,
@@ -61,6 +62,10 @@ type Props = {
   showEntregar?: boolean;
   onEntregar: () => void;
   onPagamentoRegistado: () => void;
+  /** Mesmo campo que no carrinho do PDV. */
+  observacoes: string;
+  onObservacoesChange: (value: string) => void;
+  onObservacoesBlur: () => void;
 };
 
 export function PdvVendaFinalizadaPanel({
@@ -78,6 +83,9 @@ export function PdvVendaFinalizadaPanel({
   showEntregar = true,
   onEntregar,
   onPagamentoRegistado,
+  observacoes,
+  onObservacoesChange,
+  onObservacoesBlur,
 }: Props) {
   const pagamentoRef = React.useRef<ReceberPagamentoFormRef>(null);
   const [canSubmitPagamento, setCanSubmitPagamento] = React.useState(false);
@@ -150,6 +158,23 @@ export function PdvVendaFinalizadaPanel({
         </DialogHeader>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
+        <div className="mb-4 space-y-1.5">
+          <Label htmlFor="pdv-final-observacoes">Observações</Label>
+          <textarea
+            id="pdv-final-observacoes"
+            rows={3}
+            value={observacoes}
+            onChange={(e) => onObservacoesChange(e.target.value)}
+            onBlur={() => onObservacoesBlur()}
+            disabled={actionBusy}
+            placeholder="Notas sobre a venda (opcional)"
+            className={cn(
+              "min-h-[4.5rem] w-full resize-y rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none",
+              "placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+              "disabled:cursor-not-allowed disabled:opacity-50",
+            )}
+          />
+        </div>
         {somenteLeitura && pedidoResumoCompleto ? (
           <PdvResumoPedidoQuitado
             storeName={pedidoResumoCompleto.storeName}
