@@ -583,7 +583,7 @@ export async function pdvSavePedido(input: {
   ) {
     return {
       error:
-        "Só gerente de loja ou administrativo podem alterar o vendedor depois de iniciar o pedido.",
+        "Só admin da marca ou gerente de loja podem alterar o vendedor depois de iniciar o pedido.",
     };
   }
 

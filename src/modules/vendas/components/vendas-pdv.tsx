@@ -1774,7 +1774,8 @@ function PdvModalInner({
                   </select>
                   {pdvPodeAlterarVendedorComPedido && pedidoId && !lockUi ? (
                     <p className="text-[11px] text-muted-foreground">
-                      Pode alterar o vendedor deste pedido antes de finalizar.
+                      Admin da marca ou gerente podem alterar o vendedor deste pedido
+                      antes de finalizar.
                     </p>
                   ) : null}
                 </div>
