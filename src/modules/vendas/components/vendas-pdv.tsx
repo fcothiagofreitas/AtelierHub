@@ -199,6 +199,7 @@ function PdvModalInner({
   });
   const [corretorId, setCorretorId] = React.useState("");
   const [pedidoObservacoes, setPedidoObservacoes] = React.useState("");
+  const pedidoObservacoesAoFocarRef = React.useRef("");
   const [lines, setLines] = React.useState<CartLine[]>([]);
   /** Alinhado ao último `pdvSavePedido` com sucesso ou carga do servidor; comparação para rascunho sujo. */
   const [savedCartSnapshot, setSavedCartSnapshot] = React.useState("");
@@ -1803,7 +1804,13 @@ function PdvModalInner({
                     rows={3}
                     value={pedidoObservacoes}
                     onChange={(e) => setPedidoObservacoes(e.target.value)}
+                    onFocus={() => {
+                      pedidoObservacoesAoFocarRef.current = pedidoObservacoes;
+                    }}
                     onBlur={() => {
+                      if (pedidoObservacoesAoFocarRef.current === pedidoObservacoes) {
+                        return;
+                      }
                       void flushObservacoesCarrinho();
                     }}
                     disabled={lockUi || actionBusy}

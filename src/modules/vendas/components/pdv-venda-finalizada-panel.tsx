@@ -121,6 +121,35 @@ export function PdvVendaFinalizadaPanel({
     });
   }, [pagamentosLinhas]);
 
+  /** Valor ao focar — só grava no blur se o texto mudou desde o foco. */
+  const observacoesAoFocarRef = React.useRef("");
+
+  const blocoObservacoes = (
+    <div className="space-y-1.5">
+      <Label htmlFor="pdv-final-observacoes">Observações</Label>
+      <textarea
+        id="pdv-final-observacoes"
+        rows={3}
+        value={observacoes}
+        onChange={(e) => onObservacoesChange(e.target.value)}
+        onFocus={() => {
+          observacoesAoFocarRef.current = observacoes;
+        }}
+        onBlur={() => {
+          if (observacoesAoFocarRef.current === observacoes) return;
+          onObservacoesBlur();
+        }}
+        disabled={actionBusy}
+        placeholder="Notas sobre a venda (opcional)"
+        className={cn(
+          "min-h-[4.5rem] w-full resize-y rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none",
+          "placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+          "disabled:cursor-not-allowed disabled:opacity-50",
+        )}
+      />
+    </div>
+  );
+
   return (
     <>
       <div className="shrink-0 border-b px-4 py-3 sm:px-5">
@@ -158,29 +187,17 @@ export function PdvVendaFinalizadaPanel({
         </DialogHeader>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
-        <div className="mb-4 space-y-1.5">
-          <Label htmlFor="pdv-final-observacoes">Observações</Label>
-          <textarea
-            id="pdv-final-observacoes"
-            rows={3}
-            value={observacoes}
-            onChange={(e) => onObservacoesChange(e.target.value)}
-            onBlur={() => onObservacoesBlur()}
-            disabled={actionBusy}
-            placeholder="Notas sobre a venda (opcional)"
-            className={cn(
-              "min-h-[4.5rem] w-full resize-y rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none",
-              "placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
-              "disabled:cursor-not-allowed disabled:opacity-50",
-            )}
-          />
-        </div>
         {somenteLeitura && pedidoResumoCompleto ? (
-          <PdvResumoPedidoQuitado
-            storeName={pedidoResumoCompleto.storeName}
-            pedido={pedidoResumoCompleto.pedido}
-            moneyFmt={moneyFmt}
-          />
+          <div className="flex flex-col gap-4">
+            <PdvResumoPedidoQuitado
+              storeName={pedidoResumoCompleto.storeName}
+              pedido={pedidoResumoCompleto.pedido}
+              moneyFmt={moneyFmt}
+            />
+            <div className="flex w-full justify-end">
+              <div className="w-full max-w-md">{blocoObservacoes}</div>
+            </div>
+          </div>
         ) : (
           <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
             <div className="rounded-lg border bg-card p-3 sm:p-4">
@@ -305,6 +322,8 @@ export function PdvVendaFinalizadaPanel({
                   <p className="mt-1">Não é necessário registar pagamento neste pedido.</p>
                 </div>
               )}
+
+              {blocoObservacoes}
             </div>
           </div>
         )}
