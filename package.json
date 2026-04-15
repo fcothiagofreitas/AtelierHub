@@ -16,6 +16,7 @@
     "db:reset": "prisma migrate reset --force",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
+    "db:migrate:health": "node --env-file=.env scripts/prisma-migrations-health.mjs",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"
   },
