@@ -2,62 +2,43 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import {
-  ACTIVE_STORE_COOKIE,
-  getAccessibleStores,
-  requireSession,
-  serializeActiveStoreCookie,
-} from "@/lib/session";
+import { prisma } from "@/lib/prisma";
+import { requireSession } from "@/lib/session";
+import { ACTIVE_STORE_COOKIE } from "@/lib/session";
+import { isAdministrativeStockRole } from "@/modules/estoque/estoque-auth";
 
-export async function setActiveStore(storeId: string) {
+export async function selectStore(formData: FormData) {
   const session = await requireSession();
+  const storeId = String(formData.get("storeId") ?? "");
 
-  if (typeof storeId !== "string" || !storeId) {
-    return {
-      ok: false,
-      message: "Loja invalida.",
-    };
-  }
+  const store = storeId
+    ? await prisma.store.findFirst({
+        where: {
+          id: storeId,
+          tenantId: session.user.tenantId,
+          isActive: true,
+        },
+        select: { id: true },
+      })
+    : null;
 
-  const availableStores = await getAccessibleStores();
-  const selectedStore = availableStores.find((store) => store.id === storeId);
+  const allowed =
+    !!store &&
+    (isAdministrativeStockRole(session.user.role) ||
+      session.user.storeIds.includes(storeId));
 
-  if (!selectedStore) {
-    return {
-      ok: false,
-      message: "Voce nao tem acesso a essa loja.",
-    };
+  if (!allowed) {
+    redirect("/select-store?error=invalid");
   }
 
   const cookieStore = await cookies();
-  cookieStore.set(
-    ACTIVE_STORE_COOKIE,
-    serializeActiveStoreCookie({
-      userId: session.user.id,
-      storeId: selectedStore.id,
-    }),
-    {
+  cookieStore.set(ACTIVE_STORE_COOKIE, storeId, {
     httpOnly: true,
-    sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 30,
-    },
-  );
-
-  return {
-    ok: true,
-  };
-}
-
-export async function selectStore(formData: FormData) {
-  const storeId = formData.get("storeId");
-
-  if (typeof storeId !== "string" || !storeId) {
-    redirect("/dashboard");
-  }
-
-  await setActiveStore(storeId);
+  });
 
   redirect("/dashboard");
 }

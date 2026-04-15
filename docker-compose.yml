@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: atelierhub-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: atelierhub
+      POSTGRES_PASSWORD: atelierhub
+      POSTGRES_DB: atelierhub_dev
+    ports:
+      - "5433:5432"
+    volumes:
+      - atelierhub-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U atelierhub -d atelierhub_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  atelierhub-db-data:

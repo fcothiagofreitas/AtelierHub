@@ -1,111 +1,84 @@
 import bcrypt from "bcryptjs";
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import type { UserRole } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
-import { loginSchema } from "@/modules/auth/schemas/login-schema";
-
-type AuthorizedUser = {
-  id: string;
-  name: string;
-  email: string;
-  role: UserRole;
-  tenantId: string;
-  storeIds: string[];
-  defaultStoreId: string | null;
-};
 
 export const authOptions: NextAuthOptions = {
+  session: { strategy: "jwt" },
   pages: {
     signIn: "/login",
   },
-  session: {
-    strategy: "jwt",
-  },
   providers: [
     CredentialsProvider({
-      name: "Credenciais",
+      name: "credentials",
       credentials: {
         email: { label: "E-mail", type: "email" },
         password: { label: "Senha", type: "password" },
       },
       async authorize(credentials) {
-        const parsed = loginSchema.safeParse(credentials);
-
-        if (!parsed.success) {
-          return null;
-        }
+        if (!credentials?.email || !credentials?.password) return null;
 
         const user = await prisma.user.findFirst({
           where: {
-            email: parsed.data.email.toLowerCase(),
+            email: credentials.email.toLowerCase().trim(),
             isActive: true,
           },
           include: {
-            stores: {
+            colaborador: {
               include: {
-                store: true,
-              },
-              orderBy: {
-                createdAt: "asc",
+                stores: {
+                  where: { store: { isActive: true } },
+                  orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
+                  select: { storeId: true, isDefault: true },
+                },
               },
             },
           },
         });
 
-        if (!user) {
-          return null;
-        }
+        if (!user || !user.colaborador) return null;
 
-        const passwordMatches = await bcrypt.compare(
-          parsed.data.password,
+        const passwordMatch = await bcrypt.compare(
+          credentials.password,
           user.passwordHash,
         );
+        if (!passwordMatch) return null;
 
-        if (!passwordMatches) {
-          return null;
-        }
+        const storeIds = user.colaborador.stores.map((s) => s.storeId);
+        const defaultStore = user.colaborador.stores.find((s) => s.isDefault);
 
-        const storeIds = user.stores.map((access) => access.storeId);
-        const defaultAccess =
-          user.stores.find((access) => access.isDefault) ?? user.stores[0];
-
-        const authorizedUser: AuthorizedUser = {
+        return {
           id: user.id,
-          name: user.name,
+          colaboradorId: user.colaborador.id,
+          name: user.colaborador.name,
           email: user.email,
-          role: user.role,
           tenantId: user.tenantId,
+          role: user.colaborador.role,
           storeIds,
-          defaultStoreId: defaultAccess?.storeId ?? null,
+          defaultStoreId: defaultStore?.storeId ?? storeIds[0] ?? null,
         };
-
-        return authorizedUser;
       },
     }),
   ],
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        const authorizedUser = user as AuthorizedUser;
-
-        token.role = authorizedUser.role;
-        token.tenantId = authorizedUser.tenantId;
-        token.storeIds = authorizedUser.storeIds;
-        token.defaultStoreId = authorizedUser.defaultStoreId;
+        token.id = user.id;
+        token.colaboradorId = user.colaboradorId;
+        token.tenantId = user.tenantId;
+        token.role = user.role;
+        token.storeIds = user.storeIds;
+        token.defaultStoreId = user.defaultStoreId;
       }
-
       return token;
     },
     async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.sub ?? "";
-        session.user.role = token.role;
-        session.user.tenantId = token.tenantId;
-        session.user.storeIds = token.storeIds;
-        session.user.defaultStoreId = token.defaultStoreId;
-      }
-
+      session.user.id = token.id;
+      session.user.colaboradorId = token.colaboradorId;
+      session.user.tenantId = token.tenantId;
+      session.user.role = token.role;
+      session.user.storeIds = token.storeIds;
+      session.user.defaultStoreId = token.defaultStoreId;
       return session;
     },
   },

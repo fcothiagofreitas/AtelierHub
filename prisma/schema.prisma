@@ -1,15 +1,10 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 enum UserRole {
@@ -24,55 +19,816 @@ enum StoreKind {
   OPERATIONAL
 }
 
+enum CorretorPaymentMethod {
+  PIX
+  CASH
+  BANK_TRANSFER
+}
+
+enum ClienteTipo {
+  PF
+  PJ
+}
+
+enum PedidoEstado {
+  EM_ANDAMENTO
+  EM_ABERTO
+  PAGO_PARCIAL
+  QUITADO
+  CANCELADO
+}
+
+enum PedidoModalidade {
+  DIRETA
+  CONSIGNADA
+}
+
+/// Agrupamento de pedidos para cobrança (por cliente ou por corretor).
+enum GrupoCobrancaTipo {
+  CLIENTE
+  CORRETOR
+}
+
 model Tenant {
-  id        String   @id @default(cuid())
-  name      String
-  slug      String   @unique
-  stores    Store[]
-  users     User[]
+  id                String             @id @default(cuid())
+  name              String
+  slug              String             @unique
+  /// Sequência interna para gerar EAN-13 de uso operacional (prefixo 789 + 9 dígitos + DV).
+  eanSequence       Int                @default(0)
+  /// Percentual de comissão do vendedor quando o colaborador não tem taxa própria (`minCommission` = 0).
+  percentualComissaoVendedorPadrao Float @default(0)
+  /// Prazo máximo (dias após o pedido) para troca de venda quitada; null = sem limite no sistema.
+  prazoTrocaDias                   Int?
+  stores            Store[]
+  colaboradores     Colaborador[]
+  corretores        Corretor[]
+  clientes          Cliente[]
+  users             User[]
+  categoriasProduto CategoriaProduto[]
+  tiposProduto      TipoProduto[]
+  colecoesProduto   ColecaoProduto[]
+  gradesTamanho     GradeTamanho[]
+  catalogoCores     CatalogoCor[]
+  produtos          Produto[]
+  produtoVariacoes  ProdutoVariacao[]
+  estoqueSaldos     EstoqueSaldo[]
+  movimentosEstoque MovimentoEstoque[]
+  pedidos           Pedido[]
+  movimentosCorretor MovimentoCorretor[]
+  gruposCobranca    GrupoCobranca[]
+  lancamentosComissao LancamentoComissao[]
+  trocas            Troca[]
+  balancosEstoque   BalancoEstoque[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+}
+
+/// Registo de troca / devolução com crédito ao cliente e reposição de stock.
+model Troca {
+  id       String @id @default(cuid())
+  tenantId String
+  storeId  String
+  /// Número sequencial por loja (comprovante interno).
+  numero   Int
+
+  clienteId      String
+  pedidoOrigemId String
+  tipoFluxo      TrocaTipoFluxo
+  estado         TrocaEstado @default(CONCLUIDA)
+
+  /// Valor creditado ao cliente (`Cliente.creditoTroca`).
+  valorCredito Decimal @db.Decimal(14, 2)
+  obs          String?
+
+  /// Pedido posterior associado manualmente (opcional).
+  pedidoNovoId String? @unique
+  criadoPorId  String?
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  store        Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  cliente      Cliente      @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  pedidoOrigem Pedido       @relation("TrocaPedidoOrigem", fields: [pedidoOrigemId], references: [id], onDelete: Restrict)
+  pedidoNovo   Pedido?      @relation("TrocaPedidoNovo", fields: [pedidoNovoId], references: [id], onDelete: SetNull)
+  criadoPor    Colaborador? @relation("TrocaCriador", fields: [criadoPorId], references: [id], onDelete: SetNull)
+
+  itens TrocaItem[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([storeId, numero])
+  @@index([tenantId, createdAt])
+  @@index([pedidoOrigemId])
+  @@index([clienteId])
+}
+
+model TrocaItem {
+  id           String @id @default(cuid())
+  trocaId      String
+  pedidoItemId String
+  quantidade   Int
+  /// Preço unitário da linha no pedido (referência para o crédito).
+  valorUnitario Decimal @db.Decimal(14, 2)
+
+  troca      Troca      @relation(fields: [trocaId], references: [id], onDelete: Cascade)
+  pedidoItem PedidoItem @relation(fields: [pedidoItemId], references: [id], onDelete: Restrict)
+
+  @@index([trocaId])
+  @@index([pedidoItemId])
+}
+
+enum BalancoEstoqueEstado {
+  RASCUNHO
+  CONCLUIDO
+  CANCELADO
+}
+
+/// Documento de balanço físico por loja (contagem vs sistema).
+model BalancoEstoque {
+  id       String @id @default(cuid())
+  tenantId String
+  storeId  String
+  numero   Int
+
+  estado        BalancoEstoqueEstado @default(RASCUNHO)
+  observacoes   String?
+  criadoPorId   String?
+  concluidoEm   DateTime?
+
+  tenant    Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  store     Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  criadoPor Colaborador? @relation("BalancoEstoqueCriador", fields: [criadoPorId], references: [id], onDelete: SetNull)
+
+  itens BalancoEstoqueItem[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@unique([storeId, numero])
+  @@index([tenantId, storeId])
+  @@index([tenantId, createdAt])
+}
+
+model BalancoEstoqueItem {
+  id                String @id @default(cuid())
+  balancoId         String
+  produtoVariacaoId String
+  /// Saldo do sistema no momento da importação da linha.
+  saldoSnapshot     Int
+  /// Quantidade contada fisicamente (preenchida antes de concluir).
+  quantidadeContada Int?
+  /// Saldo lido no sistema no momento da conclusão (antes do ajuste).
+  saldoNoFecho      Int?
+  /// Delta aplicado em stock (= quantidadeContada − saldoNoFecho na conclusão).
+  deltaAplicado     Int?
+
+  balanco         BalancoEstoque @relation(fields: [balancoId], references: [id], onDelete: Cascade)
+  produtoVariacao ProdutoVariacao @relation(fields: [produtoVariacaoId], references: [id], onDelete: Restrict)
+
+  @@unique([balancoId, produtoVariacaoId])
+  @@index([balancoId])
+  @@index([produtoVariacaoId])
+}
+
+/// Tipo de beneficiário no lançamento de comissão (vendedor interno ou corretor).
+enum ComissaoTipo {
+  VENDEDOR
+  CORRETOR
+}
+
+/// Lançamento gerado quando o pedido fica quitado (base × percentual).
+model LancamentoComissao {
+  id        String @id @default(cuid())
+  tenantId  String
+  storeId   String
+  pedidoId  String
+  tipo      ComissaoTipo
+
+  colaboradorId String?
+  corretorId    String?
+
+  baseCalculo Decimal @db.Decimal(14, 2)
+  percentual  Float
+  valor       Decimal @db.Decimal(14, 2)
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  store        Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  pedido       Pedido       @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  colaborador  Colaborador? @relation("ComissaoVendedor", fields: [colaboradorId], references: [id], onDelete: Restrict)
+  corretor     Corretor?    @relation("ComissaoCorretor", fields: [corretorId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@unique([pedidoId, tipo])
+  @@index([tenantId, createdAt])
+  @@index([tenantId, storeId])
+  @@index([colaboradorId])
+  @@index([corretorId])
+}
+
+/// Conjunto de tamanhos (ex.: letras, numérico infantil) — o produto referencia uma grade; as opções ficam abaixo.
+model GradeTamanho {
+  id        String         @id @default(cuid())
+  tenantId  String
+  tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  nome      String
+  slug      String
+  ordem     Int            @default(0)
+  isActive  Boolean        @default(true)
+  opcoes    OpcaoTamanho[]
+  produtos  Produto[]
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+}
+
+/// Uma opção de tamanho dentro da grade (ex.: P, 38, GG).
+model OpcaoTamanho {
+  id             String            @id @default(cuid())
+  gradeTamanhoId String
+  gradeTamanho   GradeTamanho      @relation(fields: [gradeTamanhoId], references: [id], onDelete: Cascade)
+  nome           String
+  slug           String
+  ordem          Int               @default(0)
+  isActive       Boolean           @default(true)
+  variacoes      ProdutoVariacao[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@unique([gradeTamanhoId, slug])
+  @@index([gradeTamanhoId])
+}
+
+/// Valores de cor reutilizáveis — catálogo da marca.
+model CatalogoCor {
+  id        String            @id @default(cuid())
+  tenantId  String
+  tenant    Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  nome      String
+  slug      String
+  ordem     Int               @default(0)
+  isActive  Boolean           @default(true)
+  variacoes ProdutoVariacao[]
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+}
+
+/// Categoria de produto (catálogo central da marca).
+model CategoriaProduto {
+  id            String                @id @default(cuid())
+  tenantId      String
+  tenant        Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  nome          String
+  slug          String
+  ordem         Int                   @default(0)
+  isActive      Boolean               @default(true)
+  subcategorias SubcategoriaProduto[]
+  produtos      Produto[]
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+}
+
+model SubcategoriaProduto {
+  id          String           @id @default(cuid())
+  categoriaId String
+  categoria   CategoriaProduto @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+  nome        String
+  slug        String
+  ordem       Int              @default(0)
+  isActive    Boolean          @default(true)
+  produtos    Produto[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@unique([categoriaId, slug])
+  @@index([categoriaId])
+}
+
+model TipoProduto {
+  id        String    @id @default(cuid())
+  tenantId  String
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  nome      String
+  slug      String
+  ordem     Int       @default(0)
+  isActive  Boolean   @default(true)
+  produtos  Produto[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+}
+
+model ColecaoProduto {
+  id        String    @id @default(cuid())
+  tenantId  String
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  nome      String
+  slug      String
+  ordem     Int       @default(0)
+  isActive  Boolean   @default(true)
+  produtos  Produto[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+}
+
+model Produto {
+  id         String   @id @default(cuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  /// Código de referência interno da marca (SKU pai / estilo).
+  referencia String?
+  nome       String
+  descricao  String?
+  /// Preço base de venda (mesmo para todas as variações até precificação por SKU).
+  precoVenda Decimal? @db.Decimal(14, 2)
+
+  categoriaId    String?
+  categoria      CategoriaProduto?    @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+  subcategoriaId String?
+  subcategoria   SubcategoriaProduto? @relation(fields: [subcategoriaId], references: [id], onDelete: SetNull)
+  tipoId         String?
+  tipo           TipoProduto?         @relation(fields: [tipoId], references: [id], onDelete: SetNull)
+  colecaoId      String?
+  colecao        ColecaoProduto?      @relation(fields: [colecaoId], references: [id], onDelete: SetNull)
+
+  /// Grade de tamanhos aplicada ao produto (opções de SKU vêm desta grade).
+  gradeTamanhoId String?
+  gradeTamanho   GradeTamanho?        @relation(fields: [gradeTamanhoId], references: [id], onDelete: SetNull)
+
+  isActive Boolean @default(true)
+
+  /// NCM (8 dígitos), sem máscara.
+  ncm               String?
+  /// CEST (7 dígitos), sem máscara.
+  cest              String?
+  /// Origem da mercadoria (tabela de origem / ICMS), 0–8 quando informado.
+  origemMercadoria  Int?
+  /// Ex.: UN, PC, KG — para exibição e integrações fiscais futuras.
+  unidadeTributavel String?
+
+  variacoes ProdutoVariacao[]
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  @@index([tenantId])
+  @@index([categoriaId])
+  @@index([nome])
+  @@index([gradeTamanhoId])
+}
+
+model ProdutoVariacao {
+  id        String  @id @default(cuid())
+  tenantId  String
+  tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  produtoId String
+  produto   Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+
+  opcaoTamanhoId String?
+  opcaoTamanho   OpcaoTamanho? @relation(fields: [opcaoTamanhoId], references: [id], onDelete: SetNull)
+  corCatalogoId String?
+  corCatalogo   CatalogoCor? @relation(fields: [corCatalogoId], references: [id], onDelete: SetNull)
+
+  /// Rótulo derivado (ex.: Tamanho — Cor); mantido para listagens e compatibilidade.
+  nome          String
+  /// Código EAN-13 gerado ou informado (13 dígitos numéricos).
+  ean13         String?
+  /// Código de referência externo (fornecedor, ERP legado, etc.).
+  codigoExterno String?
+  ordem         Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([produtoId])
+  @@index([ean13])
+  @@index([opcaoTamanhoId])
+  @@index([corCatalogoId])
+  estoqueSaldos     EstoqueSaldo[]
+  movimentosEstoque MovimentoEstoque[]
+  pedidoItens       PedidoItem[]
+  balancoItens      BalancoEstoqueItem[]
+}
+
+enum MovimentoEstoqueTipo {
+  /// Entrada manual de mercadoria na loja (quantidade > 0 no movimento).
+  ENTRADA_MANUAL
+  /// Saída por defeito, devolução a fornecedor, etc.
+  SAIDA_DEFEITO
+  /// Saída por venda (pedido finalizado na loja).
+  VENDA
+  /// Linha de saída numa transferência entre lojas.
+  TRANSFERENCIA_SAIDA
+  /// Linha de entrada numa transferência entre lojas.
+  TRANSFERENCIA_ENTRADA
+  /// Ajuste por conferência de recebimento ou inventário (delta pode ser + ou -).
+  AJUSTE_CONFERENCIA
+  /// Entrada por devolução de mercadoria numa troca (repor stock na loja).
+  TROCA_DEVOLUCAO
+}
+
+/// Estado do registo de troca (MVP: concluído na mesma operação).
+enum TrocaEstado {
+  CONCLUIDA
+  CANCELADA
+}
+
+/// Origem da regra de elegibilidade (venda já quitada vs consignado ainda em aberto).
+enum TrocaTipoFluxo {
+  VENDA_QUITADA
+  CONSIGNADO_NAO_QUITADO
+}
+
+/// Saldo agregado por loja e SKU (variação).
+model EstoqueSaldo {
+  id                String @id @default(cuid())
+  tenantId          String
+  storeId           String
+  produtoVariacaoId String
+  quantidade        Int    @default(0)
+
+  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  store           Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  produtoVariacao ProdutoVariacao @relation(fields: [produtoVariacaoId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([storeId, produtoVariacaoId])
+  @@index([tenantId])
+  @@index([tenantId, storeId])
+  @@index([produtoVariacaoId])
+}
+
+/// Linha de movimento de estoque (auditoria). O efeito no saldo é `delta` (+ entra, − sai).
+model MovimentoEstoque {
+  id                  String               @id @default(cuid())
+  tenantId            String
+  storeId             String
+  produtoVariacaoId   String
+  delta               Int
+  tipo                MovimentoEstoqueTipo
+  motivo              String?
+  userId              String?
+  loteTransferenciaId String?
+
+  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  store           Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  produtoVariacao ProdutoVariacao @relation(fields: [produtoVariacaoId], references: [id], onDelete: Cascade)
+  user            User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, storeId])
+  @@index([tenantId, produtoVariacaoId])
+  @@index([tenantId, createdAt])
+  @@index([loteTransferenciaId])
+}
+
+enum FormaPagamento {
+  DINHEIRO
+  CARTAO_DEBITO
+  CARTAO_CREDITO
+  PIX
+  TRANSFERENCIA
+  CHEQUE
+  OUTROS
+}
+
+/// Pedido de venda na loja.
+model Pedido {
+  id       String @id @default(cuid())
+  tenantId String
+  storeId  String
+  /// Número sequencial por loja (ex.: busca e comprovantes).
+  numero   Int
+
+  /// Opcional em rascunho (EM_ANDAMENTO); obrigatório para finalizar.
+  clienteId  String?
+  vendedorId String
+  corretorId String?
+
+  estado     PedidoEstado
+  modalidade PedidoModalidade @default(DIRETA)
+
+  /// Total líquido do pedido; em andamento pode ser null até fechar linhas.
+  total Decimal? @db.Decimal(14, 2)
+
+  tenant   Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  store    Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  cliente  Cliente?    @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  vendedor Colaborador @relation("PedidoVendedor", fields: [vendedorId], references: [id], onDelete: Restrict)
+  corretor Corretor?   @relation(fields: [corretorId], references: [id], onDelete: SetNull)
+
+  /// Quando a mercadoria foi entregue ao cliente (consignado / retirada registada).
+  entregueEm    DateTime?
+  entreguePorId String?
+  entreguePor   Colaborador? @relation("PedidoEntrega", fields: [entreguePorId], references: [id], onDelete: SetNull)
+
+  itens               PedidoItem[]
+  pagamentos          Pagamento[]
+  movimentoCorretor   MovimentoCorretor?
+  grupoCobrancaItens  GrupoCobrancaPedido[]
+  lancamentosComissao LancamentoComissao[]
+  trocasDevolucao     Troca[]             @relation("TrocaPedidoOrigem")
+  trocaComoSeguinte   Troca?              @relation("TrocaPedidoNovo")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([storeId, numero])
+  @@index([tenantId])
+  @@index([tenantId, storeId])
+  @@index([tenantId, createdAt])
+  @@index([clienteId])
+  @@index([vendedorId])
+  @@index([corretorId])
+  @@index([entregueEm])
+}
+
+model PedidoItem {
+  id                String  @id @default(cuid())
+  pedidoId          String
+  produtoVariacaoId String
+  quantidade        Int
+  precoUnitario     Decimal @db.Decimal(14, 2)
+
+  pedido          Pedido          @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  produtoVariacao ProdutoVariacao @relation(fields: [produtoVariacaoId], references: [id], onDelete: Restrict)
+  trocasItens     TrocaItem[]
+
+  createdAt DateTime @default(now())
+
+  @@index([pedidoId])
+  @@index([produtoVariacaoId])
+}
+
+model Pagamento {
+  id          String         @id @default(cuid())
+  tenantId    String
+  pedidoId    String
+  forma       FormaPagamento
+  valor       Decimal        @db.Decimal(14, 2)
+  obs         String?
+  criadoPorId String?
+
+  /// Quando o recebimento faz parte de uma quitação de grupo (lote).
+  grupoCobrancaId String?
+  grupoCobranca   GrupoCobranca? @relation(fields: [grupoCobrancaId], references: [id], onDelete: SetNull)
+
+  pedido    Pedido       @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  criadoPor Colaborador? @relation(fields: [criadoPorId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([pedidoId])
+  @@index([tenantId])
+  @@index([grupoCobrancaId])
+}
+
+/// Lote de cobrança: vários pedidos do mesmo cliente ou do mesmo corretor.
+model GrupoCobranca {
+  id          String            @id @default(cuid())
+  tenantId    String
+  storeId     String
+  tipo        GrupoCobrancaTipo
+  clienteId   String?
+  corretorId  String?
+  criadoPorId String?
+
+  tenant    Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  store     Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  cliente   Cliente?     @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  corretor  Corretor?    @relation(fields: [corretorId], references: [id], onDelete: Restrict)
+  criadoPor Colaborador? @relation("GrupoCobrancaCriador", fields: [criadoPorId], references: [id], onDelete: SetNull)
+
+  itens      GrupoCobrancaPedido[]
+  pagamentos Pagamento[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, storeId])
+  @@index([tenantId, clienteId])
+  @@index([tenantId, corretorId])
+}
+
+model GrupoCobrancaPedido {
+  id       String @id @default(cuid())
+  grupoId  String
+  pedidoId String
+  /// Ordem de aplicação do valor (FIFO na quitação do grupo).
+  ordem    Int    @default(0)
+
+  grupo  GrupoCobranca @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+  pedido Pedido        @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+
+  @@unique([grupoId, pedidoId])
+  @@index([pedidoId])
+}
+
+/// Dívida do corretor face à loja por pedido consignado (valor em aberto à data da entrega).
+model MovimentoCorretor {
+  id         String   @id @default(cuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  corretorId String
+  corretor   Corretor @relation(fields: [corretorId], references: [id], onDelete: Restrict)
+  pedidoId   String   @unique
+  pedido     Pedido   @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  valor      Decimal  @db.Decimal(14, 2)
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([corretorId])
+}
+
+// Corretor: parceiro externo — não é Colaborador. Limite de crédito (consignado) opcional (null = ilimitado).
+model Corretor {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name     String
+  document String?
+  email    String?
+  phone    String?
+
+  commissionPercent Float @default(0)
+
+  paymentMethod CorretorPaymentMethod @default(PIX)
+  pixKey        String?
+  bankName      String?
+  bankBranch    String?
+  bankAccount   String?
+  notes         String?
+
+  /// Exposição máxima em aberto (consignado). Null = sem teto cadastral (ilimitado).
+  creditLimitConsignado Decimal? @db.Decimal(14, 2)
+
+  isActive  Boolean @default(true)
+  isBlocked Boolean @default(false)
+
+  clientes           Cliente[]
+  pedidos            Pedido[]
+  movimentosCorretor MovimentoCorretor[]
+  gruposCobranca     GrupoCobranca[]
+  comissoesComoCorretor LancamentoComissao[] @relation("ComissaoCorretor")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model Cliente {
+  id       String      @id @default(cuid())
+  tenantId String
+  storeId  String
+  tipo     ClienteTipo
+
+  nome        String?
+  cpf         String?
+  aniversario DateTime?
+
+  fantasia        String?
+  razaoSocial     String?
+  cnpj            String?
+  ie              String?
+  ieIsento        Boolean @default(false)
+  responsavelNome String?
+  responsavelFone String?
+
+  endereco String?
+  telefone String?
+  email    String?
+
+  creditLimit Decimal? @db.Decimal(14, 2)
+  /// Crédito de trocas (loja) — acumulado ao concluir trocas; pode ser usado em vendas futuras (integração futura).
+  creditoTroca Decimal @default(0) @db.Decimal(14, 2)
+  isBlocked   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+
+  corretorId String?
+  corretor   Corretor? @relation(fields: [corretorId], references: [id], onDelete: SetNull)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  store  Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  pedidos Pedido[]
+  gruposCobrancaCliente GrupoCobranca[]
+  trocas  Troca[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([storeId])
+  @@index([tenantId, cpf])
+  @@index([tenantId, cnpj])
 }
 
 model Store {
-  id          String      @id @default(cuid())
-  tenantId    String
-  name        String
-  slug        String
-  kind        StoreKind   @default(OPERATIONAL)
-  isActive    Boolean     @default(true)
-  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  userAccess  UserStore[]
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id                String             @id @default(cuid())
+  tenantId          String
+  name              String
+  slug              String
+  kind              StoreKind          @default(OPERATIONAL)
+  isActive          Boolean            @default(true)
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  colaboradorAccess ColaboradorStore[]
+  clientes          Cliente[]
+  estoqueSaldos     EstoqueSaldo[]
+  movimentosEstoque MovimentoEstoque[]
+  pedidos           Pedido[]
+  gruposCobranca    GrupoCobranca[]
+  lancamentosComissao LancamentoComissao[]
+  trocas            Troca[]
+  balancosEstoque   BalancoEstoque[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 
   @@unique([tenantId, slug])
+  @@index([tenantId])
 }
 
+// Qualquer pessoa que trabalha na empresa: admin, gerente, vendedor.
+// Acesso ao sistema é opcional — criado via toggle no formulário.
+model Colaborador {
+  id            String    @id @default(cuid())
+  tenantId      String
+  name          String
+  cpf           String?
+  phone         String?
+  admissionAt   DateTime?
+  dismissalAt   DateTime?
+  isDismissed   Boolean   @default(false)
+  minCommission Float     @default(0)
+  isActive      Boolean   @default(true)
+  role          UserRole
+
+  // Acesso ao sistema — opcional
+  userId String? @unique
+  user   User?   @relation(fields: [userId], references: [id])
+
+  stores ColaboradorStore[]
+  tenant Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  pedidosComoVendedor   Pedido[]    @relation("PedidoVendedor")
+  pedidosEntregaRegistada Pedido[]  @relation("PedidoEntrega")
+  pagamentosRegistrados Pagamento[]
+  gruposCobrancaCriados GrupoCobranca[] @relation("GrupoCobrancaCriador")
+  comissoesComoVendedor LancamentoComissao[] @relation("ComissaoVendedor")
+  trocasCriadas         Troca[]              @relation("TrocaCriador")
+  balancosEstoqueCriados BalancoEstoque[]    @relation("BalancoEstoqueCriador")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model ColaboradorStore {
+  id            String   @id @default(cuid())
+  colaboradorId String
+  storeId       String
+  isDefault     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  colaborador Colaborador @relation(fields: [colaboradorId], references: [id], onDelete: Cascade)
+  store       Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([colaboradorId, storeId])
+  @@index([colaboradorId])
+  @@index([storeId])
+}
+
+// Apenas credenciais de login. Toda pessoa é um Colaborador primeiro.
 model User {
-  id           String      @id @default(cuid())
+  id           String  @id @default(cuid())
   tenantId     String
-  name         String
   email        String
   passwordHash String
-  role         UserRole
-  isActive     Boolean     @default(true)
-  tenant       Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  stores       UserStore[]
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  isActive     Boolean @default(true)
+
+  colaborador Colaborador?
+
+  tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  movimentosEstoque MovimentoEstoque[]
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
 
   @@unique([tenantId, email])
-}
-
-model UserStore {
-  id        String   @id @default(cuid())
-  userId    String
-  storeId   String
-  isDefault Boolean  @default(false)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-
-  @@unique([userId, storeId])
+  @@index([tenantId])
 }

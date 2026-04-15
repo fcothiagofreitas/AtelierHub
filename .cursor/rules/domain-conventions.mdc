@@ -1,0 +1,45 @@
+---
+description: Convenções de domínio para novos modelos, schemas e actions
+globs:
+  - prisma/schema.prisma
+  - src/modules/**/*.ts
+  - src/modules/**/*.tsx
+alwaysApply: false
+---
+
+# Convenções de domínio
+
+## Nomenclatura de campos em modelos Prisma
+
+**Novos modelos devem usar nomes em Português para campos de negócio.**
+
+Exemplos corretos:
+- `nome`, `cpf`, `cnpj`, `telefone`, `endereco`, `aniversario`, `corretorId`
+
+O modelo `Corretor` usa nomes em Inglês (`name`, `document`, `phone`, `bankName`) por razões históricas — **não replicar essa convenção em novos modelos**. Se `Corretor` for refatorado no futuro, alinhar à convenção PT.
+
+## Helpers compartilhados obrigatórios
+
+- `emptyToUndefined` → importar de `@/lib/form-utils`
+- `flattenZodErrors` → importar de `@/lib/form-utils`
+- `parseCreditLimitField` → importar de `@/lib/parse-credit-limit`
+- `isValidCpf` / `isValidCnpj` → importar de `@/lib/doc-validation`
+
+**Nunca** duplicar essas funções em módulos específicos.
+
+## Padrão de autorização em actions
+
+- Verificações de role: usar `requireRole(ROLES_...)` — lança automaticamente se não autorizado.
+- Verificações de loja: usar predicado `hasStoreAccess(session, storeId)` (retorna bool) e retornar `{ error: "..." }` explicitamente.
+- Nunca misturar throw com return no mesmo fluxo de autorização.
+
+## Validação em schemas Zod + actions
+
+- Validações de negócio (e-mail, CPF, CNPJ, limite de crédito) ficam no `superRefine` do schema.
+- A action **não revalida** — apenas extrai o valor numérico para `Prisma.Decimal` quando necessário.
+- Comentar a extração com `// schema (superRefine) já validou este campo`.
+
+## Toggle actions (bloqueio/desbloqueio)
+
+- Sempre envolver em `try/catch`.
+- `revalidatePath` fica **dentro** do try, não fora.

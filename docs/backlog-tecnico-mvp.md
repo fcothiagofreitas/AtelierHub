@@ -13,7 +13,7 @@ Documento de execução do MVP, derivado de:
 - UI: `Tailwind CSS` + `shadcn/ui`
 - Auth: `e-mail e senha`
 - Auto cadastro: **não**
-- Criação de usuários: pela área administrativa
+- Criação de acesso ao sistema: pela área administrativa (via colaborador com login opcional)
 - App: fora do Docker
 - Banco: `PostgreSQL` em Docker
 - Redis: fora do MVP
@@ -51,10 +51,10 @@ Documento de execução do MVP, derivado de:
 - `auth`
 - `administrativo`
 - `lojas`
-- `usuarios`
+- `colaboradores` (pessoas; login é opcional e vive em `User`)
 - `clientes`
 - `corretores`
-- `vendedores`
+- `vendedores` (no MVP: perfil `VENDEDOR` dentro de `Colaborador`, não entidade separada)
 - `catalogo`
 - `estoque`
 - `vendas`
@@ -99,6 +99,10 @@ Deixar a base técnica pronta para iniciar o MVP com segurança.
 - Sessão autenticada funciona
 - CI roda com sucesso
 
+### Status (implementação)
+
+MVP **Sprint 1** entregue no código: projeto Next.js com TypeScript, Tailwind, shadcn/ui, Prisma e PostgreSQL; auth por e-mail e senha; layout autenticado e fluxo de login; migrations iniciais (`Tenant`, `Store`, `User`, vínculos); CI em `.github/workflows/ci.yml` (lint, typecheck, build).
+
 ## Sprint 2 — Identidade, perfis e contexto
 
 ### Objetivo
@@ -130,31 +134,45 @@ Fazer o sistema entender marca, loja, usuário e perfil.
 - Usuário com várias lojas escolhe contexto
 - Perfis acessam apenas o que podem
 
-## Sprint 3 — Área administrativa e usuários
+### Status (implementação)
+
+MVP **Sprint 2** entregue no código: enum `UserRole`, vínculo de utilizador a tenant e a uma ou mais lojas (`ColaboradorStore`); sessão NextAuth, `requireRole` e rotas protegidas; seleção de loja ativa e contexto em `src/lib/session.ts` (header/shell); redirecionamentos conforme número de lojas.
+
+## Sprint 3 — Área administrativa e colaboradores
 
 ### Objetivo
 
 Permitir que o administrativo monte a operação da marca.
 
+### Arquitetura entregue (rewrite)
+
+- **Colaborador** é a entidade primária de pessoas (nome, CPF, telefone, perfil `UserRole`, lojas, admissão/demissão, comissão mínima para vendedor, ativo/inativo).
+- **User** guarda só credenciais (e-mail, senha); vínculo 1:1 opcional com `Colaborador` (“dar acesso ao sistema” no formulário).
+- Rotas: `/admin/lojas`, `/admin/colaboradores` (substitui o antigo CRUD de “usuários” isolado).
+
 ### Backlog técnico
 
 - Criar painel administrativo inicial
 - Criar CRUD de lojas
-- Criar CRUD de usuários
-- Permitir definição de perfil do usuário
-- Permitir vínculo de usuário com lojas
-- Permitir ativar/inativar usuário
+- Criar CRUD de colaboradores (com login e perfil)
+- Permitir definição de perfil do colaborador
+- Permitir vínculo de colaborador com lojas
+- Permitir ativar/inativar colaborador (e usuário vinculado, quando existir)
 - Implementar reset de senha administrativo
 - Criar listagem de lojas com filtros básicos
-- Criar listagem de usuários com filtros básicos
+- Criar listagem de colaboradores com filtros básicos
 - Criar formulários de loja
-- Criar formulários de usuário
+- Criar formulários de colaborador
 
 ### Critério de pronto
 
 - Administrativo cria loja
-- Administrativo cria usuário
-- Administrativo vincula usuário às lojas corretas
+- Administrativo cria colaborador (com ou sem acesso ao sistema)
+- Administrativo vincula colaborador às lojas corretas
+
+### Status
+
+Entregue e versionado no branch `rewrite` (ex.: commit `feat: sprint 3 — área administrativa completa`, refactor `Colaborador como entidade primária`, ajustes de UX e redirect de seleção de loja).
 
 ## Sprint 4 — Cadastros centrais
 
@@ -162,23 +180,46 @@ Permitir que o administrativo monte a operação da marca.
 
 Subir os cadastros mestres usados pela operação.
 
-### Backlog técnico
+### Domínio (decisão fechada para o MVP)
 
-- Criar CRUD de vendedores
-- Criar CRUD de corretores
-- Implementar status ativo/bloqueado para corretor
-- Implementar status ativo/demitido para vendedor
-- Implementar comissão mínima de vendedor
-- Implementar comissão por corretor
-- Implementar dados Pix/transferência de corretor
-- Implementar datas de admissão/demissão de vendedor
-- Remover vendedor demitido das seleções operacionais
-- Remover corretor bloqueado das seleções operacionais
+- **Corretor não é colaborador** — entidade e CRUD separados; não usar `Colaborador` / `UserRole` para corretor.
+- **Limite de crédito do corretor (MVP):** um único **limite geral**, válido para **exposição em aberto** no contexto **consignado**; **sem** sublimite por loja ou por cliente neste MVP. **Campo opcional:** se **não** for preenchido, considera-se **ilimitado** para aquele corretor (até existir cálculo de exposição no PDV).
+- **Quando estourar o limite:** política de **alerta** (não bloqueio rígido) na camada de venda quando existir PDV — o cadastro na Sprint 4 prepara o valor; a consulta na venda pode vir na sprint de vendas.
 
-### Critério de pronto
+### Já coberto pelo modelo atual (`Colaborador` + admin)
 
-- Administrativo cria vendedor e corretor
-- Regras de bloqueio e demissão afetam a operação
+Estes itens da sprint original passaram a ser tratados no **CRUD de colaboradores** (em especial com perfil **VENDEDOR**), não como CRUD separado de “vendedor”:
+
+- Definição de perfil (inclui vendedor) e vínculo com lojas
+- Status ativo/inativo do colaborador
+- Comissão mínima (campo no formulário quando o perfil é vendedor)
+- Datas de admissão e demissão + flags `isDismissed` / `dismissalAt` no schema
+- Login próprio do vendedor (toggle de acesso, quando aplicável)
+
+### Backlog técnico — Sprint 4 (MVP)
+
+1. **Modelo `Corretor`** no Prisma (`tenantId`, dados cadastrais alinhados a RN-CR1, comissão, Pix/dados de pagamento, status ativo/bloqueado).
+2. **Campo de limite geral de crédito** (consignado, um valor por corretor — ex. `Decimal` opcional; **vazio = ilimitado**).
+3. **CRUD administrativo** — listagem + criar/editar corretor (área `/admin` ou rota equivalente), com busca/filtro básico se couber no mesmo padrão de lojas/colaboradores.
+4. **Seed** — pelo menos um corretor de exemplo para desenvolvimento.
+
+### Fora do escopo do MVP (Sprint 4 ou sprints futuras)
+
+- Limite de crédito **por cliente** ou **por loja** para corretor.
+- **Regras na operação** (PDV): cálculo de exposição em aberto, alerta ao ultrapassar limite, exclusão de corretor bloqueado nas seleções — depende da sprint de **vendas / PDV**; o cadastro só fornece o teto.
+
+### Critério de pronto (MVP desta sprint)
+
+- Administrativo cria, edita e lista **corretores** com dados essenciais, **comissão**, **pagamento (ex. Pix)** e **limite geral de crédito** (consignado).
+- Corretor **bloqueado** / **ativo** refletidos no cadastro (uso em telas de venda fica para quando o PDV existir).
+
+### Nota
+
+O “vendedor” como pessoa operacional continua no **Colaborador**. O que a Sprint 4 fecha no MVP é o **corretor** como cadastro separado, com **um** limite de crédito geral conforme acima.
+
+### Status (implementação)
+
+MVP de **corretores** entregue: modelo Prisma, migration, CRUD em `/admin/corretores`, limite consignado opcional (vazio = ilimitado), seed com dois exemplos.
 
 ## Sprint 5 — Clientes
 
@@ -208,6 +249,10 @@ Permitir cadastro operacional de clientes pela loja.
 - Busca rápida funciona
 - Cliente bloqueado fica sinalizado
 
+### Status (implementação)
+
+MVP **Sprint 5** entregue no código: modelo `Cliente` (PF/PJ), formulários, listagem com busca, limite de crédito e vínculo opcional com corretor; cadastro rápido por nome no PDV (`pdvCreateClienteNomeRapido`) para fluxo de venda.
+
 ## Sprint 6 — Catálogo de produto
 
 ### Objetivo
@@ -235,6 +280,10 @@ Preparar o catálogo para estoque e venda.
 - Administrativo cria produto com variações
 - Produto recebe código `EAN-13`
 - Produto está pronto para receber estoque
+
+### Status (implementação)
+
+MVP **Sprint 6** entregue no código: CRUD de categorias, subcategorias, tipos, coleções, cores e grades/tamanhos; modelo `Produto` e `ProdutoVariacao` com geração de `EAN-13`, dados fiscais e código externo; UI sob `/admin/catalogo` e lista/formulário em `/admin/catalogo/produtos`.
 
 ## Sprint 7 — Estoque
 
@@ -268,6 +317,16 @@ Subir a rastreabilidade de estoque entre administrativo e lojas.
 - Lojas consultam estoque
 - Histórico fica auditável
 
+### Glossário (implementação vs RN-E6/E7)
+
+- **Conferência manual (MVP):** ajuste pontual com delta inteiro (+/−) por SKU e loja, tipo `AJUSTE_CONFERENCIA` em `MovimentoEstoque`. O **balanço / inventário físico** por documento (rascunho, importação, contagem, conclusão com ajustes rastreáveis) está em **Sprint 13** (`BalancoEstoque`), alinhado a RN-E6/E7 em escopo MVP.
+- **Saldo administrativo:** mesma tabela de saldo; lojas com `StoreKind.ADMINISTRATIVE` têm posição própria (RN-E8). Transferências a partir do admin usam essa loja como origem ou destino nas telas.
+- **Consulta entre lojas:** perfis `ADMIN_DA_MARCA` / `ADMINISTRATIVO` filtram qualquer loja do tenant; demais perfis só veem lojas do seu vínculo (`ColaboradorStore`). A UI prioriza **disponibilidade** (saldo), sem cruzar métricas gerenciais (RN-E10).
+
+### Status (implementação)
+
+MVP **Sprint 7** entregue no código: migração `EstoqueSaldo` + `MovimentoEstoque`, serviço transacional, entradas/saídas/transferências/ajuste, seed com saldos de exemplo, rotas em `/admin/estoque` (consulta, histórico, entrada, saída defeito, transferência, conferência), link no menu **Operação** e no painel admin.
+
 ## Sprint 8 — Tela de vendas da loja
 
 ### Objetivo
@@ -294,6 +353,10 @@ Entregar a tela principal da operação da loja.
 - Loja vê a lista de vendas da própria unidade
 - Busca e filtros funcionam
 - Tela vira ponto principal da operação da loja
+
+### Status (implementação)
+
+MVP **Sprint 8** entregue no código: modelo `Pedido` + `PedidoItem`, migração, seed com três pedidos de exemplo, rotas `/vendas` (lista com período, atalhos, filtros e buscas), `/vendas/[id]` (detalhe), atalho **Nova venda** → PDV (Sprint 9), item ativo no menu **Operação**.
 
 ## Sprint 9 — PDV rápido
 
@@ -325,6 +388,10 @@ Fazer a venda acontecer no fluxo rápido do MVP.
 - Baixa de estoque ocorre ao finalizar
 - Venda aparece na lista da loja
 
+### Status (implementação)
+
+MVP **Sprint 9** entregue no código: modal **PDV rápido** em `/vendas?pdv=1` (e **Nova venda**), seleção de cliente/vendedor/corretor e modalidade direta/consignada, busca de variação + leitura **EAN-13**, carrinho com quantidade/preço, **auto-save** do pedido em andamento, **finalização** com validação de saldo e movimentos `MovimentoEstoqueTipo.VENDA`, redirect/fecho volta à lista; enum e migração `VENDA`; `/vendas/novo` redireciona para `?pdv=1`.
+
 ## Sprint 10 — Pagamentos e cobranças
 
 ### Objetivo
@@ -352,6 +419,10 @@ Fechar o ciclo financeiro básico do pedido.
 - Cobrança agrupada funciona
 - Recibo PDF pode ser emitido
 
+### Status (implementação)
+
+MVP **Sprint 10** entregue no código: modelo `Pagamento` e `GrupoCobranca`, recebimento multi-forma no pedido e em grupo (`pagamento-actions`, `cobranca-actions`), contas a receber e telas de cobrança agrupada, estados `PAGO_PARCIAL` / `QUITADO`, API `GET /api/vendas/pedido/[pedidoId]/recibo` (PDF via `recibo-pdf.ts`). **Recibo na UI:** após existir pelo menos um pagamento registado, o link **Recibo (PDF)** aparece no rodapé do PDV (ver pedido / `VendaAcoesCliente`, `data-testid="vendas-recibo-pdf"`) e no painel **Venda finalizada** (`data-testid="vendas-recibo-pdf-finalizada"`). O componente `PedidoResumoLeitura` mantém o mesmo destino para eventual reutilização. **E2E:** `npm run test:e2e` (Playwright: `e2e/vendas-recibo.spec.ts`, `globalSetup` garante pagamento no pedido #3 se faltar).
+
 ## Sprint 11 — Comissões
 
 ### Objetivo
@@ -373,6 +444,10 @@ Registrar e consultar comissões do MVP.
 
 - Venda gera comissão
 - Administrativo consulta e configura parâmetros
+
+### Status (implementação)
+
+MVP **Sprint 11** entregue no código: modelo `LancamentoComissao` (tipos `VENDEDOR` / `CORRETOR`), geração na quitação do pedido (`gerarLancamentosComissaoPedidoQuitado` em `pagamento-actions` e `cobranca-actions`), base = total do pedido; vendedor usa `Colaborador.minCommission` ou `Tenant.percentualComissaoVendedorPadrao`; corretor usa `Corretor.commissionPercent` quando o pedido tem corretor. **Admin:** `/admin/comissoes` (lista de lançamentos com filtros) e `/admin/comissoes/parametros` (percentual padrão da marca); `/admin/comissoes/consulta` redirecciona para a lista.
 
 ## Sprint 12 — Trocas
 
@@ -396,6 +471,10 @@ Suportar trocas dentro das regras do MVP.
 - Cliente recebe crédito
 - Troca pode originar novo pedido
 
+### Status (implementação)
+
+MVP **Sprint 12** entregue no código: modelos `Troca` / `TrocaItem`, `Cliente.creditoTroca`, `Tenant.prazoTrocaDias`, movimento `TROCA_DEVOLUCAO`; fluxos **venda quitada** (prazo configurável) e **consignado não quitado** (com `MovimentoCorretor`); crédito ao cliente e reposição de stock; acção `vincularPedidoNovoATroca` para associar pedido novo. **UI:** `/vendas/trocas` (lista + prazo), `/vendas/trocas/nova`, menu **Trocas**.
+
 ## Sprint 13 — Balanço de estoque
 
 ### Objetivo
@@ -418,6 +497,10 @@ Fechar o controle físico do estoque.
 - Divergência é exibida
 - Ajuste fica auditável
 
+### Status (implementação)
+
+MVP **Sprint 13** entregue no código: modelos `BalancoEstoque` / `BalancoEstoqueItem`, migração `20260424120000_balanco_estoque`; fluxo rascunho → importação a partir de `EstoqueSaldo` (opção só saldo positivo) → contagens → conclusão com movimentos `AJUSTE_CONFERENCIA` e motivo textual `Balanço #` + número do documento; cancelamento de rascunho. **UI:** `/admin/estoque/balanco` (lista por loja), `/admin/estoque/balanco/novo`, `/admin/estoque/balanco/[id]` (detalhe / relatório), entrada no hub **Estoque**.
+
 ## Sprint 14 — Painel administrativo consolidado
 
 ### Objetivo
@@ -437,6 +520,10 @@ Entregar visão consolidada para o perfil administrativo.
 
 - Administrativo enxerga a marca de forma consolidada
 - Lojas seguem sem visão gerencial cruzada
+
+### Status (implementação)
+
+MVP **Sprint 14** entregue no código: snapshot `getAdminConsolidadoSnapshot` em `src/modules/admin/admin-consolidado-queries.ts` (vendas por período e valores quitados, totais de estoque e top lojas por peças, pendências: pedidos em andamento / pagamento aberto, balanços em rascunho, contagem de grupos de cobrança). **UI:** `/admin` com secções Vendas da marca, Estoque da marca, Pendências e alertas (destaque quando há itens), atalhos para vendas, clientes, contas a receber, trocas e comissões; acesso restrito a `ADMIN_DA_MARCA` / `ADMINISTRATIVO`.
 
 ## Sprint 15 — Staging, produção e go-live
 

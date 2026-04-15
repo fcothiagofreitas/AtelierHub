@@ -1,35 +1,34 @@
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { getActiveStoreContext } from "@/lib/session";
-import { ProtectedShell } from "@/modules/auth/components/protected-shell";
-
-type ProtectedLayoutProps = {
-  children: ReactNode;
-};
+import { AppShell } from "@/modules/shell/components/app-shell";
 
 export default async function ProtectedLayout({
   children,
-}: ProtectedLayoutProps) {
-  const { session, availableStores, activeStore } = await getActiveStoreContext();
+}: {
+  children: ReactNode;
+}) {
+  const { session, stores, activeStore, needsStoreSelection } =
+    await getActiveStoreContext();
 
-  if (availableStores.length === 0) {
-    redirect("/login");
-  }
+  if (stores.length === 0) redirect("/login");
+
+  if (needsStoreSelection) redirect("/select-store");
 
   return (
-    <ProtectedShell
+    <AppShell
       userName={session.user.name}
       userEmail={session.user.email}
-      role={session.user.role}
-      currentStoreId={activeStore?.id ?? null}
-      currentStoreName={activeStore?.name ?? "Nenhuma loja selecionada"}
-      stores={availableStores.map((store) => ({
-        id: store.id,
-        name: store.name,
-        kind: store.kind,
+      userRole={session.user.role}
+      stores={stores.map((s) => ({
+        id: s.id,
+        name: s.name,
+        kind: s.kind,
       }))}
+      activeStoreId={activeStore?.id ?? null}
+      activeStoreName={activeStore?.name ?? "Nenhuma loja selecionada"}
     >
       {children}
-    </ProtectedShell>
+    </AppShell>
   );
 }

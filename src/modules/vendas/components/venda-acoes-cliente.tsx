@@ -1,0 +1,169 @@
+"use client";
+
+import * as React from "react";
+import Link from "next/link";
+import { toast } from "sonner";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { ReceberModal } from "@/modules/vendas/components/receber-modal";
+import { cn } from "@/lib/utils";
+
+/**
+ * Acções do pedido no rodapé do PDV: Salvar (outline), Entregar (outline), Finalizar venda (primário).
+ */
+type Props = {
+  storeId: string;
+  pedidoId: string;
+  totalPedido: number;
+  totalJaPago: number;
+  /** Fechar / guardar sem receber (ex.: fecha o modal de visualização). */
+  onSalvar?: () => void;
+  /** Desativa o primeiro botão outline (Salvar / Fechar). */
+  salvarDisabled?: boolean;
+  /** Texto do primeiro botão outline. */
+  outlineButtonLabel?: string;
+  showReceber?: boolean;
+  /** Rótulo do botão primário (abre pagamento ou corre `onReceberPreparar`). */
+  receberButtonLabel?: string;
+  /** Desativa Finalizar venda (ex.: sem saldo / pedido quitado). */
+  receberDisabled?: boolean;
+  receberDisabledTitle?: string;
+  /**
+   * Quando definido (ex.: carrinho em rascunho), o clique em Finalizar venda corre isto
+   * em vez de abrir o modal — o pai pode finalizar o pedido e abrir o modal no passo seguinte.
+   */
+  onReceberPreparar?: () => void | Promise<void>;
+  /** Entrega no balcão / retirada — substitui o toast por omissão. */
+  onEntregar?: () => void;
+  /** Quando false, oculta Entregar (só em ecrãs que não usam o trio completo). */
+  showEntregar?: boolean;
+  /** Desativa Entregar (ex.: ainda no carrinho ou sem consignado/corretor). */
+  entregarDisabled?: boolean;
+  entregarDisabledTitle?: string;
+  /** Após pagamento com sucesso (refrescar dados do pedido). */
+  onPagamentoRegistado?: () => void;
+};
+
+export function VendaAcoesCliente({
+  storeId,
+  pedidoId,
+  totalPedido,
+  totalJaPago,
+  onSalvar,
+  salvarDisabled = false,
+  outlineButtonLabel = "Salvar",
+  showReceber = true,
+  receberButtonLabel = "Finalizar venda",
+  receberDisabled = false,
+  receberDisabledTitle,
+  onReceberPreparar,
+  onEntregar,
+  showEntregar = true,
+  entregarDisabled = false,
+  entregarDisabledTitle,
+  onPagamentoRegistado,
+}: Props) {
+  const [ReceberOpen, setReceberOpen] = React.useState(false);
+
+  const handleEntregar = () => {
+    if (entregarDisabled) return;
+    if (onEntregar) {
+      onEntregar();
+      return;
+    }
+    toast.message(
+      "Entrega em balcão: registo detalhado será ligado ao pedido em breve.",
+    );
+  };
+
+  const handleReceber = async () => {
+    if (receberDisabled) return;
+    if (onReceberPreparar) {
+      await onReceberPreparar();
+      return;
+    }
+    setReceberOpen(true);
+  };
+
+  const modalMontado =
+    Boolean(showReceber && !receberDisabled && pedidoId) && !onReceberPreparar;
+
+  const podeEmitirRecibo = Boolean(pedidoId) && totalJaPago > 0.004;
+
+  return (
+    <>
+      <div className="flex flex-wrap items-center gap-2">
+        {onSalvar ? (
+          <Button
+            variant="outline"
+            size="sm"
+            type="button"
+            disabled={salvarDisabled}
+            onClick={onSalvar}
+          >
+            {outlineButtonLabel}
+          </Button>
+        ) : null}
+        {showEntregar ? (
+          <Button
+            variant="outline"
+            size="sm"
+            type="button"
+            disabled={entregarDisabled}
+            title={
+              entregarDisabled
+                ? entregarDisabledTitle ?? "Indisponível"
+                : undefined
+            }
+            onClick={handleEntregar}
+          >
+            Entregar
+          </Button>
+        ) : null}
+        {showReceber ? (
+          <Button
+            size="sm"
+            type="button"
+            disabled={receberDisabled}
+            title={
+              receberDisabled
+                ? receberDisabledTitle ?? "Indisponível"
+                : undefined
+            }
+            onClick={() => void handleReceber()}
+          >
+            {receberButtonLabel}
+          </Button>
+        ) : null}
+        {podeEmitirRecibo ? (
+          <Link
+            href={`/api/vendas/pedido/${pedidoId}/recibo`}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="vendas-recibo-pdf"
+            className={cn(
+              buttonVariants({ variant: "outline", size: "sm" }),
+              "no-underline",
+            )}
+          >
+            Recibo (PDF)
+          </Link>
+        ) : null}
+      </div>
+
+      {modalMontado ? (
+        <ReceberModal
+          open={ReceberOpen}
+          onClose={() => setReceberOpen(false)}
+          storeId={storeId}
+          pedidoId={pedidoId}
+          totalPedido={totalPedido}
+          totalJaPago={totalJaPago}
+          onConfirm={() => {
+            setReceberOpen(false);
+            onPagamentoRegistado?.();
+          }}
+        />
+      ) : null}
+    </>
+  );
+}
