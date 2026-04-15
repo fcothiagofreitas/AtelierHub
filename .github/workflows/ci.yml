@@ -1,10 +1,18 @@
+# Gate de qualidade em todo push/PR relevante (alinhado a develop → staging, main → production).
 name: CI
 
 on:
   push:
-    branches: [rewrite, develop, main]
+    branches: [main, develop, rewrite]
   pull_request:
-    branches: [develop, main]
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   ci:

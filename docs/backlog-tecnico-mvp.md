@@ -555,6 +555,46 @@ Colocar o MVP em operação com segurança.
 - Erros são monitorados
 - Banco possui rotina mínima de backup
 
+### Status (implementação) — conferência
+
+**Entregue no código / repo (MVP operacional parcial):**
+
+| Item do backlog | Situação |
+|-----------------|----------|
+| Healthcheck HTTP | **Sim** — `GET /api/health` (`src/app/api/health/route.ts`), liveness sem DB. |
+| CI | **Sim** — `.github/workflows/ci.yml` em `rewrite`, `develop`, `main` (lint, typecheck, build). |
+| Deploy automatizado | **Sim** — `deploy-staging.yml` (`develop`), `deploy-production.yml` (`main`), `deploy-rewrite.yml` (`rewrite`, transição). Ver checkpoint abaixo. |
+| PM2 | **Um processo** — `ecosystem.config.cjs` (app `atelierhub`); não há ficheiros separados “staging” vs “production” no repo. |
+| PostgreSQL em Docker | **Sim** — `docker-compose.yml` com `atelierhub_dev` e healthcheck do container. |
+| Nginx | **Fora do repo** — configurado na VPS (não versionado aqui). |
+
+**Ainda em aberto vs critério de pronto da Sprint 15:**
+
+| Item | Notas |
+|------|--------|
+| PM2 distinto staging / production | Não há dois ecosistemas ou instâncias nomeadas por ambiente no repositório. |
+| Nginx + domínios staging / production | Domínios e blocos `server` não estão no repo; na VPS há uso por IP / sites manuais. |
+| Bases `atelierhub_staging` e `atelierhub_production` | O compose atual define só `POSTGRES_DB=atelierhub_dev`; não há criação automática dos dois nomes. |
+| Pipeline `develop → staging` | **Workflow:** `deploy-staging.yml` em push a **`develop`** (ou dispatch). Na VPS pode faltar segundo clone (`/var/www/atelierhub-staging`) até activares staging. |
+| Pipeline `main → production` | **Workflow:** `deploy-production.yml` em push a **`main`**; na VPS usar clone em `/var/www/atelierhub` (ou `VPS_PROJECT_DIR_PRODUCTION`). |
+| Sentry | Não integrado no código (apenas mencionado em docs). |
+| Logs da aplicação | PM2 grava em `~/.pm2/logs/`; não há stack de logs centralizado no repo. |
+| Backup PostgreSQL | Sem script ou runbook mínimo versionado. |
+| Checklist de rollback | Não documentado no repositório. |
+
+**Leitura:** o ambiente **“produção light”** na VPS (IP, PM2, Docker, migrações, CI/CD em `rewrite`) está em uso; os critérios formais de **dois ambientes (staging/production) com branches e BDs separados**, **monitorização de erros** e **backup documentado** continuam por fechar para considerar a Sprint 15 **fechada** como no texto original.
+
+### Onde estamos (checkpoint — Sprint 15)
+
+- **PostgreSQL = banco de dados.** No repositório sobe com **Docker** (`docker-compose.yml`: serviço `db`, imagem Postgres 16, volume persistente, healthcheck). Na **VPS** o contentor (ex.: `atelierhub-db`) mantém o Postgres **online**; a app usa `DATABASE_URL` apontando para esse host/porta (ex.: `localhost:5433` → Postgres dentro do container).
+- **CI** (`.github/workflows/ci.yml`): em **push** para `main`, `develop`, `rewrite`; em **PR** para `main`, `develop` — lint, typecheck, build; `concurrency` para cancelar runs duplicados no mesmo ref.
+- **CD (planeado + transição):**
+  - **`deploy-staging.yml`:** push em **`develop`** → staging (dir default `/var/www/atelierhub-staging`); **`workflow_dispatch`** permite escolher branch (ex. `rewrite`) até o fluxo estabilizar.
+  - **`deploy-production.yml`:** push em **`main`** → produção (dir default `/var/www/atelierhub`); `workflow_dispatch` com branch (default `main`).
+  - **`deploy-rewrite.yml`:** push em **`rewrite`** → mesmo caminho típico `/var/www/atelierhub` (transição); remover quando `develop`/`main` forem o único fluxo.
+- **Secrets opcionais de caminho:** `VPS_PROJECT_DIR_STAGING`, `VPS_PROJECT_DIR_PRODUCTION`, `VPS_PROJECT_DIR_REWRITE` (senão usam os defaults nos workflows).
+- **Próximo passo** na Sprint 15: na VPS criar clone/`.env` para staging quando passares a usar `develop`; Sentry, backup e rollback continuam em aberto.
+
 ## Observações de execução
 
 - Cada sprint deve entregar **front e back juntos**

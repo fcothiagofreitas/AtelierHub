@@ -1,29 +1,35 @@
-# Deploy automático na VPS (SSH), alinhado ao fluxo do erpcostura.
+# Deploy para ambiente de staging: branch develop (push) ou deploy manual (outra branch, ex. rewrite).
 #
-# Segredos em GitHub → Settings → Secrets → Actions:
-#   VPS_HOST     (ex.: 187.77.246.162)
-#   VPS_USER     (ex.: root ou deploy)
-#   VPS_SSH_KEY  (chave privada PEM com acesso SSH à VPS)
-#   VPS_PORT     (ex.: 22)
+# Segredos (GitHub → Settings → Secrets → Actions):
+#   VPS_HOST, VPS_USER, VPS_SSH_KEY, VPS_PORT  — acesso SSH à VPS
+# Opcional:
+#   VPS_PROJECT_DIR_STAGING — caminho do clone na VPS (default: /var/www/atelierhub-staging)
 #
-# Na VPS: clone em /var/www/atelierhub, .env configurado, Docker + Docker Compose,
-# e Postgres via docker-compose.yml (porta host 5433 → contentor 5432), alinhado ao dev.
+# Na VPS: clone desse directório, .env de staging, docker compose + Postgres, PM2.
 
-name: Deploy to VPS
+name: Deploy staging
 
 on:
   push:
-    branches:
-      - rewrite
+    branches: [develop]
   workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch a fazer deploy (ex.: develop, rewrite)"
+        required: true
+        default: "develop"
+        type: string
+
+permissions:
+  contents: read
 
 concurrency:
-  group: deploy-production
+  group: deploy-staging
   cancel-in-progress: false
 
 jobs:
   deploy:
-    name: Deploy to VPS
+    name: Deploy staging (SSH)
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -41,14 +47,16 @@ jobs:
           command_timeout: 20m
           script: |
             set -e
-
-            PROJECT_DIR="/var/www/atelierhub"
+            DEPLOY_BRANCH="${{ github.event_name == 'workflow_dispatch' && github.event.inputs.branch || github.ref_name }}"
+            PROJECT_DIR="${{ secrets.VPS_PROJECT_DIR_STAGING }}"
+            PROJECT_DIR="${PROJECT_DIR:-/var/www/atelierhub-staging}"
+            echo "==> Branch: $DEPLOY_BRANCH | Dir: $PROJECT_DIR"
             cd "$PROJECT_DIR"
 
-            echo "==> Pulling rewrite..."
+            echo "==> Pulling $DEPLOY_BRANCH..."
             git fetch origin
-            git checkout rewrite
-            git pull origin rewrite
+            git checkout "$DEPLOY_BRANCH"
+            git pull origin "$DEPLOY_BRANCH"
 
             echo "==> Postgres (Docker)..."
             docker compose up -d
@@ -78,4 +86,4 @@ jobs:
             fi
             pm2 save
 
-            echo "==> Deploy completed."
+            echo "==> Deploy staging completed."

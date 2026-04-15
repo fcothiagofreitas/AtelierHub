@@ -1,0 +1,69 @@
+# Transição: deploy automático ao push em `rewrite` (caminho típico /var/www/atelierhub).
+# Quando `develop`/`main` forem o fluxo principal, podes desactivar este workflow
+# (ou apagar o ficheiro) e usar só deploy-staging + deploy-production.
+
+name: Deploy rewrite (transição)
+
+on:
+  push:
+    branches: [rewrite]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-rewrite
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy rewrite branch (SSH)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          command_timeout: 20m
+          script: |
+            set -e
+            PROJECT_DIR="${{ secrets.VPS_PROJECT_DIR_REWRITE }}"
+            PROJECT_DIR="${PROJECT_DIR:-/var/www/atelierhub}"
+            cd "$PROJECT_DIR"
+
+            echo "==> Pulling rewrite..."
+            git fetch origin
+            git checkout rewrite
+            git pull origin rewrite
+
+            echo "==> Postgres (Docker)..."
+            docker compose up -d
+            for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+              if docker compose exec -T db pg_isready -U atelierhub -d atelierhub_dev 2>/dev/null; then
+                echo "Postgres pronto."
+                break
+              fi
+              echo "A aguardar Postgres... ($i/15)"
+              sleep 2
+            done
+
+            npm ci
+            npx prisma migrate deploy
+            npm run build
+
+            if pm2 describe atelierhub > /dev/null 2>&1; then
+              pm2 restart atelierhub --update-env
+            else
+              pm2 start ecosystem.config.cjs
+            fi
+            pm2 save
+
+            echo "==> Deploy rewrite completed."

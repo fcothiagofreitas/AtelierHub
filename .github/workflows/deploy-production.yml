@@ -1,0 +1,87 @@
+# Deploy para produção: branch main (push) ou deploy manual.
+#
+# Segredos:
+#   VPS_HOST, VPS_USER, VPS_SSH_KEY, VPS_PORT
+# Opcional:
+#   VPS_PROJECT_DIR_PRODUCTION — caminho do clone (default: /var/www/atelierhub)
+
+name: Deploy production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch a fazer deploy (normalmente main)"
+        required: true
+        default: "main"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy production (SSH)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          command_timeout: 20m
+          script: |
+            set -e
+            DEPLOY_BRANCH="${{ github.event_name == 'workflow_dispatch' && github.event.inputs.branch || github.ref_name }}"
+            PROJECT_DIR="${{ secrets.VPS_PROJECT_DIR_PRODUCTION }}"
+            PROJECT_DIR="${PROJECT_DIR:-/var/www/atelierhub}"
+            echo "==> Branch: $DEPLOY_BRANCH | Dir: $PROJECT_DIR"
+            cd "$PROJECT_DIR"
+
+            echo "==> Pulling $DEPLOY_BRANCH..."
+            git fetch origin
+            git checkout "$DEPLOY_BRANCH"
+            git pull origin "$DEPLOY_BRANCH"
+
+            echo "==> Postgres (Docker)..."
+            docker compose up -d
+            for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+              if docker compose exec -T db pg_isready -U atelierhub -d atelierhub_dev 2>/dev/null; then
+                echo "Postgres pronto."
+                break
+              fi
+              echo "A aguardar Postgres... ($i/15)"
+              sleep 2
+            done
+
+            echo "==> Installing dependencies..."
+            npm ci
+
+            echo "==> Prisma migrate + generate..."
+            npx prisma migrate deploy
+
+            echo "==> Build Next.js..."
+            npm run build
+
+            echo "==> PM2..."
+            if pm2 describe atelierhub > /dev/null 2>&1; then
+              pm2 restart atelierhub --update-env
+            else
+              pm2 start ecosystem.config.cjs
+            fi
+            pm2 save
+
+            echo "==> Deploy production completed."
