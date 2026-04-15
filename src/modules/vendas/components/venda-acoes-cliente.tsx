@@ -8,7 +8,7 @@ import { ReceberModal } from "@/modules/vendas/components/receber-modal";
 import { cn } from "@/lib/utils";
 
 /**
- * Acções do pedido no rodapé do PDV: Salvar (outline), Entregar (outline), Finalizar venda (primário).
+ * Acções do pedido no rodapé do PDV: Salvar (outline), Consignar (outline, opcional), Finalizar venda (primário).
  */
 type Props = {
   storeId: string;
@@ -32,11 +32,13 @@ type Props = {
    * em vez de abrir o modal — o pai pode finalizar o pedido e abrir o modal no passo seguinte.
    */
   onReceberPreparar?: () => void | Promise<void>;
-  /** Entrega no balcão / retirada — substitui o toast por omissão. */
+  /** Consignação / entrega no balcão — substitui o toast por omissão. */
   onEntregar?: () => void;
-  /** Quando false, oculta Entregar (só em ecrãs que não usam o trio completo). */
+  /** Quando false, oculta o botão de consignar. */
   showEntregar?: boolean;
-  /** Desativa Entregar (ex.: ainda no carrinho ou sem consignado/corretor). */
+  /** Rótulo do botão outline de consignação (ex.: «Consignar»). */
+  entregarButtonLabel?: string;
+  /** Desativa Consignar. */
   entregarDisabled?: boolean;
   entregarDisabledTitle?: string;
   /** Após pagamento com sucesso (refrescar dados do pedido). */
@@ -58,6 +60,7 @@ export function VendaAcoesCliente({
   onReceberPreparar,
   onEntregar,
   showEntregar = true,
+  entregarButtonLabel = "Consignar",
   entregarDisabled = false,
   entregarDisabledTitle,
   onPagamentoRegistado,
@@ -71,7 +74,7 @@ export function VendaAcoesCliente({
       return;
     }
     toast.message(
-      "Entrega em balcão: registo detalhado será ligado ao pedido em breve.",
+      "Consignação em balcão: registo detalhado será ligado ao pedido em breve.",
     );
   };
 
@@ -116,7 +119,7 @@ export function VendaAcoesCliente({
             }
             onClick={handleEntregar}
           >
-            Entregar
+            {entregarButtonLabel}
           </Button>
         ) : null}
         {showReceber ? (

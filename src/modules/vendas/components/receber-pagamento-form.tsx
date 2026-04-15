@@ -133,7 +133,7 @@ export const ReceberPagamentoForm = React.forwardRef<
     const dinReg = Math.min(din, dinNec);
     const totRec = totSemDin + dinReg;
     if (totRec <= 0.004) {
-      toast.error("Informe pelo menos um valor para receber.");
+      toast.error("Informe pelo menos um valor para pagar.");
       return;
     }
     setSubmitting(true);
@@ -240,13 +240,13 @@ export const ReceberPagamentoForm = React.forwardRef<
               </div>
             ) : null}
             <div className="flex justify-between border-b border-border/60 pb-1.5 text-sm text-muted-foreground">
-              <span>Em aberto (antes deste recebimento)</span>
+              <span>Em aberto (antes deste pagamento)</span>
               <span className="tabular-nums font-medium text-foreground">
                 {fmt(Math.max(0, saldo))}
               </span>
             </div>
             <div className="flex justify-between text-sm font-semibold">
-              <span>A receber agora</span>
+              <span>A pagar agora</span>
               <span className="tabular-nums text-foreground">
                 {fmt(totalRecebendo)}
               </span>
@@ -282,7 +282,7 @@ export const ReceberPagamentoForm = React.forwardRef<
             className="flex-1"
           >
             {submitting && <Loader2 className="mr-2 size-4 animate-spin" />}
-            Confirmar recebimento
+            Confirmar pagamento
           </Button>
         </div>
       ) : null}

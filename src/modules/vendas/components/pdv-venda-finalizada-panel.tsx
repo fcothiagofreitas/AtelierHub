@@ -51,13 +51,13 @@ type Props = {
   }>;
   actionBusy: boolean;
   onCancel: () => void;
-  /** Pedido quitado: só resumo (itens + pagamentos), sem formas de recebimento. */
+  /** Pedido quitado: só resumo (itens + pagamentos), sem formas de pagamento. */
   somenteLeitura?: boolean;
   /** Resumo completo (loja + payload); quando ausente, usa só `lines` / `pagamentosLinhas`. */
   pedidoResumoCompleto?: { storeName: string; pedido: PedidoVerPayload } | null;
   /** Rótulo do botão outline (ex.: Fechar em modo leitura). */
   cancelarLabel?: string;
-  /** Quando false, a entrega já foi feita no carrinho — não mostrar o botão. */
+  /** Quando false, a consignação já foi registada — não mostrar o botão. */
   showEntregar?: boolean;
   onEntregar: () => void;
   onPagamentoRegistado: () => void;
@@ -141,8 +141,8 @@ export function PdvVendaFinalizadaPanel({
               </>
             ) : (
               <>
-                Stock actualizado. Confirme o recebimento
-                {showEntregar ? " ou registe entrega" : ""}; pode cancelar para fechar
+                Stock actualizado. Confirme o pagamento
+                {showEntregar ? " ou registe a consignação" : ""}; pode cancelar para fechar
                 e cobrar depois.
               </>
             )}
@@ -321,7 +321,7 @@ export function PdvVendaFinalizadaPanel({
                   disabled={actionBusy}
                   onClick={onEntregar}
                 >
-                  Entregar
+                  Consignar
                 </Button>
               ) : null}
               <Button
@@ -336,9 +336,9 @@ export function PdvVendaFinalizadaPanel({
                 }
                 title={
                   !temSaldoParaReceber
-                    ? "Sem saldo em aberto para receber."
+                    ? "Sem saldo em aberto para pagar."
                     : !canSubmitPagamento
-                      ? "Informe o valor a receber nas formas de pagamento."
+                      ? "Informe o valor nas formas de pagamento."
                       : undefined
                 }
                 onClick={() => pagamentoRef.current?.submit()}
@@ -346,7 +346,7 @@ export function PdvVendaFinalizadaPanel({
                 {pagamentoSubmitting && (
                   <Loader2 className="mr-2 size-4 animate-spin" />
                 )}
-                Confirmar recebimento
+                Confirmar pagamento
               </Button>
             </div>
           ) : null}

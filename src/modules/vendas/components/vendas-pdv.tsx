@@ -3,7 +3,7 @@
 /**
  * PDV: um único Dialog em `/vendas?pdv=1`. Query `edit=<pedidoId>` = continuar rascunho;
  * `view=<pedidoId>` = ver pedido (read-only). `pagamento=1` com pedido em aberto abre o painel de venda finalizada;
- * com pedido quitado abre o mesmo painel em modo só leitura (itens + pagamentos, sem receber).
+ * com pedido quitado abre o mesmo painel em modo só leitura (itens + pagamentos, sem formas de pagamento).
  * Se `edit` e `view` vierem juntos, **edit ganha**.
  */
 import * as React from "react";
@@ -31,7 +31,6 @@ import {
   pdvEnsureClienteForCorretor,
   pdvExcluirPedido,
   pdvEntregarPedido,
-  pdvFinalizarEEntregarPedido,
   pdvFinalizarPedido,
   pdvGetPedidoParaPdv,
   pdvGetResumoPagamentoPedido,
@@ -239,7 +238,7 @@ function PdvModalInner({
       createdAt?: string;
     }>;
   } | null>(null);
-  /** Após «Entregar» no carrinho: entrega já feita no mesmo passo que finalizar — esconde botão no ecrã seguinte. */
+  /** Reservado para futuros fluxos que registem consignação antes do passo de pagamento. */
   const [entregaJaRegistadaNestaFinalizacao, setEntregaJaRegistadaNestaFinalizacao] =
     React.useState(false);
   /** Painel `pagamento=1` para pedido quitado: resumo sem formas de recebimento. */
@@ -977,38 +976,6 @@ function PdvModalInner({
       }
     }, [pedidoId, lines, clienteId, storeId, persistPedido]);
 
-  const handleEntregarDoCarrinho = React.useCallback(() => {
-    void (async () => {
-      if (!pedidoId) {
-        toast.message("Ainda não há rascunho — adicione um produto.");
-        return;
-      }
-      if (lines.length === 0) {
-        toast.error("Adicione pelo menos um item ao carrinho.");
-        return;
-      }
-      if (!clienteId.trim()) {
-        toast.error("Selecione um comprador antes de entregar.");
-        return;
-      }
-      setActionBusy(true);
-      try {
-        const ok = await persistPedido();
-        if (!ok) return;
-        const r = await pdvFinalizarEEntregarPedido({ storeId, pedidoId });
-        if ("error" in r && r.error) {
-          toast.error(r.error);
-          return;
-        }
-        toast.success("Venda finalizada e entrega registada.");
-        onClose();
-        router.refresh();
-      } finally {
-        setActionBusy(false);
-      }
-    })();
-  }, [pedidoId, lines, clienteId, storeId, persistPedido, onClose, router]);
-
   const descartar = () => {
     if (!pedidoId) {
       onClose();
@@ -1122,7 +1089,7 @@ function PdvModalInner({
           toast.error(r.error);
           return;
         }
-        toast.success("Entrega registada.");
+        toast.success("Consignação registada.");
         onClose();
         router.refresh();
       } finally {
@@ -1142,7 +1109,7 @@ function PdvModalInner({
           toast.error(r.error);
           return;
         }
-        toast.success("Entrega registada.");
+        toast.success("Consignação registada.");
         if (viewPedidoId) {
           const nr = await fetchPedidoParaVerModal(viewPedidoId);
           if (nr.ok) {
@@ -1265,7 +1232,7 @@ function PdvModalInner({
               <DialogDescription>
                 {readOnly && lockUi
                   ? "Apenas consulta — sem alterações ao carrinho."
-                  : "Escolha cliente e, se precisar, corretor. Salvar para continuar mais tarde; Finalizar venda baixa o stock e abre o pagamento. Entregar faz o mesmo e já regista a entrega (com saldo em aberto: consignado e dívida do corretor)."}
+                  : "Escolha cliente e, se precisar, corretor. Salvar para continuar mais tarde; Finalizar venda baixa o stock e abre o passo de pagamento e consignação."}
               </DialogDescription>
             </DialogHeader>
           )}
@@ -1444,7 +1411,7 @@ function PdvModalInner({
                   <p className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
                     Nenhum item. Defina o vendedor, depois busque ou leia um EAN.
                     O comprador pode ser escolhido depois; é obrigatório só para
-                    concluir a venda (Receber).
+                    concluir a venda (Finalizar venda).
                   </p>
                 ) : (
                   <div className="overflow-x-auto rounded-lg border border-border bg-card">
@@ -1784,16 +1751,7 @@ function PdvModalInner({
                     onReceberPreparar={async () => {
                       await executarFinalizacaoEPassarPagamento();
                     }}
-                    showEntregar
-                    entregarDisabled={
-                      actionBusy ||
-                      lockUi ||
-                      !pedidoId ||
-                      lines.length === 0 ||
-                      !clienteId.trim()
-                    }
-                    entregarDisabledTitle="Adicione itens e selecione um comprador."
-                    onEntregar={handleEntregarDoCarrinho}
+                    showEntregar={false}
                     onPagamentoRegistado={() => {
                       router.refresh();
                     }}
