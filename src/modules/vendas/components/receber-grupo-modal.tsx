@@ -31,6 +31,13 @@ function parseBRL(s: string): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+function formatSaldoInput(n: number) {
+  return n.toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
 type Props = {
   open: boolean;
   onClose: () => void;
@@ -53,14 +60,16 @@ export function ReceberGrupoModal({
   const [busy, startTransition] = React.useTransition();
   const saldo = saldoGrupo;
 
-  const initialValues = React.useMemo(
-    () =>
-      Object.fromEntries(formasPagamentoOrdem.map((f) => [f, ""])) as Record<
-        FormaPagamento,
-        string
-      >,
-    [],
-  );
+  const initialValues = React.useMemo(() => {
+    const base = Object.fromEntries(
+      formasPagamentoOrdem.map((f) => [f, ""]),
+    ) as Record<FormaPagamento, string>;
+    const emAberto = Math.max(0, saldo);
+    if (emAberto > 0.004) {
+      base.DINHEIRO = formatSaldoInput(emAberto);
+    }
+    return base;
+  }, [saldo]);
   const [values, setValues] =
     React.useState<Record<FormaPagamento, string>>(initialValues);
 
