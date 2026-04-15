@@ -1,10 +1,13 @@
 import bcrypt from "bcryptjs";
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { cookieSecureForApp } from "@/lib/cookie-secure";
 import { prisma } from "@/lib/prisma";
 
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
+  /** Alinha com HTTP (ex.: VPS por IP sem TLS): cookies Secure só com HTTPS. */
+  useSecureCookies: cookieSecureForApp(),
   pages: {
     signIn: "/login",
   },

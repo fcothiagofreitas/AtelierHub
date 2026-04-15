@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { cookieSecureForApp } from "@/lib/cookie-secure";
 import { ACTIVE_STORE_COOKIE } from "@/lib/session";
 import { isAdministrativeStockRole } from "@/modules/estoque/estoque-auth";
 
@@ -38,7 +39,7 @@ export async function POST(request: Request) {
   const cookieStore = await cookies();
   cookieStore.set(ACTIVE_STORE_COOKIE, storeId, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: cookieSecureForApp(),
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 30,

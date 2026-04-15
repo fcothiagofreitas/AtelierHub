@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { clientRandomId } from "@/lib/random-id";
 import { cn } from "@/lib/utils";
 import {
   pdvCreateClienteNomeRapido,
@@ -351,7 +352,7 @@ function PdvModalInner({
       setVendedorId(d.vendedorId);
       setLines(
         d.lines.map((L) => ({
-          key: crypto.randomUUID(),
+          key: clientRandomId(),
           produtoVariacaoId: L.produtoVariacaoId,
           label: L.label,
           quantidade: L.quantidade,
@@ -413,7 +414,7 @@ function PdvModalInner({
         setVendedorId(d.vendedorId);
         setLines(
           d.lines.map((L) => ({
-            key: crypto.randomUUID(),
+            key: clientRandomId(),
             produtoVariacaoId: L.produtoVariacaoId,
             label: L.label,
             quantidade: L.quantidade,
@@ -458,7 +459,7 @@ function PdvModalInner({
       setCorretorId(p.corretor?.id ?? "");
       setLines(
         p.itens.map((it) => ({
-          key: crypto.randomUUID(),
+          key: clientRandomId(),
           produtoVariacaoId: it.produtoVariacaoId,
           label: `${it.produtoVariacao.produto.nome} — ${it.produtoVariacao.nome}`,
           quantidade: it.quantidade,
@@ -835,7 +836,7 @@ function PdvModalInner({
       return [
         ...prev,
         {
-          key: crypto.randomUUID(),
+          key: clientRandomId(),
           produtoVariacaoId: row.id,
           label,
           quantidade: 1,
@@ -1854,7 +1855,7 @@ function PdvModalInner({
                           const p = r.pedido;
                           setLines(
                             p.itens.map((it) => ({
-                              key: crypto.randomUUID(),
+                              key: clientRandomId(),
                               produtoVariacaoId: it.produtoVariacaoId,
                               label: `${it.produtoVariacao.produto.nome} — ${it.produtoVariacao.nome}`,
                               quantidade: it.quantidade,
