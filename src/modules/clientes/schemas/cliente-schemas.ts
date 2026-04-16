@@ -8,7 +8,7 @@ const cpfDigits = z.preprocess(
   z
     .string()
     .length(11, "CPF deve ter 11 dígitos")
-    .refine(isValidCpf, "CPF inválido"),
+    .refine(isValidCpf, "CPF inválido (verifique os dígitos verificadores)."),
 );
 
 const cnpjDigits = z.preprocess(
@@ -16,7 +16,15 @@ const cnpjDigits = z.preprocess(
   z
     .string()
     .length(14, "CNPJ deve ter 14 dígitos")
-    .refine(isValidCnpj, "CNPJ inválido"),
+    .refine(isValidCnpj, "CNPJ inválido (verifique os dígitos verificadores)."),
+);
+
+const telefoneBr = z.preprocess(
+  (v) => String(v ?? "").replace(/\D/g, "").slice(0, 11),
+  z
+    .string()
+    .min(8, "Informe o telefone com DDD (8 a 11 dígitos)")
+    .max(11, "Telefone inválido"),
 );
 
 export const clientePfSchema = z
@@ -26,7 +34,7 @@ export const clientePfSchema = z
     nome: z.string().min(2, "Informe o nome"),
     cpf: cpfDigits,
     endereco: z.string().min(3, "Informe o endereço"),
-    telefone: z.string().min(8, "Informe o telefone"),
+    telefone: telefoneBr,
     email: z.string().optional().transform(emptyToUndefined),
     aniversario: z.string().optional().transform(emptyToUndefined),
     creditLimitConsignado: z.string().optional(),
@@ -61,10 +69,10 @@ export const clientePjSchema = z
     ie: z.string().optional().transform(emptyToUndefined),
     ieIsento: z.boolean(),
     endereco: z.string().min(3, "Informe o endereço"),
-    telefone: z.string().min(8, "Informe o telefone"),
+    telefone: telefoneBr,
     email: z.string().optional().transform(emptyToUndefined),
     responsavelNome: z.string().min(2, "Informe o responsável"),
-    responsavelFone: z.string().min(8, "Informe o telefone do responsável"),
+    responsavelFone: telefoneBr,
     creditLimitConsignado: z.string().optional(),
     corretorId: z.string().optional().transform(emptyToUndefined),
     isActive: z.boolean(),

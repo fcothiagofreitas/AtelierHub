@@ -26,7 +26,6 @@ import { Label } from "@/components/ui/label";
 import { clientRandomId } from "@/lib/random-id";
 import { cn } from "@/lib/utils";
 import {
-  pdvCreateClienteNomeRapido,
   pdvCreateDraft,
   pdvEnsureClienteForCorretor,
   pdvExcluirPedido,
@@ -46,6 +45,7 @@ import { clienteNomeCurto } from "@/modules/vendas/lib/cliente-nome";
 import { buildVendasHref } from "@/modules/vendas/lib/build-href";
 import { PdvVendaFinalizadaPanel } from "@/modules/vendas/components/pdv-venda-finalizada-panel";
 import { VendaAcoesCliente } from "@/modules/vendas/components/venda-acoes-cliente";
+import { ClienteNovoDialog } from "@/modules/clientes/components/cliente-novo-dialog";
 import type { FormaPagamento } from "@prisma/client";
 import {
   fetchPedidoParaVerModal,
@@ -94,10 +94,6 @@ function cartTotal(lines: CartLine[]): number {
     (acc, L) => acc + moneyFromInput(L.precoUnitario) * L.quantidade,
     0,
   );
-}
-
-function normLabel(s: string): string {
-  return s.trim().toLowerCase();
 }
 
 function snapshotPedidoCart(
@@ -175,6 +171,12 @@ function PdvModalInner({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const clienteRedirectAfterSave = React.useMemo(() => {
+    const p = new URLSearchParams(searchParams.toString());
+    p.set("pdv", "1");
+    return `/vendas?${p.toString()}`;
+  }, [searchParams]);
+
   /** Só acções explícitas do utilizador — sem `useTransition` em segundo plano a bloquear o UI. */
   const [actionBusy, setActionBusy] = React.useState(false);
   const [addingLine, setAddingLine] = React.useState(false);
@@ -185,7 +187,7 @@ function PdvModalInner({
     pedidoIdRef.current = pedidoId;
   }, [pedidoId]);
   const [clienteId, setClienteId] = React.useState("");
-  /** Nome mostrado após escolha / cadastro rápido (pedido iniciado). */
+  /** Nome mostrado após escolha ou regresso do cadastro de cliente. */
   const [clienteNomeResolvido, setClienteNomeResolvido] = React.useState("");
   const [extraClientes, setExtraClientes] = React.useState<SelectOption[]>([]);
   const [clienteQuery, setClienteQuery] = React.useState("");
@@ -629,17 +631,6 @@ function PdvModalInner({
   }, [clienteQuery, linhasClienteCorretor]);
 
   const queryTrim = clienteQuery.trim();
-  const queryNorm = normLabel(clienteQuery);
-  const hasExactClienteMatch = linhasClienteCorretor.some(
-    (r) => normLabel(r.label) === queryNorm,
-  );
-
-  const podeCadastrarNomeRapido =
-    !clienteId &&
-    queryTrim.length >= 2 &&
-    queryTrim.length <= 200 &&
-    linhasClienteFiltradas.length === 0 &&
-    !hasExactClienteMatch;
 
   const escolherLinha = (row: ClienteListaRow) => {
     if (row.kind === "cliente") {
@@ -665,32 +656,6 @@ function PdvModalInner({
         setClienteNomeResolvido(row.label);
         setClienteQuery(row.label);
         setClienteListaAberta(false);
-        router.refresh();
-      } finally {
-        setActionBusy(false);
-      }
-    })();
-  };
-
-  const cadastrarNomeRapido = () => {
-    const nome = clienteQuery.trim();
-    if (nome.length < 2) return;
-    void (async () => {
-      setActionBusy(true);
-      try {
-        const r = await pdvCreateClienteNomeRapido({ storeId, nome });
-        if (!("ok" in r) || !r.ok) {
-          toast.error("error" in r ? r.error : "Não foi possível cadastrar.");
-          return;
-        }
-        setClienteId(r.clienteId);
-        setClienteNomeResolvido(nome);
-        setExtraClientes((prev) => [
-          ...prev.filter((p) => p.id !== r.clienteId),
-          { id: r.clienteId, name: nome },
-        ]);
-        setClienteListaAberta(false);
-        toast.success("Cliente cadastrado.");
         router.refresh();
       } finally {
         setActionBusy(false);
@@ -1035,6 +1000,47 @@ function PdvModalInner({
   const lockUi = readOnly && !viewLoading && Boolean(viewPedidoId);
   /** Só bloquear edição do comprador em modo leitura forçada (não por ter rascunho). */
   const clienteBloqueado = lockUi && Boolean(pedidoId && clienteId.trim());
+
+  /** Após criar cliente pelo modal (redirect com `novoCliente` + `novoClienteNome`). */
+  const aplicouNovoClienteRef = React.useRef<string>("");
+  React.useEffect(() => {
+    const nid = searchParams.get("novoCliente");
+    const nNom = searchParams.get("novoClienteNome");
+    if (!nid) {
+      aplicouNovoClienteRef.current = "";
+      return;
+    }
+    const dedupe = `${nid}|${nNom ?? ""}`;
+    if (aplicouNovoClienteRef.current === dedupe) return;
+    aplicouNovoClienteRef.current = dedupe;
+
+    const hrefClean = buildVendasHref(new URLSearchParams(searchParams.toString()), {
+      novoCliente: null,
+      novoClienteNome: null,
+    });
+
+    if (lockUi) {
+      router.replace(hrefClean, { scroll: false });
+      return;
+    }
+
+    const fromList = clientes.find((c) => c.id === nid);
+    const label = (fromList?.name ?? nNom ?? "").trim() || "Cliente";
+
+    setClienteId(nid);
+    setClienteNomeResolvido(label);
+    setClienteQuery(label);
+    setClienteListaAberta(false);
+    if (!fromList) {
+      setExtraClientes((prev) => [
+        ...prev.filter((p) => p.id !== nid),
+        { id: nid, name: label },
+      ]);
+    }
+
+    router.replace(hrefClean, { scroll: false });
+    toast.success("Cliente selecionado.");
+  }, [searchParams, clientes, router, lockUi]);
 
   const flushObservacoesCarrinho = React.useCallback(async () => {
     if (!pedidoId || lockUi) return;
@@ -1679,27 +1685,36 @@ function PdvModalInner({
                     </p>
                   ) : (
                     <div ref={clienteCampoRef} className="relative space-y-2">
-                      <Input
-                        id="pdv-cliente"
-                        autoComplete="off"
-                        placeholder="Buscar cliente ou corretor, ou escreva um nome novo…"
-                        value={clienteQuery}
-                        disabled={lockUi}
-                        onChange={(e) => {
-                          setClienteQuery(e.target.value);
-                          setClienteId("");
-                          setClienteNomeResolvido("");
-                          setClienteListaAberta(true);
-                        }}
-                        onFocus={() => setClienteListaAberta(true)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Escape") {
-                            e.preventDefault();
-                            setClienteListaAberta(false);
-                          }
-                        }}
-                        className="pr-10"
-                      />
+                      <div className="flex gap-2">
+                        <Input
+                          id="pdv-cliente"
+                          autoComplete="off"
+                          placeholder="Buscar cliente ou corretor, ou escreva um nome novo…"
+                          value={clienteQuery}
+                          disabled={lockUi}
+                          onChange={(e) => {
+                            setClienteQuery(e.target.value);
+                            setClienteId("");
+                            setClienteNomeResolvido("");
+                            setClienteListaAberta(true);
+                          }}
+                          onFocus={() => setClienteListaAberta(true)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Escape") {
+                              e.preventDefault();
+                              setClienteListaAberta(false);
+                            }
+                          }}
+                          className="min-w-0 flex-1"
+                        />
+                        <ClienteNovoDialog
+                          storeId={storeId}
+                          corretores={corretores}
+                          trigger="icon"
+                          redirectAfterSave={clienteRedirectAfterSave}
+                          disabled={lockUi}
+                        />
+                      </div>
                       {clienteListaAberta &&
                         linhasClienteFiltradas.length > 0 && (
                           <ul
@@ -1726,25 +1741,13 @@ function PdvModalInner({
                         )}
                       {clienteListaVaziaComFiltro && (
                         <p className="text-sm text-muted-foreground">
-                          Sem resultados — podes cadastrar com este nome no botão
-                          abaixo.
+                          Sem resultados — usa o botão ao lado{" "}
+                          <span className="whitespace-nowrap">(ícone +)</span> para
+                          cadastro completo (PF ou PJ).
                         </p>
                       )}
-                      {podeCadastrarNomeRapido && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="w-full justify-start text-left text-xs"
-                          onClick={cadastrarNomeRapido}
-                          disabled={actionBusy || lockUi}
-                        >
-                          + Cadastrar &quot;{queryTrim}&quot; só com este nome
-                        </Button>
-                      )}
                       <p className="text-[11px] text-muted-foreground">
-                        Clientes e corretores cadastrados aparecem na lista. Sem
-                        resultados, usa o cadastro rápido.
+                        Clientes e corretores cadastrados aparecem na lista.
                       </p>
                     </div>
                   )}

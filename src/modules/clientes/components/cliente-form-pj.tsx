@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import Link from "next/link";
 import type { Cliente } from "@prisma/client";
 import { cn } from "@/lib/utils";
+import { digitsOnly, formatCnpjDisplay, formatTelefoneBrDisplay } from "@/lib/masks-br";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,15 +21,39 @@ type Props = {
   storeId: string;
   corretores: CorretorOpt[];
   cliente?: Cliente & { corretor: { name: string } | null };
+  onCancel?: () => void;
+  redirectAfterSave?: string;
 };
 
-export function ClienteFormPj({ storeId, corretores, cliente }: Props) {
+export function ClienteFormPj({
+  storeId,
+  corretores,
+  cliente,
+  onCancel,
+  redirectAfterSave,
+}: Props) {
   const [state, action, pending] = useActionState<ClienteActionResult | null, FormData>(
     upsertClientePj,
     null,
   );
 
-  const [ieIsento, setIeIsento] = useState(cliente?.ieIsento ?? false);
+  const [fantasia, setFantasia] = useState(() => cliente?.fantasia ?? "");
+  const [razaoSocial, setRazaoSocial] = useState(() => cliente?.razaoSocial ?? "");
+  const [cnpjDigits, setCnpjDigits] = useState(() => digitsOnly(cliente?.cnpj ?? "", 14));
+  const [ieIsento, setIeIsento] = useState(() => cliente?.ieIsento ?? false);
+  const [ie, setIe] = useState(() => cliente?.ie ?? "");
+  const [endereco, setEndereco] = useState(() => cliente?.endereco ?? "");
+  const [telefoneDigits, setTelefoneDigits] = useState(() =>
+    digitsOnly(cliente?.telefone ?? "", 11),
+  );
+  const [email, setEmail] = useState(() => cliente?.email ?? "");
+  const [responsavelNome, setResponsavelNome] = useState(() => cliente?.responsavelNome ?? "");
+  const [responsavelFoneDigits, setResponsavelFoneDigits] = useState(() =>
+    digitsOnly(cliente?.responsavelFone ?? "", 11),
+  );
+  const [corretorId, setCorretorId] = useState(() => cliente?.corretorId ?? "");
+  const [isActive, setIsActive] = useState(() => cliente?.isActive ?? true);
+  const [isBlocked, setIsBlocked] = useState(() => cliente?.isBlocked ?? false);
 
   const creditReais =
     cliente?.creditLimit != null ? Number(cliente.creditLimit.toString()) : null;
@@ -36,6 +61,9 @@ export function ClienteFormPj({ storeId, corretores, cliente }: Props) {
   return (
     <form action={action} className="space-y-5">
       <input type="hidden" name="storeId" value={storeId} />
+      {redirectAfterSave ? (
+        <input type="hidden" name="redirectAfterSave" value={redirectAfterSave} />
+      ) : null}
       {cliente?.id && <input type="hidden" name="id" value={cliente.id} />}
 
       {state?.error && (
@@ -51,7 +79,8 @@ export function ClienteFormPj({ storeId, corretores, cliente }: Props) {
             id="fantasia"
             name="fantasia"
             required
-            defaultValue={cliente?.fantasia ?? ""}
+            value={fantasia}
+            onChange={(e) => setFantasia(e.target.value)}
             aria-invalid={Boolean(state?.fieldErrors?.fantasia)}
           />
           {state?.fieldErrors?.fantasia && (
@@ -64,7 +93,8 @@ export function ClienteFormPj({ storeId, corretores, cliente }: Props) {
             id="razaoSocial"
             name="razaoSocial"
             required
-            defaultValue={cliente?.razaoSocial ?? ""}
+            value={razaoSocial}
+            onChange={(e) => setRazaoSocial(e.target.value)}
             aria-invalid={Boolean(state?.fieldErrors?.razaoSocial)}
           />
           {state?.fieldErrors?.razaoSocial && (
@@ -77,8 +107,10 @@ export function ClienteFormPj({ storeId, corretores, cliente }: Props) {
             id="cnpj"
             name="cnpj"
             inputMode="numeric"
-            placeholder="Somente números"
-            defaultValue={cliente?.cnpj ?? ""}
+            autoComplete="off"
+            placeholder="00.000.000/0000-00"
+            value={formatCnpjDisplay(cnpjDigits)}
+            onChange={(e) => setCnpjDigits(digitsOnly(e.target.value, 14))}
             aria-invalid={Boolean(state?.fieldErrors?.cnpj)}
           />
           {state?.fieldErrors?.cnpj && (
@@ -103,7 +135,8 @@ export function ClienteFormPj({ storeId, corretores, cliente }: Props) {
             id="ie"
             name="ie"
             disabled={ieIsento}
-            defaultValue={cliente?.ie ?? ""}
+            value={ie}
+            onChange={(e) => setIe(e.target.value)}
             aria-invalid={Boolean(state?.fieldErrors?.ie)}
           />
           {state?.fieldErrors?.ie && (
@@ -116,7 +149,8 @@ export function ClienteFormPj({ storeId, corretores, cliente }: Props) {
             id="endereco"
             name="endereco"
             required
-            defaultValue={cliente?.endereco ?? ""}
+            value={endereco}
+            onChange={(e) => setEndereco(e.target.value)}
             aria-invalid={Boolean(state?.fieldErrors?.endereco)}
           />
           {state?.fieldErrors?.endereco && (
@@ -129,7 +163,11 @@ export function ClienteFormPj({ storeId, corretores, cliente }: Props) {
             id="telefone"
             name="telefone"
             required
-            defaultValue={cliente?.telefone ?? ""}
+            inputMode="numeric"
+            autoComplete="tel"
+            placeholder="(00) 00000-0000"
+            value={formatTelefoneBrDisplay(telefoneDigits)}
+            onChange={(e) => setTelefoneDigits(digitsOnly(e.target.value, 11))}
             aria-invalid={Boolean(state?.fieldErrors?.telefone)}
           />
           {state?.fieldErrors?.telefone && (
@@ -142,7 +180,8 @@ export function ClienteFormPj({ storeId, corretores, cliente }: Props) {
             id="email"
             name="email"
             type="email"
-            defaultValue={cliente?.email ?? ""}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             aria-invalid={Boolean(state?.fieldErrors?.email)}
           />
           {state?.fieldErrors?.email && (
@@ -155,7 +194,8 @@ export function ClienteFormPj({ storeId, corretores, cliente }: Props) {
             id="responsavelNome"
             name="responsavelNome"
             required
-            defaultValue={cliente?.responsavelNome ?? ""}
+            value={responsavelNome}
+            onChange={(e) => setResponsavelNome(e.target.value)}
             aria-invalid={Boolean(state?.fieldErrors?.responsavelNome)}
           />
           {state?.fieldErrors?.responsavelNome && (
@@ -168,7 +208,11 @@ export function ClienteFormPj({ storeId, corretores, cliente }: Props) {
             id="responsavelFone"
             name="responsavelFone"
             required
-            defaultValue={cliente?.responsavelFone ?? ""}
+            inputMode="numeric"
+            autoComplete="tel"
+            placeholder="(00) 00000-0000"
+            value={formatTelefoneBrDisplay(responsavelFoneDigits)}
+            onChange={(e) => setResponsavelFoneDigits(digitsOnly(e.target.value, 11))}
             aria-invalid={Boolean(state?.fieldErrors?.responsavelFone)}
           />
           {state?.fieldErrors?.responsavelFone && (
@@ -181,7 +225,8 @@ export function ClienteFormPj({ storeId, corretores, cliente }: Props) {
         <Label>Corretor (opcional)</Label>
         <CorretorSelect
           options={corretores}
-          defaultValue={cliente?.corretorId ?? ""}
+          value={corretorId}
+          onValueChange={setCorretorId}
         />
       </div>
 
@@ -206,7 +251,8 @@ export function ClienteFormPj({ storeId, corretores, cliente }: Props) {
           <input
             type="checkbox"
             name="isActive"
-            defaultChecked={cliente?.isActive ?? true}
+            checked={isActive}
+            onChange={(e) => setIsActive(e.target.checked)}
             className="rounded border-input"
           />
           Cadastro ativo
@@ -215,7 +261,8 @@ export function ClienteFormPj({ storeId, corretores, cliente }: Props) {
           <input
             type="checkbox"
             name="isBlocked"
-            defaultChecked={cliente?.isBlocked ?? false}
+            checked={isBlocked}
+            onChange={(e) => setIsBlocked(e.target.checked)}
             className="rounded border-input"
           />
           Bloqueado (crédito / operação)
@@ -226,9 +273,15 @@ export function ClienteFormPj({ storeId, corretores, cliente }: Props) {
         <Button type="submit" disabled={pending}>
           {pending ? "Salvando…" : "Salvar"}
         </Button>
-        <Link href="/clientes" className={cn(buttonVariants({ variant: "outline" }))}>
-          Cancelar
-        </Link>
+        {onCancel ? (
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancelar
+          </Button>
+        ) : (
+          <Link href="/clientes" className={cn(buttonVariants({ variant: "outline" }))}>
+            Cancelar
+          </Link>
+        )}
       </div>
     </form>
   );

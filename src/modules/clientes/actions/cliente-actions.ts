@@ -17,6 +17,27 @@ export type ClienteActionResult = {
   fieldErrors?: Partial<Record<string, string>>;
 };
 
+/** Só permite voltar ao PDV (`/vendas?...`); caso contrário lista de clientes. */
+function redirectAfterClienteSave(
+  formData: FormData,
+  novo?: { id: string; label: string },
+): string {
+  const raw = String(formData.get("redirectAfterSave") ?? "").trim();
+  if (!raw) return "/clientes";
+  try {
+    const u = new URL(raw, "https://local.invalid");
+    if (u.pathname !== "/vendas" || u.hash) return "/clientes";
+    const params = new URLSearchParams(u.search);
+    if (novo) {
+      params.set("novoCliente", novo.id);
+      params.set("novoClienteNome", novo.label.trim().slice(0, 500));
+    }
+    return `/vendas?${params.toString()}`;
+  } catch {
+    return "/clientes";
+  }
+}
+
 /** Loja ativa do tenant + (não admin: tem de estar nas lojas do colaborador). */
 async function assertClienteStoreAllowed(
   session: { user: { tenantId: string; storeIds: string[]; role: UserRole } },
@@ -72,6 +93,7 @@ export async function upsertClientePf(
   const credit = parseCreditLimitField(data.creditLimitConsignado);
   const creditLimit = credit.ok && credit.value != null ? new Prisma.Decimal(credit.value) : null;
 
+  let createdNovo: { id: string; label: string } | undefined;
   try {
     if (data.id) {
       const existing = await prisma.cliente.findFirst({
@@ -100,7 +122,7 @@ export async function upsertClientePf(
         },
       });
     } else {
-      await prisma.cliente.create({
+      const row = await prisma.cliente.create({
         data: {
           tenantId,
           storeId: data.storeId,
@@ -116,14 +138,18 @@ export async function upsertClientePf(
           isActive: data.isActive,
           isBlocked: data.isBlocked,
         },
+        select: { id: true },
       });
+      createdNovo = { id: row.id, label: data.nome };
     }
   } catch {
     return { error: "Não foi possível salvar. Verifique os dados ou tente novamente." };
   }
 
   revalidatePath("/clientes");
-  redirect("/clientes");
+  const next = redirectAfterClienteSave(formData, createdNovo);
+  revalidatePath("/vendas");
+  redirect(next);
 }
 
 export async function upsertClientePj(
@@ -167,6 +193,7 @@ export async function upsertClientePj(
 
   const ieValue = data.ieIsento ? null : data.ie ?? null;
 
+  let createdNovo: { id: string; label: string } | undefined;
   try {
     if (data.id) {
       const existing = await prisma.cliente.findFirst({
@@ -199,7 +226,7 @@ export async function upsertClientePj(
         },
       });
     } else {
-      await prisma.cliente.create({
+      const row = await prisma.cliente.create({
         data: {
           tenantId,
           storeId: data.storeId,
@@ -219,14 +246,20 @@ export async function upsertClientePj(
           isActive: data.isActive,
           isBlocked: data.isBlocked,
         },
+        select: { id: true },
       });
+      const label =
+        data.fantasia.trim() || data.razaoSocial.trim() || "—";
+      createdNovo = { id: row.id, label };
     }
   } catch {
     return { error: "Não foi possível salvar. Verifique os dados ou tente novamente." };
   }
 
   revalidatePath("/clientes");
-  redirect("/clientes");
+  const next = redirectAfterClienteSave(formData, createdNovo);
+  revalidatePath("/vendas");
+  redirect(next);
 }
 
 export async function toggleClienteBlocked(formData: FormData) {

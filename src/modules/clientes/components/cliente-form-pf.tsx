@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import Link from "next/link";
 import type { Cliente } from "@prisma/client";
 import { cn } from "@/lib/utils";
+import { digitsOnly, formatCpfDisplay, formatTelefoneBrDisplay } from "@/lib/masks-br";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,13 +21,34 @@ type Props = {
   storeId: string;
   corretores: CorretorOpt[];
   cliente?: Cliente & { corretor: { name: string } | null };
+  onCancel?: () => void;
+  /** Após salvar (ex.: voltar ao PDV em `/vendas?pdv=1`). Só aceito no servidor se o path for `/vendas`. */
+  redirectAfterSave?: string;
 };
 
-export function ClienteFormPf({ storeId, corretores, cliente }: Props) {
+export function ClienteFormPf({
+  storeId,
+  corretores,
+  cliente,
+  onCancel,
+  redirectAfterSave,
+}: Props) {
   const [state, action, pending] = useActionState<ClienteActionResult | null, FormData>(
     upsertClientePf,
     null,
   );
+
+  const [nome, setNome] = useState(() => cliente?.nome ?? "");
+  const [cpfDigits, setCpfDigits] = useState(() => digitsOnly(cliente?.cpf ?? "", 11));
+  const [aniversario, setAniversario] = useState(() => dateToInput(cliente?.aniversario ?? null));
+  const [endereco, setEndereco] = useState(() => cliente?.endereco ?? "");
+  const [telefoneDigits, setTelefoneDigits] = useState(() =>
+    digitsOnly(cliente?.telefone ?? "", 11),
+  );
+  const [email, setEmail] = useState(() => cliente?.email ?? "");
+  const [corretorId, setCorretorId] = useState(() => cliente?.corretorId ?? "");
+  const [isActive, setIsActive] = useState(() => cliente?.isActive ?? true);
+  const [isBlocked, setIsBlocked] = useState(() => cliente?.isBlocked ?? false);
 
   const creditReais =
     cliente?.creditLimit != null ? Number(cliente.creditLimit.toString()) : null;
@@ -34,6 +56,9 @@ export function ClienteFormPf({ storeId, corretores, cliente }: Props) {
   return (
     <form action={action} className="space-y-5">
       <input type="hidden" name="storeId" value={storeId} />
+      {redirectAfterSave ? (
+        <input type="hidden" name="redirectAfterSave" value={redirectAfterSave} />
+      ) : null}
       {cliente?.id && <input type="hidden" name="id" value={cliente.id} />}
 
       {state?.error && (
@@ -49,7 +74,8 @@ export function ClienteFormPf({ storeId, corretores, cliente }: Props) {
             id="nome"
             name="nome"
             required
-            defaultValue={cliente?.nome ?? ""}
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
             aria-invalid={Boolean(state?.fieldErrors?.nome)}
           />
           {state?.fieldErrors?.nome && (
@@ -62,8 +88,10 @@ export function ClienteFormPf({ storeId, corretores, cliente }: Props) {
             id="cpf"
             name="cpf"
             inputMode="numeric"
-            placeholder="Somente números"
-            defaultValue={cliente?.cpf ?? ""}
+            autoComplete="off"
+            placeholder="000.000.000-00"
+            value={formatCpfDisplay(cpfDigits)}
+            onChange={(e) => setCpfDigits(digitsOnly(e.target.value, 11))}
             aria-invalid={Boolean(state?.fieldErrors?.cpf)}
           />
           {state?.fieldErrors?.cpf && (
@@ -76,7 +104,8 @@ export function ClienteFormPf({ storeId, corretores, cliente }: Props) {
             id="aniversario"
             name="aniversario"
             type="date"
-            defaultValue={dateToInput(cliente?.aniversario ?? null)}
+            value={aniversario}
+            onChange={(e) => setAniversario(e.target.value)}
           />
         </div>
         <div className="space-y-1.5 sm:col-span-2">
@@ -85,7 +114,8 @@ export function ClienteFormPf({ storeId, corretores, cliente }: Props) {
             id="endereco"
             name="endereco"
             required
-            defaultValue={cliente?.endereco ?? ""}
+            value={endereco}
+            onChange={(e) => setEndereco(e.target.value)}
             aria-invalid={Boolean(state?.fieldErrors?.endereco)}
           />
           {state?.fieldErrors?.endereco && (
@@ -98,7 +128,11 @@ export function ClienteFormPf({ storeId, corretores, cliente }: Props) {
             id="telefone"
             name="telefone"
             required
-            defaultValue={cliente?.telefone ?? ""}
+            inputMode="numeric"
+            autoComplete="tel"
+            placeholder="(00) 00000-0000"
+            value={formatTelefoneBrDisplay(telefoneDigits)}
+            onChange={(e) => setTelefoneDigits(digitsOnly(e.target.value, 11))}
             aria-invalid={Boolean(state?.fieldErrors?.telefone)}
           />
           {state?.fieldErrors?.telefone && (
@@ -112,7 +146,8 @@ export function ClienteFormPf({ storeId, corretores, cliente }: Props) {
             name="email"
             type="email"
             autoComplete="email"
-            defaultValue={cliente?.email ?? ""}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             aria-invalid={Boolean(state?.fieldErrors?.email)}
           />
           {state?.fieldErrors?.email && (
@@ -125,7 +160,8 @@ export function ClienteFormPf({ storeId, corretores, cliente }: Props) {
         <Label>Corretor (opcional)</Label>
         <CorretorSelect
           options={corretores}
-          defaultValue={cliente?.corretorId ?? ""}
+          value={corretorId}
+          onValueChange={setCorretorId}
         />
       </div>
 
@@ -150,7 +186,8 @@ export function ClienteFormPf({ storeId, corretores, cliente }: Props) {
           <input
             type="checkbox"
             name="isActive"
-            defaultChecked={cliente?.isActive ?? true}
+            checked={isActive}
+            onChange={(e) => setIsActive(e.target.checked)}
             className="rounded border-input"
           />
           Cadastro ativo
@@ -159,7 +196,8 @@ export function ClienteFormPf({ storeId, corretores, cliente }: Props) {
           <input
             type="checkbox"
             name="isBlocked"
-            defaultChecked={cliente?.isBlocked ?? false}
+            checked={isBlocked}
+            onChange={(e) => setIsBlocked(e.target.checked)}
             className="rounded border-input"
           />
           Bloqueado (crédito / operação)
@@ -170,9 +208,15 @@ export function ClienteFormPf({ storeId, corretores, cliente }: Props) {
         <Button type="submit" disabled={pending}>
           {pending ? "Salvando…" : "Salvar"}
         </Button>
-        <Link href="/clientes" className={cn(buttonVariants({ variant: "outline" }))}>
-          Cancelar
-        </Link>
+        {onCancel ? (
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancelar
+          </Button>
+        ) : (
+          <Link href="/clientes" className={cn(buttonVariants({ variant: "outline" }))}>
+            Cancelar
+          </Link>
+        )}
       </div>
     </form>
   );

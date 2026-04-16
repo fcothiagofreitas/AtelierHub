@@ -1,4 +1,4 @@
-import { Pencil, Plus, User } from "lucide-react";
+import { Pencil, User } from "lucide-react";
 import Link from "next/link";
 import type { Cliente, ClienteTipo } from "@prisma/client";
 import { cn } from "@/lib/utils";
@@ -6,14 +6,19 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { toggleClienteBlocked } from "@/modules/clientes/actions/cliente-actions";
 import { ConfirmActionButton } from "@/modules/admin/components/confirm-action-button";
+import { ClienteNovoDialog } from "@/modules/clientes/components/cliente-novo-dialog";
 
 type Row = Cliente & {
   corretor: { name: string } | null;
 };
 
+type CorretorOpt = { id: string; name: string };
+
 type Props = {
   clientes: Row[];
   search: string;
+  storeId: string;
+  corretores: CorretorOpt[];
 };
 
 const money = new Intl.NumberFormat("pt-BR", {
@@ -31,7 +36,7 @@ function displayDoc(c: Row) {
   return formatCnpj(c.cnpj);
 }
 
-export function ClienteTable({ clientes, search }: Props) {
+export function ClienteTable({ clientes, search, storeId, corretores }: Props) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4">
@@ -44,18 +49,7 @@ export function ClienteTable({ clientes, search }: Props) {
               : "nesta loja"}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Link
-            href="/clientes/new/pf"
-            className={cn(buttonVariants({ size: "sm", variant: "outline" }))}
-          >
-            Nova PF
-          </Link>
-          <Link href="/clientes/new/pj" className={cn(buttonVariants({ size: "sm" }))}>
-            <Plus className="size-4" />
-            Nova PJ
-          </Link>
-        </div>
+        <ClienteNovoDialog storeId={storeId} corretores={corretores} trigger="toolbar" />
       </div>
 
       {clientes.length === 0 ? (
@@ -65,13 +59,8 @@ export function ClienteTable({ clientes, search }: Props) {
             {search ? "Nenhum cliente encontrado" : "Nenhum cliente nesta loja ainda"}
           </p>
           {!search && (
-            <div className="mt-3 flex justify-center gap-2">
-              <Link href="/clientes/new/pf" className={cn(buttonVariants({ variant: "link" }))}>
-                Cadastrar PF
-              </Link>
-              <Link href="/clientes/new/pj" className={cn(buttonVariants({ variant: "link" }))}>
-                Cadastrar PJ
-              </Link>
+            <div className="mt-4 flex justify-center">
+              <ClienteNovoDialog storeId={storeId} corretores={corretores} trigger="empty" />
             </div>
           )}
         </div>

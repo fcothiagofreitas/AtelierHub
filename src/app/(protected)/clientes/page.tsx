@@ -12,9 +12,19 @@ type Props = {
 };
 
 export default async function ClientesPage({ searchParams }: Props) {
-  await requireRole(ROLES_ACESSO_CLIENTES);
+  const session = await requireRole(ROLES_ACESSO_CLIENTES);
   const { activeStore } = await getActiveStoreContext();
   if (!activeStore) redirect("/dashboard");
+
+  const corretores = await prisma.corretor.findMany({
+    where: {
+      tenantId: session.user.tenantId,
+      isActive: true,
+      isBlocked: false,
+    },
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  });
 
   const params = searchParams ? await searchParams : {};
   const search = typeof params.q === "string" ? params.q.trim() : "";
@@ -57,7 +67,12 @@ export default async function ClientesPage({ searchParams }: Props) {
         base="/clientes"
         defaultValue={search}
       />
-      <ClienteTable clientes={clientes} search={search} />
+      <ClienteTable
+        clientes={clientes}
+        search={search}
+        storeId={activeStore.id}
+        corretores={corretores}
+      />
     </div>
   );
 }

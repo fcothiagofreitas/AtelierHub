@@ -53,6 +53,7 @@ export default async function EditarClientePfPage({ params }: Props) {
 
       <div className="rounded-lg border bg-card p-6">
         <ClienteFormPf
+          key={cliente.id}
           storeId={cliente.storeId}
           corretores={corretores}
           cliente={cliente}
