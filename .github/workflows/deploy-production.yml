@@ -51,6 +51,10 @@ jobs:
             echo "==> Branch: $DEPLOY_BRANCH | Dir: $PROJECT_DIR"
             cd "$PROJECT_DIR"
 
+            # next-env.d.ts é alterado pelo Next no build; sem isto o git pull falha na VPS.
+            echo "==> Descartar next-env.d.ts local (gerado pelo Next)..."
+            git checkout -- next-env.d.ts 2>/dev/null || true
+
             echo "==> Pulling $DEPLOY_BRANCH..."
             git fetch origin
             git checkout "$DEPLOY_BRANCH"

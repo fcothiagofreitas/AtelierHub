@@ -15,9 +15,11 @@
    Do instead: incluir banco real, migration, seed e validação funcional mínima antes de avançar para a próxima sprint.
 
 ## Shell & Command Reliability
-1. **[2026-04-09] Preferir `rg` em raízes reais existentes**
+1. **[2026-04-16] Deploy VPS: `git pull` pode falhar se `next-env.d.ts` estiver modificado pelo `next build`**
+   Do instead: antes do pull, `git checkout -- next-env.d.ts` (os workflows em `.github/workflows/deploy-*.yml` já fazem isto).
+2. **[2026-04-09] Preferir `rg` em raízes reais existentes**
    Do instead: rodar `rg` em diretórios confirmados e tratar ausência de pastas opcionais como `.claude/`.
-2. **[2026-04-11] Prisma adapter com Postgres local funcionou melhor com `pg.Pool` explícito**
+3. **[2026-04-11] Prisma adapter com Postgres local funcionou melhor com `pg.Pool` explícito**
    Do instead: criar `Pool({ connectionString })` e passar para `PrismaPg(pool)` em vez de depender do construtor com objeto simples.
 
 ## Domain Behavior Guardrails
