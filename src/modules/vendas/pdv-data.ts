@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 
-/** Opções para selects do PDV (cliente e corretor sem bloqueados). */
+/** Opções para selects do PDV (clientes sem bloqueados; corretores incluem bloqueados para venda direta). */
 export async function getPdvLojaOptions(tenantId: string, storeId: string) {
   const [clientes, vendedores, corretores] = await Promise.all([
     prisma.cliente.findMany({
@@ -34,8 +34,8 @@ export async function getPdvLojaOptions(tenantId: string, storeId: string) {
       orderBy: { name: "asc" },
     }),
     prisma.corretor.findMany({
-      where: { tenantId, isActive: true, isBlocked: false },
-      select: { id: true, name: true },
+      where: { tenantId, isActive: true },
+      select: { id: true, name: true, isBlocked: true },
       orderBy: { name: "asc" },
     }),
   ]);

@@ -88,10 +88,10 @@ export async function pdvEnsureClienteForCorretor(input: {
   }
 
   const corretor = await prisma.corretor.findFirst({
-    where: { id: input.corretorId, tenantId, isActive: true, isBlocked: false },
+    where: { id: input.corretorId, tenantId, isActive: true },
     select: { id: true, name: true },
   });
-  if (!corretor) return { error: "Corretor inválido ou bloqueado." };
+  if (!corretor) return { error: "Corretor inválido." };
 
   const existing = await prisma.cliente.findFirst({
     where: {
@@ -177,10 +177,10 @@ async function validateVendedorECorretor(
 
   if (corretorId) {
     const c = await prisma.corretor.findFirst({
-      where: { id: corretorId, tenantId, isActive: true, isBlocked: false },
+      where: { id: corretorId, tenantId, isActive: true },
       select: { id: true },
     });
-    if (!c) throw new Error("Corretor inválido ou bloqueado.");
+    if (!c) throw new Error("Corretor inválido.");
   }
 }
 
@@ -207,90 +207,23 @@ function saldoEmAbertoPedido(p: {
 }
 
 /**
- * Valida limite de crédito do cliente e do corretor (exposição em pedidos em aberto).
- * `totalDestePedido` = total das linhas a passar a em aberto.
+ * Na finalização: cliente existe e não está bloqueado.
+ * Limite de crédito do cliente aplica-se só na entrega com saldo (consignação) — ver `registarEntregaFisicaInternoTx`.
  */
-async function assertCreditoParaFinalizar(
+async function assertClientePermitidoParaFinalizar(
   tx: Prisma.TransactionClient,
   tenantId: string,
   storeId: string,
-  pedidoId: string,
-  input: {
-    clienteId: string | null;
-    corretorId: string | null;
-    totalDestePedido: Prisma.Decimal;
-  },
+  input: { clienteId: string | null },
 ) {
-  if (input.clienteId) {
-    const cliente = await tx.cliente.findFirst({
-      where: { id: input.clienteId, tenantId, storeId },
-      select: { isBlocked: true, creditLimit: true },
-    });
-    if (!cliente) throw new Error("Cliente inválido.");
-    if (cliente.isBlocked) {
-      throw new Error("Operação não autorizada: cliente bloqueado.");
-    }
-    if (cliente.creditLimit != null) {
-      const outros = await tx.pedido.findMany({
-        where: {
-          tenantId,
-          storeId,
-          clienteId: input.clienteId,
-          id: { not: pedidoId },
-          estado: { in: ["EM_ABERTO", "PAGO_PARCIAL"] },
-        },
-        select: {
-          total: true,
-          pagamentos: { select: { valor: true } },
-        },
-      });
-      const emAbertoOutros = outros.reduce(
-        (acc, p) => acc.add(saldoEmAbertoPedido(p)),
-        new Prisma.Decimal(0),
-      );
-      if (emAbertoOutros.add(input.totalDestePedido).gt(cliente.creditLimit)) {
-        throw new Error(
-          "Operação não autorizada: limite de crédito do cliente excedido.",
-        );
-      }
-    }
-  }
-
-  if (input.corretorId) {
-    const corretor = await tx.corretor.findFirst({
-      where: { id: input.corretorId, tenantId },
-      select: { isBlocked: true, creditLimitConsignado: true },
-    });
-    if (!corretor) throw new Error("Corretor inválido.");
-    if (corretor.isBlocked) {
-      throw new Error("Operação não autorizada: corretor bloqueado.");
-    }
-    if (corretor.creditLimitConsignado != null) {
-      const outros = await tx.pedido.findMany({
-        where: {
-          tenantId,
-          storeId,
-          corretorId: input.corretorId,
-          id: { not: pedidoId },
-          estado: { in: ["EM_ABERTO", "PAGO_PARCIAL"] },
-        },
-        select: {
-          total: true,
-          pagamentos: { select: { valor: true } },
-        },
-      });
-      const emAbertoOutros = outros.reduce(
-        (acc, p) => acc.add(saldoEmAbertoPedido(p)),
-        new Prisma.Decimal(0),
-      );
-      if (
-        emAbertoOutros.add(input.totalDestePedido).gt(corretor.creditLimitConsignado)
-      ) {
-        throw new Error(
-          "Operação não autorizada: limite de crédito consignado do corretor excedido.",
-        );
-      }
-    }
+  if (!input.clienteId) return;
+  const cliente = await tx.cliente.findFirst({
+    where: { id: input.clienteId, tenantId, storeId },
+    select: { isBlocked: true },
+  });
+  if (!cliente) throw new Error("Cliente inválido.");
+  if (cliente.isBlocked) {
+    throw new Error("Operação não autorizada: cliente bloqueado.");
   }
 }
 
@@ -365,10 +298,8 @@ async function finalizarPedidoInternoTx(
     new Prisma.Decimal(0),
   );
 
-  await assertCreditoParaFinalizar(tx, ctx.tenantId, ctx.storeId, pedido.id, {
+  await assertClientePermitidoParaFinalizar(tx, ctx.tenantId, ctx.storeId, {
     clienteId: pedido.clienteId,
-    corretorId: pedido.corretorId,
-    totalDestePedido: total,
   });
 
   await tx.pedido.update({
@@ -424,10 +355,83 @@ async function registarEntregaFisicaInternoTx(
   }
 
   const saldoAberto = saldo.gt(new Prisma.Decimal("0.005"));
+
+  if (saldoAberto && pedido.clienteId) {
+    const cliente = await tx.cliente.findFirst({
+      where: {
+        id: pedido.clienteId,
+        tenantId: ctx.tenantId,
+        storeId: ctx.storeId,
+      },
+      select: { creditLimit: true },
+    });
+    if (cliente?.creditLimit != null) {
+      const outros = await tx.pedido.findMany({
+        where: {
+          tenantId: ctx.tenantId,
+          storeId: ctx.storeId,
+          clienteId: pedido.clienteId,
+          id: { not: pedido.id },
+          estado: { in: ["EM_ABERTO", "PAGO_PARCIAL"] },
+        },
+        select: {
+          total: true,
+          pagamentos: { select: { valor: true } },
+        },
+      });
+      const emAbertoOutros = outros.reduce(
+        (acc, p) => acc.add(saldoEmAbertoPedido(p)),
+        new Prisma.Decimal(0),
+      );
+      if (emAbertoOutros.add(saldo).gt(cliente.creditLimit)) {
+        throw new Error(
+          "Entrega com saldo em aberto não permitida: limite de crédito do cliente excedido.",
+        );
+      }
+    }
+  }
+
   if (saldoAberto && !pedido.corretorId) {
     throw new Error(
       "Para registar entrega com saldo em aberto, o pedido precisa de um corretor.",
     );
+  }
+
+  if (saldoAberto && pedido.corretorId) {
+    const corretor = await tx.corretor.findFirst({
+      where: { id: pedido.corretorId, tenantId: ctx.tenantId },
+      select: { isBlocked: true, creditLimitConsignado: true },
+    });
+    if (!corretor) throw new Error("Corretor não encontrado.");
+    if (corretor.isBlocked) {
+      throw new Error(
+        "Entrega com saldo em aberto não permitida: corretor bloqueado para consignação.",
+      );
+    }
+    if (corretor.creditLimitConsignado != null) {
+      const outros = await tx.pedido.findMany({
+        where: {
+          tenantId: ctx.tenantId,
+          storeId: ctx.storeId,
+          corretorId: pedido.corretorId,
+          id: { not: pedido.id },
+          estado: { in: ["EM_ABERTO", "PAGO_PARCIAL"] },
+        },
+        select: {
+          total: true,
+          pagamentos: { select: { valor: true } },
+        },
+      });
+      const emAbertoOutros = outros.reduce(
+        (acc, p) => acc.add(saldoEmAbertoPedido(p)),
+        new Prisma.Decimal(0),
+      );
+      if (emAbertoOutros.add(saldo).gt(corretor.creditLimitConsignado)) {
+        throw new Error(
+          "Entrega com saldo em aberto não permitida: limite de crédito consignado do corretor excedido.",
+        );
+      }
+    }
   }
 
   await tx.pedido.update({

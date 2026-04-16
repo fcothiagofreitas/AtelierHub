@@ -54,6 +54,9 @@ import {
 
 type SelectOption = { id: string; name: string };
 
+/** Corretores podem estar bloqueados (venda direta ok; consignação na entrega). */
+type PdvCorretorOption = SelectOption & { isBlocked?: boolean };
+
 type ClienteListaRow =
   | { kind: "cliente"; id: string; label: string }
   | { kind: "corretor"; id: string; label: string };
@@ -79,7 +82,7 @@ export type VendasPdvProps = {
   defaultColaboradorId: string;
   clientes: SelectOption[];
   vendedores: SelectOption[];
-  corretores: SelectOption[];
+  corretores: PdvCorretorOption[];
   /** Gerente/admin podem mudar o vendedor com pedido já iniciado; vendedor comum não. */
   pdvPodeAlterarVendedorComPedido?: boolean;
 };
@@ -609,7 +612,7 @@ function PdvModalInner({
       ...corretores.map((c) => ({
         kind: "corretor" as const,
         id: c.id,
-        label: `${c.name} · corretor`,
+        label: `${c.name} · corretor${c.isBlocked ? " (bloqueado)" : ""}`,
       })),
       ...extraClientes.map((c) => ({
         kind: "cliente" as const,
@@ -1796,6 +1799,7 @@ function PdvModalInner({
                     {corretores.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.name}
+                        {c.isBlocked ? " (bloqueado)" : ""}
                       </option>
                     ))}
                   </select>
