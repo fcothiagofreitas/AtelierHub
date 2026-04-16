@@ -22,10 +22,6 @@ import { PdvResumoPedidoQuitado } from "@/modules/vendas/components/pdv-resumo-p
 import type { PedidoVerPayload } from "@/modules/vendas/vendas-ver-actions";
 import { cn } from "@/lib/utils";
 
-const TEM_PAGAMENTO = (
-  linhas: Array<{ valor: number }>,
-) => linhas.some((p) => p.valor > 0.004);
-
 type Line = {
   key: string;
   label: string;
@@ -108,10 +104,7 @@ export function PdvVendaFinalizadaPanel({
     [pagamentosLinhas],
   );
 
-  const linhasParaRecibo = pedidoResumoCompleto
-    ? pedidoResumoCompleto.pedido.pagamentos
-    : pagamentosLinhas;
-  const mostrarRecibo = TEM_PAGAMENTO(linhasParaRecibo);
+  const mostrarRecibo = Boolean(pedidoId);
 
   const pagamentosOrdenados = React.useMemo(() => {
     return [...pagamentosLinhas].sort((a, b) => {
@@ -341,7 +334,7 @@ export function PdvVendaFinalizadaPanel({
                 "no-underline",
               )}
             >
-              Baixar recibo (PDF)
+              Baixar pedido de venda (PDF)
             </Link>
           </div>
         ) : null}

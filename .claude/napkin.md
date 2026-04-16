@@ -35,6 +35,8 @@
    Do instead: escopo `storeId` + `tenantId` como em Clientes; finalizar venda usa `MovimentoEstoqueTipo.VENDA` na mesma transação que passa o pedido a `EM_ABERTO`.
 7. **[2026-04-14] “Vendas” sem contexto pode ser lista em `/vendas` ou o PDV (modal `?pdv=1`)**
    Do instead: se o pedido não disser explicitamente **lista/tabela** vs **PDV/carrinho/modal**, **perguntar antes** de implementar para não aplicar no sítio errado.
+8. **[2026-04-15] PDF «Pedido de Venda» (`/api/vendas/pedido/[id]/recibo`) usa placeholder `[Logotipo]` e «CNPJ / telefone / e-mail / endereço: —» no emitente**
+   Do instead: configurar no sistema imagem de logo + dados fiscais/comerciais do emitente (CNPJ, IE, morada, telefone, e-mail) por tenant ou por loja; passar para `buildPedidoVendaPdf` em [`src/modules/vendas/lib/recibo-pdf.ts`](src/modules/vendas/lib/recibo-pdf.ts) e embutir PNG/JPEG no PDF quando existir.
 
 ## User Directives
 1. **[2026-04-12] Tema claro/escuro/sistema via `@ecosy/next-themes` (fork compatível React 19) no layout + toggle no `NavHeader`**

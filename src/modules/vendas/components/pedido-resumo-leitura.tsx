@@ -32,6 +32,11 @@ export function PedidoResumoLeitura({
     (pedido.estado === "EM_ABERTO" || pedido.estado === "PAGO_PARCIAL") &&
     saldoEmAberto > 0.004;
 
+  const podeBaixarPdfPedido =
+    pedido.estado !== "EM_ANDAMENTO" &&
+    pedido.estado !== "CANCELADO" &&
+    pedido.total != null;
+
   return (
     <div className="space-y-5">
       <div className="grid gap-3 rounded-lg border bg-card p-4 sm:grid-cols-2">
@@ -198,22 +203,25 @@ export function PedidoResumoLeitura({
               </tbody>
             </table>
           </div>
-          <p className="mt-3">
-            <Link
-              href={`/api/vendas/pedido/${pedido.id}/recibo`}
-              target="_blank"
-              rel="noopener noreferrer"
-              data-testid="vendas-recibo-pdf-resumo"
-              className={cn(
-                buttonVariants({ variant: "outline", size: "sm" }),
-                "no-underline",
-              )}
-            >
-              Baixar recibo (PDF)
-            </Link>
-          </p>
         </div>
       )}
+
+      {podeBaixarPdfPedido ? (
+        <p className="mt-3">
+          <Link
+            href={`/api/vendas/pedido/${pedido.id}/recibo`}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="vendas-recibo-pdf-resumo"
+            className={cn(
+              buttonVariants({ variant: "outline", size: "sm" }),
+              "no-underline",
+            )}
+          >
+            Baixar pedido de venda (PDF)
+          </Link>
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -1883,6 +1883,7 @@ function PdvModalInner({
                   <VendaAcoesCliente
                     storeId={storeId}
                     pedidoId={viewDetalhe.pedido.id}
+                    pedidoEstado={viewDetalhe.pedido.estado}
                     outlineButtonLabel="Fechar"
                     totalPedido={
                       viewDetalhe.pedido.total ??

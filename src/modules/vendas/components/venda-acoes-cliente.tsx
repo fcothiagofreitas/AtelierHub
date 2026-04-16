@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ReceberModal } from "@/modules/vendas/components/receber-modal";
 import { cn } from "@/lib/utils";
+import type { PedidoEstado } from "@prisma/client";
 
 /**
  * Acções do pedido no rodapé do PDV: Salvar (outline), Consignar (outline, opcional), Finalizar venda (primário).
@@ -43,6 +44,8 @@ type Props = {
   entregarDisabledTitle?: string;
   /** Após pagamento com sucesso (refrescar dados do pedido). */
   onPagamentoRegistado?: () => void;
+  /** Quando definido (ex.: ver pedido), permite PDF sem pagamento se finalizado. */
+  pedidoEstado?: PedidoEstado | null;
 };
 
 export function VendaAcoesCliente({
@@ -64,6 +67,7 @@ export function VendaAcoesCliente({
   entregarDisabled = false,
   entregarDisabledTitle,
   onPagamentoRegistado,
+  pedidoEstado,
 }: Props) {
   const [ReceberOpen, setReceberOpen] = React.useState(false);
 
@@ -90,7 +94,13 @@ export function VendaAcoesCliente({
   const modalMontado =
     Boolean(showReceber && !receberDisabled && pedidoId) && !onReceberPreparar;
 
-  const podeEmitirRecibo = Boolean(pedidoId) && totalJaPago > 0.004;
+  const podeEmitirRecibo =
+    Boolean(pedidoId) &&
+    (pedidoEstado != null
+      ? pedidoEstado !== "EM_ANDAMENTO" &&
+        pedidoEstado !== "CANCELADO" &&
+        totalPedido > 0.004
+      : totalJaPago > 0.004);
 
   return (
     <>
@@ -148,7 +158,7 @@ export function VendaAcoesCliente({
               "no-underline",
             )}
           >
-            Recibo (PDF)
+            Pedido de venda (PDF)
           </Link>
         ) : null}
       </div>
