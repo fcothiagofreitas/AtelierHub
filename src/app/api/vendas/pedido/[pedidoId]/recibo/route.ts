@@ -1,6 +1,5 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { authOptions } from "@/lib/auth";
+import { getSessionFromRequest } from "@/lib/auth-from-request";
 import { prisma } from "@/lib/prisma";
 import { assertStoreInSession } from "@/modules/estoque/estoque-auth";
 import {
@@ -17,8 +16,8 @@ import { ROLES_ACESSO_VENDAS } from "@/modules/vendas/lib/roles";
 
 type RouteCtx = { params: Promise<{ pedidoId: string }> };
 
-export async function GET(_req: Request, ctx: RouteCtx) {
-  const session = await getServerSession(authOptions);
+export async function GET(request: Request, ctx: RouteCtx) {
+  const session = await getSessionFromRequest(request);
   if (!session?.user?.tenantId) {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   }
