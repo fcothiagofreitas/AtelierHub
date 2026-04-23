@@ -77,8 +77,6 @@ const panelMutedClass =
 
 export type VendasPdvProps = {
   storeId: string;
-  /** Nome da loja ativa (faixa operacional no modal). */
-  storeName: string;
   defaultColaboradorId: string;
   clientes: SelectOption[];
   vendedores: SelectOption[];
@@ -154,7 +152,6 @@ export function VendasPdv(props: VendasPdvProps) {
 
 function PdvModalInner({
   storeId,
-  storeName,
   defaultColaboradorId,
   clientes,
   vendedores,
@@ -1196,13 +1193,6 @@ function PdvModalInner({
     [searchParams],
   );
 
-  const fluxoLabel =
-    readOnly && lockUi
-      ? "Leitura"
-      : !pedidoId
-        ? "Antes de gravar"
-        : "Rascunho · em andamento";
-
   const cartDraftIsDirty = React.useMemo(() => {
     if (readOnly) return false;
     if (!pedidoId || pdvStep !== "cart" || showResumoDetalhe) return false;
@@ -1430,20 +1420,6 @@ function PdvModalInner({
           ) : null}
           {showCartGrid ? (
           <>
-          <div
-            className={cn(
-              "mb-4 border-b border-border pb-3",
-              panelMutedClass,
-              "px-3 py-2.5",
-            )}
-          >
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-              <span className="font-medium text-foreground">{storeName}</span>
-              <span className="text-muted-foreground">·</span>
-              <span className="text-muted-foreground">{fluxoLabel}</span>
-            </div>
-          </div>
-
           <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
             {/* Coluna esquerda: produtos + carrinho (prioridade balcão) */}
             <div className="order-1 flex flex-col gap-4 lg:order-1">

@@ -16,6 +16,7 @@ import {
   parseVendasSearchParams,
 } from "@/modules/vendas/vendas-queries";
 import { VendasFiltersForm } from "@/modules/vendas/components/vendas-filters-form";
+import { VendasEstadoPresetLinks } from "@/modules/vendas/components/vendas-estado-preset-links";
 import { VendasPresetLinks } from "@/modules/vendas/components/vendas-preset-links";
 import { VendasPdv } from "@/modules/vendas/components/vendas-pdv";
 import { getPdvLojaOptions } from "@/modules/vendas/pdv-data";
@@ -96,7 +97,6 @@ export default async function VendasPage({ searchParams }: Props) {
       <Suspense fallback={null}>
         <VendasPdv
           storeId={activeStore.id}
-          storeName={activeStore.name}
           defaultColaboradorId={session.user.colaboradorId}
           clientes={pdvClientes}
           vendedores={pdvOpts.vendedores}
@@ -138,6 +138,13 @@ export default async function VendasPage({ searchParams }: Props) {
               searchParams={sp}
               activePreset={filters.preset}
               hasCustomRange={hasCustomRange}
+            />
+          </div>
+          <div className="rounded-lg border bg-card p-3">
+            <VendasEstadoPresetLinks
+              searchParams={sp}
+              estado={filters.estado}
+              estadoAberto={filters.estadoAberto}
             />
           </div>
           <Suspense
