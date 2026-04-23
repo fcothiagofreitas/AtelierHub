@@ -10,7 +10,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, Minus, Plus, ScanBarcode, Search, Trash2 } from "lucide-react";
+import { Loader2, Minus, Plus, Search, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
@@ -217,6 +217,15 @@ function PdvModalInner({
   const [hits, setHits] = React.useState<PdvSearchRow[]>([]);
   const [produtoHasMore, setProdutoHasMore] = React.useState(false);
   const [produtoListaAberta, setProdutoListaAberta] = React.useState(false);
+  /** Termo usado no último pedido concluído (lista / paginação); não acompanha o input enquanto escreve. */
+  const [termoBuscaAplicada, setTermoBuscaAplicada] = React.useState("");
+  const produtoTermoListaRef = React.useRef("");
+  const produtoQInputRef = React.useRef<HTMLInputElement | null>(null);
+  /** Último `q` para o callback do debounce (sinc. no início do efeito). */
+  const produtoQTrimRef = React.useRef("");
+  /** `setQ("")` programático (EAN adicionado) → não reabre lista via debounce. */
+  const suppressBuscaDebounceRef = React.useRef(false);
+  const produtoBuscaDebounceRef = React.useRef<number | null>(null);
   const produtoBuscaRef = React.useRef<HTMLDivElement>(null);
   const produtoListaRef = React.useRef<HTMLUListElement>(null);
   const hitsRef = React.useRef<PdvSearchRow[]>([]);
@@ -228,7 +237,6 @@ function PdvModalInner({
   React.useEffect(() => {
     produtoHasMoreRef.current = produtoHasMore;
   }, [produtoHasMore]);
-  const [ean, setEan] = React.useState("");
 
   /** Referência estável: `vendedores` vindo do RSC muda a cada refresh e não deve re-disparar o load de edição. */
   const vendedoresRef = React.useRef(vendedores);
@@ -286,8 +294,9 @@ function PdvModalInner({
     setHits([]);
     setProdutoHasMore(false);
     produtoHasMoreRef.current = false;
+    produtoTermoListaRef.current = "";
+    setTermoBuscaAplicada("");
     setProdutoListaAberta(false);
-    setEan("");
     pedidoIdRef.current = null;
     setPdvStep("cart");
     setTotalFinalizado(0);
@@ -697,9 +706,11 @@ function PdvModalInner({
   ]);
 
   const fetchProdutos = React.useCallback(
-    async (opts: { reset: boolean; append: boolean }) => {
-      const query = q.trim();
+    async (opts: { reset: boolean; append: boolean; query?: string }) => {
       const append = opts.append && !opts.reset;
+      const query = append
+        ? produtoTermoListaRef.current
+        : (opts.query ?? "").trim();
 
       if (append) {
         if (!produtoHasMoreRef.current || loadingMoreProdutosRef.current) {
@@ -727,6 +738,8 @@ function PdvModalInner({
             setHits([]);
             setProdutoHasMore(false);
             produtoHasMoreRef.current = false;
+            produtoTermoListaRef.current = "";
+            setTermoBuscaAplicada("");
           }
           return;
         }
@@ -737,6 +750,8 @@ function PdvModalInner({
             return [...prev, ...extra];
           });
         } else {
+          produtoTermoListaRef.current = query;
+          setTermoBuscaAplicada(query);
           setHits(r.rows);
         }
         setProdutoHasMore(r.hasMore);
@@ -747,22 +762,8 @@ function PdvModalInner({
         loadingMoreProdutosRef.current = false;
       }
     },
-    [q, storeId],
+    [storeId],
   );
-
-  /** Primeira página ou novo filtro (botão Buscar, Enter, texto debounced). */
-  const runSearch = React.useCallback(async () => {
-    await fetchProdutos({ reset: true, append: false });
-  }, [fetchProdutos]);
-
-  React.useEffect(() => {
-    if (!produtoListaAberta || !open) return;
-    const delay = q.trim().length >= 2 ? 280 : 0;
-    const t = window.setTimeout(() => {
-      void fetchProdutos({ reset: true, append: false });
-    }, delay);
-    return () => window.clearTimeout(t);
-  }, [q, produtoListaAberta, open, fetchProdutos]);
 
   const onProdutoListaScroll = React.useCallback(
     (e: React.UIEvent<HTMLUListElement>) => {
@@ -845,9 +846,9 @@ function PdvModalInner({
     [ensureDraft, pushLine],
   );
 
-  const onBarcode = React.useCallback(
-    async (eanRawOverride?: string) => {
-      const raw = (eanRawOverride ?? ean).trim();
+  /** Leitor: Tab com 8–14 dígitos = mesmo comportamento antigo (só EAN, sem abrir lista). */
+  const onEanLeitorTab = React.useCallback(
+    async (raw: string) => {
       const r = await pdvResolverEan({ storeId, eanRaw: raw });
       if ("error" in r) {
         toast.error(r.error);
@@ -862,14 +863,61 @@ function PdvModalInner({
         const ok = await ensureDraft();
         if (!ok) return;
         pushLine(r.row);
-        setEan("");
+        suppressBuscaDebounceRef.current = true;
+        setQ("");
+        setProdutoListaAberta(false);
         toast.success("Produto adicionado.");
       } finally {
         setAddingLine(false);
       }
     },
-    [ean, storeId, ensureDraft, pushLine],
+    [storeId, ensureDraft, pushLine],
   );
+
+  /**
+   * Enter / lupa: busca imediata. Com texto 8–14 só dígitos, tenta EAN antes da pesquisa.
+   * Enquanto escreve, o debounce (ver efeito) também pesquisa após pausa (≥2 letras).
+   */
+  const runBuscaProduto = React.useCallback(async () => {
+    if (produtoBuscaDebounceRef.current) {
+      clearTimeout(produtoBuscaDebounceRef.current);
+      produtoBuscaDebounceRef.current = null;
+    }
+    const raw = q.trim();
+    if (raw && /^\d{8,14}$/.test(raw)) {
+      const r = await pdvResolverEan({ storeId, eanRaw: raw });
+      if ("error" in r) {
+        toast.error(r.error);
+        requestAnimationFrame(() =>
+          produtoQInputRef.current?.focus({ preventScroll: true }),
+        );
+        return;
+      }
+      if (r.found) {
+        setAddingLine(true);
+        try {
+          const ok = await ensureDraft();
+          if (!ok) return;
+          pushLine(r.row);
+          suppressBuscaDebounceRef.current = true;
+          setQ("");
+          setProdutoListaAberta(false);
+          toast.success("Produto adicionado.");
+        } finally {
+          setAddingLine(false);
+        }
+        requestAnimationFrame(() =>
+          produtoQInputRef.current?.focus({ preventScroll: true }),
+        );
+        return;
+      }
+    }
+    setProdutoListaAberta(true);
+    await fetchProdutos({ reset: true, append: false, query: raw });
+    requestAnimationFrame(() =>
+      produtoQInputRef.current?.focus({ preventScroll: true }),
+    );
+  }, [q, storeId, ensureDraft, pushLine, fetchProdutos]);
 
   const salvarEmAberto = () => {
     onClose();
@@ -1109,6 +1157,39 @@ function PdvModalInner({
     !viewLoading &&
     !pedidoId &&
     Boolean(viewPedidoId);
+
+  /** Com ≥2 caracteres: após 400ms sem novas teclas, abre a lista e pesquisa. Vazio: fecha. 1 letra: espera. */
+  const PRODUTO_BUSCA_DEBOUNCE_MS = 400;
+  React.useEffect(() => {
+    if (!open || !showCartGrid || lockUi) return;
+    produtoQTrimRef.current = q;
+    if (suppressBuscaDebounceRef.current) {
+      suppressBuscaDebounceRef.current = false;
+      return;
+    }
+    const term = q.trim();
+    if (term.length === 0) {
+      setProdutoListaAberta(false);
+      return;
+    }
+    if (term.length < 2) {
+      return;
+    }
+    const id = window.setTimeout(() => {
+      produtoBuscaDebounceRef.current = null;
+      const t = produtoQTrimRef.current.trim();
+      if (t.length < 2) return;
+      setProdutoListaAberta(true);
+      void fetchProdutos({ reset: true, append: false, query: t });
+    }, PRODUTO_BUSCA_DEBOUNCE_MS);
+    produtoBuscaDebounceRef.current = id;
+    return () => {
+      window.clearTimeout(id);
+      if (produtoBuscaDebounceRef.current === id) {
+        produtoBuscaDebounceRef.current = null;
+      }
+    };
+  }, [q, open, showCartGrid, lockUi, fetchProdutos]);
 
   const spForLinks = React.useMemo(
     () => new URLSearchParams(searchParams.toString()),
@@ -1371,19 +1452,16 @@ function PdvModalInner({
                   Produtos
                 </p>
                 <div ref={produtoBuscaRef} className="relative space-y-1">
-                  <div className="flex flex-wrap gap-2">
+                  <div className="relative z-40 flex flex-wrap items-center gap-2">
                     <div className="relative min-w-0 flex-1">
                       <Search className="pointer-events-none absolute top-2.5 left-2 size-4 text-muted-foreground" />
                       <Input
+                        ref={produtoQInputRef}
                         className="pl-8"
-                        placeholder="Nome, referência ou EAN…"
+                        placeholder="Nome, referência, EAN ou código de barras…"
                         value={q}
                         autoComplete="off"
-                        onChange={(e) => {
-                          setQ(e.target.value);
-                          setProdutoListaAberta(true);
-                        }}
-                        onFocus={() => setProdutoListaAberta(true)}
+                        onChange={(e) => setQ(e.target.value)}
                         onKeyDown={(e) => {
                           if (e.key === "Escape") {
                             e.preventDefault();
@@ -1391,7 +1469,15 @@ function PdvModalInner({
                           }
                           if (e.key === "Enter") {
                             e.preventDefault();
-                            void runSearch();
+                            void runBuscaProduto();
+                          }
+                          if (e.key === "Tab") {
+                            const v = (e.currentTarget as HTMLInputElement).value;
+                            const digits = v.replace(/\D/g, "");
+                            if (digits.length >= 8 && digits.length <= 14) {
+                              e.preventDefault();
+                              void onEanLeitorTab(v);
+                            }
                           }
                         }}
                         disabled={addingLine || lockUi}
@@ -1400,15 +1486,21 @@ function PdvModalInner({
                     <Button
                       type="button"
                       variant="secondary"
-                      size="sm"
-                      className="min-h-10 shrink-0 touch-manipulation"
-                      onClick={() => void runSearch()}
+                      size="icon"
+                      className="shrink-0 touch-manipulation"
+                      aria-label="Buscar"
+                      title="Buscar"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => {
+                        produtoQInputRef.current?.focus({ preventScroll: true });
+                        void runBuscaProduto();
+                      }}
                       disabled={searching || addingLine || lockUi}
                     >
                       {searching ? (
                         <Loader2 className="size-4 animate-spin" />
                       ) : (
-                        "Buscar"
+                        <Search className="size-4" />
                       )}
                     </Button>
                   </div>
@@ -1448,14 +1540,14 @@ function PdvModalInner({
                           </button>
                         </li>
                       ))}
-                      {q.trim().length >= 2 &&
+                      {termoBuscaAplicada.trim().length >= 2 &&
                         !searching &&
                         hits.length === 0 && (
                           <li className="px-3 py-2 text-muted-foreground">
                             Nenhum produto encontrado.
                           </li>
                         )}
-                      {q.trim().length < 2 &&
+                      {termoBuscaAplicada.trim().length < 2 &&
                         !searching &&
                         hits.length === 0 && (
                           <li className="px-3 py-2 text-muted-foreground">
@@ -1471,33 +1563,6 @@ function PdvModalInner({
                     </ul>
                   )}
                 </div>
-                <div className="relative">
-                  <ScanBarcode className="pointer-events-none absolute top-2.5 left-2 size-4 text-muted-foreground" />
-                  <Input
-                    className="pl-8 font-mono text-sm"
-                    placeholder="Código de barras (Enter ou Tab após ler)"
-                    inputMode="numeric"
-                    autoComplete="off"
-                    value={ean}
-                    onChange={(e) => setEan(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        void onBarcode();
-                        return;
-                      }
-                      if (e.key === "Tab") {
-                        const v = (e.currentTarget as HTMLInputElement).value;
-                        const digits = v.replace(/\D/g, "");
-                        if (digits.length >= 8 && digits.length <= 14) {
-                          e.preventDefault();
-                          void onBarcode(v);
-                        }
-                      }
-                    }}
-                    disabled={addingLine || lockUi}
-                  />
-                </div>
               </section>
 
               <section className={cn("space-y-3 p-3 sm:p-4", panelMutedClass)}>
@@ -1506,9 +1571,12 @@ function PdvModalInner({
                 </p>
                 {lines.length === 0 ? (
                   <p className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
-                    Nenhum item. Defina o vendedor, depois busque ou leia um EAN.
-                    O comprador pode ser escolhido depois; é obrigatório só para
-                    concluir a venda (Finalizar venda).
+                    Nenhum item. Defina o vendedor e escreva no campo (a partir
+                    de 2 letras a lista busca sozinha após uma breve pausa);
+                    lupa ou Enter antecipam a busca. Código de barras: 8 a 14
+                    só dígitos, Enter resolve. O comprador pode ser escolhido
+                    depois; é obrigatório só para concluir a venda (Finalizar
+                    venda).
                   </p>
                 ) : (
                   <div className="overflow-x-auto rounded-lg border border-border bg-card">
