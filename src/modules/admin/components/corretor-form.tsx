@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useCallback, useRef, useState } from "react";
 import Link from "next/link";
 import type { CorretorPaymentMethod } from "@prisma/client";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,15 @@ import {
   upsertCorretor,
   type CorretorActionResult,
 } from "@/modules/admin/actions/corretor-actions";
+import { corretorFieldLabelsDivergingFromApi } from "@/lib/cnpj-field-match";
+import type { CnpjLookupDto } from "@/lib/cnpj-lookup";
+import { isValidCnpj } from "@/lib/doc-validation";
+import {
+  digitsOnly,
+  formatCnpjDisplay,
+  formatCpfDisplay,
+  formatTelefoneBrDisplay,
+} from "@/lib/masks-br";
 
 const PAYMENT_METHODS: CorretorPaymentMethod[] = ["PIX", "CASH", "BANK_TRANSFER"];
 
@@ -42,6 +51,78 @@ export function CorretorForm({ corretor }: CorretorFormProps) {
     null,
   );
 
+  const [name, setName] = useState(() => corretor?.name ?? "");
+  const [documentDigits, setDocumentDigits] = useState(() =>
+    digitsOnly(corretor?.document ?? "", 14),
+  );
+  const [phoneDigits, setPhoneDigits] = useState(() =>
+    digitsOnly(corretor?.phone ?? "", 11),
+  );
+
+  const initialDocDigits = digitsOnly(corretor?.document ?? "", 14);
+  const lastFetchedCnpjRef = useRef<string | null>(
+    initialDocDigits.length === 14 && isValidCnpj(initialDocDigits) ? initialDocDigits : null,
+  );
+  const fetchAbortRef = useRef<AbortController | null>(null);
+  const [cnpjLookupLoading, setCnpjLookupLoading] = useState(false);
+  const [cnpjLookupError, setCnpjLookupError] = useState<string | null>(null);
+  const [cnpjDivergenceLabels, setCnpjDivergenceLabels] = useState<string[]>([]);
+
+  const onDocumentBlur = useCallback(async () => {
+    const d = documentDigits;
+    if (d.length !== 14 || !isValidCnpj(d)) {
+      lastFetchedCnpjRef.current = null;
+      setCnpjLookupError(null);
+      setCnpjDivergenceLabels([]);
+      return;
+    }
+    if (lastFetchedCnpjRef.current === d) return;
+
+    fetchAbortRef.current?.abort();
+    const ac = new AbortController();
+    fetchAbortRef.current = ac;
+
+    setCnpjLookupLoading(true);
+    setCnpjLookupError(null);
+    setCnpjDivergenceLabels([]);
+
+    const snapshot = { name, phoneDigits };
+
+    try {
+      const res = await fetch(`/api/cnpj/${d}`, { method: "GET", signal: ac.signal });
+      const json = (await res.json()) as { error?: string } & Partial<CnpjLookupDto>;
+      if (!res.ok) {
+        setCnpjLookupError(json.error ?? "Não foi possível consultar o CNPJ.");
+        return;
+      }
+      if (!json.razaoSocial) {
+        setCnpjLookupError("Resposta inválida do serviço de consulta.");
+        return;
+      }
+      const dto: CnpjLookupDto = {
+        razaoSocial: json.razaoSocial,
+        nomeFantasia: json.nomeFantasia ?? "",
+        endereco: json.endereco ?? "",
+        telefoneDigits: json.telefoneDigits ?? "",
+        email: json.email ?? "",
+      };
+      setCnpjDivergenceLabels(corretorFieldLabelsDivergingFromApi(snapshot, dto));
+
+      setName(dto.razaoSocial || dto.nomeFantasia);
+      if (dto.telefoneDigits) {
+        setPhoneDigits(digitsOnly(dto.telefoneDigits, 11));
+      }
+      lastFetchedCnpjRef.current = d;
+    } catch (e) {
+      if (e instanceof Error && e.name === "AbortError") return;
+      setCnpjLookupError("Falha de rede. Tente novamente.");
+    } finally {
+      if (fetchAbortRef.current === ac) {
+        setCnpjLookupLoading(false);
+      }
+    }
+  }, [documentDigits, name, phoneDigits]);
+
   const creditLimitReais =
     corretor?.creditLimitConsignado != null
       ? Number(corretor.creditLimitConsignado.toString())
@@ -59,12 +140,57 @@ export function CorretorForm({ corretor }: CorretorFormProps) {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5 sm:col-span-2">
+          <Label htmlFor="document">CPF / CNPJ</Label>
+          <div className="flex flex-col gap-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <input type="hidden" name="document" value={documentDigits} />
+              <Input
+                id="document"
+                className="max-w-xs"
+                inputMode="numeric"
+                autoComplete="off"
+                placeholder="CPF ou CNPJ"
+                value={
+                  documentDigits.length > 11 ?
+                    formatCnpjDisplay(documentDigits)
+                  : formatCpfDisplay(documentDigits)
+                }
+                onChange={(e) => {
+                  const next = digitsOnly(e.target.value, 14);
+                  if (next !== lastFetchedCnpjRef.current) {
+                    lastFetchedCnpjRef.current = null;
+                  }
+                  setDocumentDigits(next);
+                  setCnpjLookupError(null);
+                  setCnpjDivergenceLabels([]);
+                }}
+                onBlur={onDocumentBlur}
+                disabled={cnpjLookupLoading}
+                aria-busy={cnpjLookupLoading}
+              />
+              {cnpjLookupLoading ?
+                <span className="text-xs text-muted-foreground">Consultando…</span>
+              : null}
+            </div>
+            {cnpjLookupError ?
+              <p className="text-xs text-destructive">{cnpjLookupError}</p>
+            : null}
+            {cnpjDivergenceLabels.length > 0 ?
+              <p className="text-xs text-amber-900 dark:text-amber-200/90">
+                Os dados informados diferem do cadastro público em:{" "}
+                {cnpjDivergenceLabels.join(", ")}. Os campos foram atualizados conforme a Receita.
+              </p>
+            : null}
+          </div>
+        </div>
+        <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor="name">Nome</Label>
           <Input
             id="name"
             name="name"
             required
-            defaultValue={corretor?.name ?? ""}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
             aria-invalid={Boolean(state?.fieldErrors?.name)}
           />
           {state?.fieldErrors?.name && (
@@ -72,12 +198,16 @@ export function CorretorForm({ corretor }: CorretorFormProps) {
           )}
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="document">CPF / CNPJ</Label>
-          <Input id="document" name="document" defaultValue={corretor?.document ?? ""} />
-        </div>
-        <div className="space-y-1.5">
           <Label htmlFor="phone">Telefone</Label>
-          <Input id="phone" name="phone" defaultValue={corretor?.phone ?? ""} />
+          <input type="hidden" name="phone" value={phoneDigits} />
+          <Input
+            id="phone"
+            inputMode="numeric"
+            autoComplete="tel"
+            placeholder="(00) 00000-0000"
+            value={formatTelefoneBrDisplay(phoneDigits)}
+            onChange={(e) => setPhoneDigits(digitsOnly(e.target.value, 11))}
+          />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="email">E-mail</Label>

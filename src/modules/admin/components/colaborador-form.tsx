@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import Link from "next/link";
 import type { UserRole } from "@prisma/client";
 import { cn } from "@/lib/utils";
+import { digitsOnly, formatCpfDisplay, formatTelefoneBrDisplay } from "@/lib/masks-br";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -70,6 +71,10 @@ export function ColaboradorForm({ colaborador, availableStores }: ColaboradorFor
   const [hasSystemAccess, setHasSystemAccess] = useState<boolean>(
     Boolean(colaborador?.userId),
   );
+  const [cpfDigits, setCpfDigits] = useState(() => digitsOnly(colaborador?.cpf ?? "", 11));
+  const [phoneDigits, setPhoneDigits] = useState(() =>
+    digitsOnly(colaborador?.phone ?? "", 11),
+  );
 
   const isEditing = Boolean(colaborador?.id);
 
@@ -101,7 +106,21 @@ export function ColaboradorForm({ colaborador, availableStores }: ColaboradorFor
 
       {/* Dados pessoais */}
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label htmlFor="cpf">CPF</Label>
+          <input type="hidden" name="cpf" value={cpfDigits} />
+          <Input
+            id="cpf"
+            className="max-w-xs"
+            inputMode="numeric"
+            autoComplete="off"
+            placeholder="000.000.000-00"
+            value={formatCpfDisplay(cpfDigits)}
+            onChange={(e) => setCpfDigits(digitsOnly(e.target.value, 11))}
+          />
+        </div>
+
+        <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor="name">Nome completo</Label>
           <Input
             id="name"
@@ -117,22 +136,15 @@ export function ColaboradorForm({ colaborador, availableStores }: ColaboradorFor
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="cpf">CPF</Label>
-          <Input
-            id="cpf"
-            name="cpf"
-            defaultValue={colaborador?.cpf ?? ""}
-            placeholder="000.000.000-00"
-          />
-        </div>
-
-        <div className="space-y-1.5">
           <Label htmlFor="phone">Telefone</Label>
+          <input type="hidden" name="phone" value={phoneDigits} />
           <Input
             id="phone"
-            name="phone"
-            defaultValue={colaborador?.phone ?? ""}
+            inputMode="numeric"
+            autoComplete="tel"
             placeholder="(00) 00000-0000"
+            value={formatTelefoneBrDisplay(phoneDigits)}
+            onChange={(e) => setPhoneDigits(digitsOnly(e.target.value, 11))}
           />
         </div>
 

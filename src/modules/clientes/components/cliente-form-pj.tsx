@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useCallback, useRef, useState } from "react";
 import Link from "next/link";
 import type { Cliente } from "@prisma/client";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,9 @@ import {
   type ClienteActionResult,
 } from "@/modules/clientes/actions/cliente-actions";
 import { CorretorSelect } from "@/modules/clientes/components/corretor-select";
+import { clientePjFieldLabelsDivergingFromApi } from "@/lib/cnpj-field-match";
+import type { CnpjLookupDto } from "@/lib/cnpj-lookup";
+import { isValidCnpj } from "@/lib/doc-validation";
 
 type CorretorOpt = { id: string; name: string };
 
@@ -55,6 +58,80 @@ export function ClienteFormPj({
   const [isActive, setIsActive] = useState(() => cliente?.isActive ?? true);
   const [isBlocked, setIsBlocked] = useState(() => cliente?.isBlocked ?? false);
 
+  const initialCnpjDigits = digitsOnly(cliente?.cnpj ?? "", 14);
+  const lastFetchedCnpjRef = useRef<string | null>(
+    initialCnpjDigits.length === 14 && isValidCnpj(initialCnpjDigits) ? initialCnpjDigits : null,
+  );
+  const fetchAbortRef = useRef<AbortController | null>(null);
+  const [cnpjLookupLoading, setCnpjLookupLoading] = useState(false);
+  const [cnpjLookupError, setCnpjLookupError] = useState<string | null>(null);
+  const [cnpjDivergenceLabels, setCnpjDivergenceLabels] = useState<string[]>([]);
+
+  const onCnpjBlur = useCallback(async () => {
+    const d = cnpjDigits;
+    if (d.length !== 14 || !isValidCnpj(d)) {
+      lastFetchedCnpjRef.current = null;
+      setCnpjLookupError(null);
+      setCnpjDivergenceLabels([]);
+      return;
+    }
+    if (lastFetchedCnpjRef.current === d) return;
+
+    fetchAbortRef.current?.abort();
+    const ac = new AbortController();
+    fetchAbortRef.current = ac;
+
+    setCnpjLookupLoading(true);
+    setCnpjLookupError(null);
+    setCnpjDivergenceLabels([]);
+
+    const snapshot = {
+      razaoSocial,
+      fantasia,
+      endereco,
+      telefoneDigits,
+      email,
+    };
+
+    try {
+      const res = await fetch(`/api/cnpj/${d}`, { method: "GET", signal: ac.signal });
+      const json = (await res.json()) as { error?: string } & Partial<CnpjLookupDto>;
+      if (!res.ok) {
+        setCnpjLookupError(json.error ?? "Não foi possível consultar o CNPJ.");
+        return;
+      }
+      if (!json.razaoSocial) {
+        setCnpjLookupError("Resposta inválida do serviço de consulta.");
+        return;
+      }
+      const dto: CnpjLookupDto = {
+        razaoSocial: json.razaoSocial,
+        nomeFantasia: json.nomeFantasia ?? "",
+        endereco: json.endereco ?? "",
+        telefoneDigits: json.telefoneDigits ?? "",
+        email: json.email ?? "",
+      };
+      const diverging = clientePjFieldLabelsDivergingFromApi(snapshot, dto);
+      setCnpjDivergenceLabels(diverging);
+
+      setRazaoSocial(dto.razaoSocial);
+      setFantasia(dto.nomeFantasia || dto.razaoSocial);
+      setEndereco(dto.endereco);
+      if (dto.telefoneDigits) {
+        setTelefoneDigits(digitsOnly(dto.telefoneDigits, 11));
+      }
+      if (dto.email) setEmail(dto.email);
+      lastFetchedCnpjRef.current = d;
+    } catch (e) {
+      if (e instanceof Error && e.name === "AbortError") return;
+      setCnpjLookupError("Falha de rede. Tente novamente.");
+    } finally {
+      if (fetchAbortRef.current === ac) {
+        setCnpjLookupLoading(false);
+      }
+    }
+  }, [cnpjDigits, razaoSocial, fantasia, endereco, telefoneDigits, email]);
+
   const creditReais =
     cliente?.creditLimit != null ? Number(cliente.creditLimit.toString()) : null;
 
@@ -73,6 +150,50 @@ export function ClienteFormPj({
       )}
 
       <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label htmlFor="cnpj">CNPJ</Label>
+          <div className="flex flex-col gap-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <input type="hidden" name="cnpj" value={cnpjDigits} />
+              <Input
+                id="cnpj"
+                className="max-w-xs"
+                inputMode="numeric"
+                autoComplete="off"
+                placeholder="00.000.000/0000-00"
+                value={formatCnpjDisplay(cnpjDigits)}
+                onChange={(e) => {
+                  const next = digitsOnly(e.target.value, 14);
+                  if (next !== lastFetchedCnpjRef.current) {
+                    lastFetchedCnpjRef.current = null;
+                  }
+                  setCnpjDigits(next);
+                  setCnpjLookupError(null);
+                  setCnpjDivergenceLabels([]);
+                }}
+                onBlur={onCnpjBlur}
+                disabled={cnpjLookupLoading}
+                aria-busy={cnpjLookupLoading}
+                aria-invalid={Boolean(state?.fieldErrors?.cnpj)}
+              />
+              {cnpjLookupLoading ?
+                <span className="text-xs text-muted-foreground">Consultando…</span>
+              : null}
+            </div>
+            {cnpjLookupError ?
+              <p className="text-xs text-destructive">{cnpjLookupError}</p>
+            : null}
+            {cnpjDivergenceLabels.length > 0 ?
+              <p className="text-xs text-amber-900 dark:text-amber-200/90">
+                Os dados informados diferem do cadastro público em:{" "}
+                {cnpjDivergenceLabels.join(", ")}. Os campos foram atualizados conforme a Receita.
+              </p>
+            : null}
+          </div>
+          {state?.fieldErrors?.cnpj && (
+            <p className="text-xs text-destructive">{state.fieldErrors.cnpj}</p>
+          )}
+        </div>
         <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor="fantasia">Nome fantasia</Label>
           <Input
@@ -99,22 +220,6 @@ export function ClienteFormPj({
           />
           {state?.fieldErrors?.razaoSocial && (
             <p className="text-xs text-destructive">{state.fieldErrors.razaoSocial}</p>
-          )}
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="cnpj">CNPJ</Label>
-          <Input
-            id="cnpj"
-            name="cnpj"
-            inputMode="numeric"
-            autoComplete="off"
-            placeholder="00.000.000/0000-00"
-            value={formatCnpjDisplay(cnpjDigits)}
-            onChange={(e) => setCnpjDigits(digitsOnly(e.target.value, 14))}
-            aria-invalid={Boolean(state?.fieldErrors?.cnpj)}
-          />
-          {state?.fieldErrors?.cnpj && (
-            <p className="text-xs text-destructive">{state.fieldErrors.cnpj}</p>
           )}
         </div>
         <div className="space-y-1.5">
@@ -159,9 +264,9 @@ export function ClienteFormPj({
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="telefone">Telefone</Label>
+          <input type="hidden" name="telefone" value={telefoneDigits} />
           <Input
             id="telefone"
-            name="telefone"
             required
             inputMode="numeric"
             autoComplete="tel"
@@ -204,9 +309,9 @@ export function ClienteFormPj({
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="responsavelFone">Telefone do responsável</Label>
+          <input type="hidden" name="responsavelFone" value={responsavelFoneDigits} />
           <Input
             id="responsavelFone"
-            name="responsavelFone"
             required
             inputMode="numeric"
             autoComplete="tel"

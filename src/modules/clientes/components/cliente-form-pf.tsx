@@ -69,6 +69,23 @@ export function ClienteFormPf({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5 sm:col-span-2">
+          <Label htmlFor="cpf">CPF</Label>
+          <input type="hidden" name="cpf" value={cpfDigits} />
+          <Input
+            id="cpf"
+            className="max-w-xs"
+            inputMode="numeric"
+            autoComplete="off"
+            placeholder="000.000.000-00"
+            value={formatCpfDisplay(cpfDigits)}
+            onChange={(e) => setCpfDigits(digitsOnly(e.target.value, 11))}
+            aria-invalid={Boolean(state?.fieldErrors?.cpf)}
+          />
+          {state?.fieldErrors?.cpf && (
+            <p className="text-xs text-destructive">{state.fieldErrors.cpf}</p>
+          )}
+        </div>
+        <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor="nome">Nome completo</Label>
           <Input
             id="nome"
@@ -80,22 +97,6 @@ export function ClienteFormPf({
           />
           {state?.fieldErrors?.nome && (
             <p className="text-xs text-destructive">{state.fieldErrors.nome}</p>
-          )}
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="cpf">CPF</Label>
-          <Input
-            id="cpf"
-            name="cpf"
-            inputMode="numeric"
-            autoComplete="off"
-            placeholder="000.000.000-00"
-            value={formatCpfDisplay(cpfDigits)}
-            onChange={(e) => setCpfDigits(digitsOnly(e.target.value, 11))}
-            aria-invalid={Boolean(state?.fieldErrors?.cpf)}
-          />
-          {state?.fieldErrors?.cpf && (
-            <p className="text-xs text-destructive">{state.fieldErrors.cpf}</p>
           )}
         </div>
         <div className="space-y-1.5">
@@ -124,9 +125,9 @@ export function ClienteFormPf({
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="telefone">Telefone</Label>
+          <input type="hidden" name="telefone" value={telefoneDigits} />
           <Input
             id="telefone"
-            name="telefone"
             required
             inputMode="numeric"
             autoComplete="tel"
