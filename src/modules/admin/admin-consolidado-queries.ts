@@ -38,7 +38,7 @@ export type AdminConsolidadoSnapshot = {
   };
   pendencias: {
     balancosRascunho: number;
-    /** Grupos de cobrança registados (lotes em aberto na operação). */
+    /** Lotes de recebimento (grupos de cobrança) registados no tenant. */
     gruposCobranca: number;
   };
 };

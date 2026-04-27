@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { formatDateBr } from "@/lib/format-date-br";
 import { cn } from "@/lib/utils";
 import type { GrupoCobrancaDetalhe } from "@/modules/vendas/cobranca-queries";
 import { ReceberGrupoModal } from "@/modules/vendas/components/receber-grupo-modal";
@@ -28,8 +29,8 @@ export function GrupoCobrancaDetalheClient({
 
   const titulo =
     detalhe.tipo === "CLIENTE"
-      ? `Grupo — ${detalhe.cliente?.label ?? "Cliente"}`
-      : `Grupo — corretor ${detalhe.corretor?.name ?? "—"}`;
+      ? `Lote — ${detalhe.cliente?.label ?? "Cliente"}`
+      : `Lote — corretor ${detalhe.corretor?.name ?? "—"}`;
 
   const podeReceber = detalhe.saldoGrupo > 0.004;
   const criadoEm =
@@ -43,11 +44,7 @@ export function GrupoCobrancaDetalheClient({
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{titulo}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Loja {storeName} · criado em{" "}
-            {criadoEm.toLocaleString("pt-BR", {
-              dateStyle: "short",
-              timeStyle: "short",
-            })}
+            Loja {storeName} · criado em {formatDateBr(criadoEm)}
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
             <Badge variant="secondary">
@@ -55,7 +52,7 @@ export function GrupoCobrancaDetalheClient({
             </Badge>
             {!podeReceber ? (
               <Badge variant="outline" className="text-green-700 dark:text-green-400">
-                Grupo liquidado
+                Lote quitado
               </Badge>
             ) : null}
           </div>
@@ -109,7 +106,7 @@ export function GrupoCobrancaDetalheClient({
         </table>
         <div className="flex flex-wrap items-center justify-between gap-3 border-t bg-muted/20 px-4 py-3">
           <p className="text-sm font-medium">
-            Saldo do grupo:{" "}
+            Saldo do lote:{" "}
             <span className="tabular-nums">{money.format(detalhe.saldoGrupo)}</span>
           </p>
           <button

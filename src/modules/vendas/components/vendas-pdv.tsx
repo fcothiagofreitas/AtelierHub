@@ -24,6 +24,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { clientRandomId } from "@/lib/random-id";
+import { formatDateBr } from "@/lib/format-date-br";
 import { cn } from "@/lib/utils";
 import {
   pdvCreateDraft,
@@ -1361,10 +1362,7 @@ function PdvModalInner({
               <DialogHeader className="text-left sm:min-w-0 sm:flex-1">
                 <DialogTitle>Pedido nº {viewDetalhe.pedido.numero}</DialogTitle>
                 <DialogDescription>
-                  {new Date(viewDetalhe.pedido.createdAt).toLocaleString("pt-BR", {
-                    dateStyle: "full",
-                    timeStyle: "short",
-                  })}
+                  {formatDateBr(viewDetalhe.pedido.createdAt)}
                 </DialogDescription>
               </DialogHeader>
               <div className="flex w-full flex-col items-stretch gap-2 sm:max-w-xs sm:shrink-0">

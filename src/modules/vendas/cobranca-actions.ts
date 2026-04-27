@@ -52,7 +52,7 @@ export async function criarGrupoCobranca(input: {
 
   const ids = [...new Set(input.pedidoIds)].filter(Boolean);
   if (ids.length === 0) {
-    return { error: "Seleccione pelo menos um pedido com saldo em aberto." };
+    return { error: "Selecione pelo menos um pedido com saldo em aberto." };
   }
 
   try {
@@ -91,7 +91,7 @@ export async function criarGrupoCobranca(input: {
         if (input.tipo === "CLIENTE") {
           if (!p.clienteId) {
             throw new Error(
-              `Pedido #${p.numero} não tem cliente; não pode entrar num grupo por cliente.`,
+              `Pedido #${p.numero} não tem cliente; não pode entrar num lote por cliente.`,
             );
           }
           if (clienteId === null) clienteId = p.clienteId;
@@ -101,7 +101,7 @@ export async function criarGrupoCobranca(input: {
         } else {
           if (!p.corretorId) {
             throw new Error(
-              `Pedido #${p.numero} não tem corretor; não pode entrar num grupo por corretor.`,
+              `Pedido #${p.numero} não tem corretor; não pode entrar num lote por corretor.`,
             );
           }
           if (corretorId === null) corretorId = p.corretorId;
@@ -137,14 +137,14 @@ export async function criarGrupoCobranca(input: {
     return { ok: true, grupoId };
   } catch (e) {
     return {
-      error: e instanceof Error ? e.message : "Não foi possível criar o grupo.",
+      error: e instanceof Error ? e.message : "Não foi possível criar o lote.",
     };
   }
 }
 
 /**
- * Regista um ou mais meios de pagamento distribuindo o valor pelos pedidos do grupo
- * (FIFO conforme a ordem definida na criação do grupo).
+ * Regista um ou mais meios de pagamento distribuindo o valor pelos pedidos do lote
+ * (FIFO conforme a ordem definida na criação do lote).
  */
 export async function registrarMultiPagamentoGrupo(input: {
   storeId: string;
@@ -199,8 +199,8 @@ export async function registrarMultiPagamentoGrupo(input: {
         },
       });
 
-      if (!grupo) throw new Error("Grupo de cobrança não encontrado.");
-      if (grupo.itens.length === 0) throw new Error("Grupo sem pedidos.");
+      if (!grupo) throw new Error("Lote de recebimento não encontrado.");
+      if (grupo.itens.length === 0) throw new Error("Lote sem pedidos.");
 
       const itensOrdenados = grupo.itens;
       const saldos = new Map<string, Prisma.Decimal>();
@@ -236,7 +236,7 @@ export async function registrarMultiPagamentoGrupo(input: {
 
       if (totalLinhas.gt(totalGrupoAberto.add(new Prisma.Decimal("0.01")))) {
         throw new Error(
-          `Total a registar (${totalLinhas.toFixed(2)}) supera o saldo do grupo (${totalGrupoAberto.toFixed(2)}).`,
+          `Total a registar (${totalLinhas.toFixed(2)}) supera o saldo do lote (${totalGrupoAberto.toFixed(2)}).`,
         );
       }
 
@@ -266,7 +266,7 @@ export async function registrarMultiPagamentoGrupo(input: {
 
         if (restante.gt(new Prisma.Decimal("0.01"))) {
           throw new Error(
-            `Não foi possível aplicar toda a linha (${linha.forma}): saldo insuficiente no grupo.`,
+            `Não foi possível aplicar toda a linha (${linha.forma}): saldo insuficiente no lote.`,
           );
         }
       }

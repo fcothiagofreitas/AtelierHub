@@ -1,4 +1,5 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { formatDateBr } from "@/lib/format-date-br";
 import { formatCnpjDisplay, formatCpfDisplay } from "@/lib/masks-br";
 
 const money = new Intl.NumberFormat("pt-BR", {
@@ -193,10 +194,7 @@ export async function buildPedidoVendaPdf(
   });
   ctx.y -= 4;
 
-  const dtCriado = input.criadoEm.toLocaleString("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "short",
-  });
+  const dtCriado = formatDateBr(input.criadoEm);
   textLine(ctx, `N.º ${input.pedidoNumero}    Data: ${dtCriado}`, { size: 9 });
   textLine(ctx, `Situação do pedido: ${input.estadoLabel}`, { size: 9, bold: true });
   ctx.y -= 6;
@@ -324,10 +322,7 @@ export async function buildPedidoVendaPdf(
     textLine(ctx, "Nenhum pagamento registado.", { size: 8, color: muted });
   } else {
     for (const p of input.pagamentos) {
-      const dt = p.data.toLocaleString("pt-BR", {
-        dateStyle: "short",
-        timeStyle: "short",
-      });
+      const dt = formatDateBr(p.data);
       ensureSpace(ctx, 12);
       page = ctx.page;
       const py = ctx.y;
@@ -351,10 +346,7 @@ export async function buildPedidoVendaPdf(
   if (input.entregueEm || input.modalidadeEntregaLabel) {
     textLine(ctx, "Entrega", { size: 10, bold: true });
     if (input.entregueEm) {
-      const de = input.entregueEm.toLocaleString("pt-BR", {
-        dateStyle: "short",
-        timeStyle: "short",
-      });
+      const de = formatDateBr(input.entregueEm);
       textLine(ctx, `Registada em: ${de}`, { size: 8 });
     }
     if (input.modalidadeEntregaLabel) {

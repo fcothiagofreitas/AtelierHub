@@ -43,7 +43,7 @@ type Props = {
   onClose: () => void;
   storeId: string;
   grupoId: string;
-  /** Soma dos saldos em aberto dos pedidos do grupo. */
+  /** Soma dos saldos em aberto dos pedidos do lote. */
   saldoGrupo: number;
   onConfirm?: () => void;
 };
@@ -121,7 +121,7 @@ export function ReceberGrupoModal({
         toast.error(r.error);
         return;
       }
-      toast.success("Pagamento do grupo registado.");
+      toast.success("Pagamento do lote registado.");
       router.refresh();
       onConfirm?.();
       onClose();
@@ -137,7 +137,7 @@ export function ReceberGrupoModal({
         )}
       >
         <DialogHeader className="shrink-0 border-b px-5 py-4 text-left">
-          <DialogTitle>Receber pagamento (grupo)</DialogTitle>
+          <DialogTitle>Receber pagamento do lote</DialogTitle>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto">
@@ -182,7 +182,7 @@ export function ReceberGrupoModal({
                 Troco a devolver: {fmt(troco)}
               </p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                O cliente entregou mais dinheiro do que o saldo do grupo. Devolva o
+                O cliente entregou mais dinheiro do que o saldo do lote. Devolva o
                 troco.
               </p>
             </div>
@@ -192,7 +192,7 @@ export function ReceberGrupoModal({
         <div className="shrink-0 space-y-0 border-t bg-muted/30 px-5 py-4">
           <div className="mb-3 space-y-1.5">
             <div className="flex justify-between border-b border-border/60 pb-1.5 text-sm text-muted-foreground">
-              <span>Saldo em aberto do grupo (antes deste recebimento)</span>
+              <span>Saldo em aberto do lote (antes deste recebimento)</span>
               <span className="tabular-nums font-medium text-foreground">
                 {fmt(Math.max(0, saldo))}
               </span>

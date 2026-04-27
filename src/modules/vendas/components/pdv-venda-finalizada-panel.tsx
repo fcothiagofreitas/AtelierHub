@@ -20,6 +20,7 @@ import {
 } from "@/modules/vendas/components/receber-pagamento-form";
 import { PdvResumoPedidoQuitado } from "@/modules/vendas/components/pdv-resumo-pedido-quitado";
 import type { PedidoVerPayload } from "@/modules/vendas/vendas-ver-actions";
+import { formatDateBr } from "@/lib/format-date-br";
 import { cn } from "@/lib/utils";
 
 type Line = {
@@ -158,10 +159,7 @@ export function PdvVendaFinalizadaPanel({
             {somenteLeitura && pedidoResumoCompleto ? (
               <>
                 {pedidoResumoCompleto.storeName} ·{" "}
-                {new Date(pedidoResumoCompleto.pedido.createdAt).toLocaleString(
-                  "pt-BR",
-                  { dateStyle: "medium", timeStyle: "short" },
-                )}
+                {formatDateBr(pedidoResumoCompleto.pedido.createdAt)}
                 . Resumo completo abaixo — use Fechar para voltar à lista.
               </>
             ) : somenteLeitura ? (
@@ -234,12 +232,7 @@ export function PdvVendaFinalizadaPanel({
                           className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border/50 pb-2 last:border-0 last:pb-0"
                         >
                           <span className="text-muted-foreground">
-                            {p.createdAt
-                              ? new Date(p.createdAt).toLocaleString("pt-BR", {
-                                  dateStyle: "short",
-                                  timeStyle: "short",
-                                })
-                              : "—"}
+                            {p.createdAt ? formatDateBr(p.createdAt) : "—"}
                             {" · "}
                             <span className="text-foreground">
                               {formasPagamentoLabels[p.forma]}

@@ -1,5 +1,4 @@
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { formatDateBr } from "@/lib/format-date-br";
 import type { TrocaListaRow } from "@/modules/trocas/trocas-queries";
 import { trocaTipoFluxoLabel } from "@/modules/trocas/trocas-labels";
 
@@ -40,7 +39,7 @@ export function TrocasTable({ rows }: Props) {
             <tr key={r.id} className="bg-card hover:bg-muted/30">
               <td className="px-4 py-3 font-medium">{r.numero}</td>
               <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
-                {format(r.createdAt, "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                {formatDateBr(r.createdAt)}
               </td>
               <td className="px-4 py-3">{r.clienteNome}</td>
               <td className="px-4 py-3">{trocaTipoFluxoLabel(r.tipoFluxo)}</td>

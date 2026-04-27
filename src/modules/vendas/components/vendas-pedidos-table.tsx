@@ -8,6 +8,7 @@ import {
 } from "@/modules/vendas/lib/labels";
 import { PedidoEstadoBadge } from "@/modules/vendas/components/pedido-estado-badge";
 import { buildVendasHref } from "@/modules/vendas/lib/build-href";
+import { formatDateBr } from "@/lib/format-date-br";
 import { cn } from "@/lib/utils";
 
 const money = new Intl.NumberFormat("pt-BR", {
@@ -105,10 +106,7 @@ export function VendasPedidosTable({ pedidos, filterQueryString }: Props) {
             >
               <td className="px-4 py-3 font-mono tabular-nums">{p.numero}</td>
               <td className="px-4 py-3 text-muted-foreground">
-                {new Date(p.createdAt).toLocaleString("pt-BR", {
-                  dateStyle: "short",
-                  timeStyle: "short",
-                })}
+                {formatDateBr(p.createdAt)}
               </td>
               <td className="px-4 py-3 font-medium">{p.clienteLabel}</td>
               <td className="px-4 py-3">{p.vendedorName}</td>

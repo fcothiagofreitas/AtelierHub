@@ -1,6 +1,5 @@
 import type { ComissaoTipo } from "@prisma/client";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { formatDateBr } from "@/lib/format-date-br";
 import type { LancamentoComissaoListRow } from "@/modules/comissoes/comissoes-queries";
 
 const money = new Intl.NumberFormat("pt-BR", {
@@ -44,7 +43,7 @@ export function ComissoesLancamentosTable({ rows }: Props) {
           {rows.map((r) => (
             <tr key={r.id} className="bg-card hover:bg-muted/30 transition-colors">
               <td className="px-4 py-3 whitespace-nowrap">
-                {format(r.createdAt, "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                {formatDateBr(r.createdAt)}
               </td>
               <td className="px-4 py-3 font-medium">#{r.pedidoNumero}</td>
               <td className="px-4 py-3 text-muted-foreground">{r.storeName}</td>

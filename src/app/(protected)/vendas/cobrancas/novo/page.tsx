@@ -47,8 +47,8 @@ export default async function NovoGrupoCobrancaPage({ searchParams }: Props) {
 
   const titulo =
     tipo === "CLIENTE"
-      ? "Novo grupo por cliente"
-      : "Novo grupo por corretor";
+      ? "Novo lote por cliente"
+      : "Novo lote por corretor";
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -56,8 +56,8 @@ export default async function NovoGrupoCobrancaPage({ searchParams }: Props) {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{titulo}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Seleccione os pedidos com saldo em aberto para formar o lote. O valor
-            será aplicado por ordem do pedido (FIFO).
+            Selecione os pedidos com saldo em aberto para compor o lote. O valor
+            será aplicado por ordem de pedido (FIFO).
           </p>
         </div>
         <Link

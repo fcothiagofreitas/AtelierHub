@@ -6,6 +6,7 @@ import { clienteNomeCurto } from "@/modules/vendas/lib/cliente-nome";
 import { pedidoModalidadeLabels, formasPagamentoLabels } from "@/modules/vendas/lib/labels";
 import { PedidoEstadoBadge } from "@/modules/vendas/components/pedido-estado-badge";
 import { Badge } from "@/components/ui/badge";
+import { formatDateBr } from "@/lib/format-date-br";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -115,10 +116,7 @@ export function PdvResumoPedidoQuitado({ storeName, pedido, moneyFmt }: Props) {
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <span className="text-muted-foreground">
-                    {new Date(p.createdAt).toLocaleString("pt-BR", {
-                      dateStyle: "short",
-                      timeStyle: "short",
-                    })}
+                    {formatDateBr(p.createdAt)}
                     {" · "}
                     <span className="font-medium text-foreground">
                       {formasPagamentoLabels[p.forma]}
@@ -182,10 +180,7 @@ export function PdvResumoPedidoQuitado({ storeName, pedido, moneyFmt }: Props) {
           </MetaLinha>
           <MetaLinha label="Loja">{storeName}</MetaLinha>
           <MetaLinha label="Criado em" className="sm:col-span-2">
-            {new Date(pedido.createdAt).toLocaleString("pt-BR", {
-              dateStyle: "full",
-              timeStyle: "short",
-            })}
+            {formatDateBr(pedido.createdAt)}
           </MetaLinha>
           <MetaLinha label="Estado">
             <PedidoEstadoBadge estado={pedido.estado} />
@@ -222,10 +217,7 @@ export function PdvResumoPedidoQuitado({ storeName, pedido, moneyFmt }: Props) {
           <div className="mt-3 grid gap-3 sm:grid-cols-1">
             <MetaLinha label="Registada em">
               {pedido.entregueEm
-                ? new Date(pedido.entregueEm).toLocaleString("pt-BR", {
-                    dateStyle: "short",
-                    timeStyle: "short",
-                  })
+                ? formatDateBr(pedido.entregueEm)
                 : "Não registada"}
             </MetaLinha>
             <MetaLinha label="Entregue por">

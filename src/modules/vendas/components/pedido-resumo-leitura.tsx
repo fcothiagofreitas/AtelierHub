@@ -3,6 +3,7 @@ import { formasPagamentoLabels } from "@/modules/vendas/lib/labels";
 import { clienteNomeCurto } from "@/modules/vendas/lib/cliente-nome";
 import type { PedidoVerPayload } from "@/modules/vendas/vendas-ver-actions";
 import { buttonVariants } from "@/components/ui/button";
+import { formatDateBr } from "@/lib/format-date-br";
 import { cn } from "@/lib/utils";
 
 const money = new Intl.NumberFormat("pt-BR", {
@@ -74,10 +75,7 @@ export function PedidoResumoLeitura({
             Entrega ao cliente
           </p>
           <p className="mt-1 text-foreground">
-            {new Date(pedido.entregueEm).toLocaleString("pt-BR", {
-              dateStyle: "full",
-              timeStyle: "short",
-            })}
+            {formatDateBr(pedido.entregueEm)}
             {pedido.entreguePor ? (
               <span className="text-muted-foreground">
                 {" "}
@@ -188,10 +186,7 @@ export function PedidoResumoLeitura({
                 {pedido.pagamentos.map((p) => (
                   <tr key={p.id} className="bg-card">
                     <td className="px-3 py-2 text-muted-foreground">
-                      {new Date(p.createdAt).toLocaleString("pt-BR", {
-                        dateStyle: "short",
-                        timeStyle: "short",
-                      })}
+                      {formatDateBr(p.createdAt)}
                     </td>
                     <td className="px-3 py-2">{formasPagamentoLabels[p.forma]}</td>
                     <td className="px-3 py-2 text-muted-foreground">{p.obs ?? "—"}</td>

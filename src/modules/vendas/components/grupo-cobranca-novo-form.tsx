@@ -6,6 +6,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { formatDateBr } from "@/lib/format-date-br";
 import { cn } from "@/lib/utils";
 import { criarGrupoCobranca } from "@/modules/vendas/cobranca-actions";
 import type { GrupoCobrancaTipo } from "@prisma/client";
@@ -44,17 +45,17 @@ export function GrupoCobrancaNovoForm({ storeId, tipo, pedidos }: Props) {
     e.preventDefault();
     const ids = [...selected];
     if (ids.length === 0) {
-      toast.error("Seleccione pelo menos um pedido.");
+      toast.error("Selecione pelo menos um pedido.");
       return;
     }
     setBusy(true);
     try {
       const r = await criarGrupoCobranca({ storeId, tipo, pedidoIds: ids });
       if (!("ok" in r) || !r.ok) {
-        toast.error("error" in r ? r.error : "Não foi possível criar o grupo.");
+        toast.error("error" in r ? r.error : "Não foi possível criar o lote.");
         return;
       }
-      toast.success("Grupo de cobrança criado.");
+      toast.success("Lote criado.");
       router.push(`/vendas/cobrancas/${r.grupoId}`);
       router.refresh();
     } finally {
@@ -98,10 +99,7 @@ export function GrupoCobrancaNovoForm({ storeId, tipo, pedidos }: Props) {
                 </td>
                 <td className="px-3 py-2 font-mono tabular-nums">{p.numero}</td>
                 <td className="px-3 py-2 text-muted-foreground">
-                  {p.createdAt.toLocaleString("pt-BR", {
-                    dateStyle: "short",
-                    timeStyle: "short",
-                  })}
+                  {formatDateBr(p.createdAt)}
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums font-medium">
                   {money.format(p.saldo)}
@@ -115,7 +113,7 @@ export function GrupoCobrancaNovoForm({ storeId, tipo, pedidos }: Props) {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="space-y-1">
           <Label className="text-muted-foreground">
-            Total seleccionado (saldos)
+            Total selecionado (saldos)
           </Label>
           <p className="text-lg font-semibold tabular-nums">
             {money.format(
@@ -127,7 +125,7 @@ export function GrupoCobrancaNovoForm({ storeId, tipo, pedidos }: Props) {
         </div>
         <Button type="submit" disabled={busy || selected.size === 0}>
           {busy && <Loader2 className="mr-2 size-4 animate-spin" />}
-          Criar grupo e continuar
+          Criar lote e continuar
         </Button>
       </div>
     </form>

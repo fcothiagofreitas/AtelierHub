@@ -1,5 +1,6 @@
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
+import { formatDateBr } from "@/lib/format-date-br";
 import { requireRole } from "@/lib/authorization";
 import { getHistoricoEstoque, getStoresForUserEstoque } from "@/modules/estoque/estoque-queries";
 import { ESTOQUE_ROLES_LEITURA } from "@/modules/estoque/estoque-roles";
@@ -68,7 +69,7 @@ export default async function EstoqueHistoricoPage({ searchParams }: Props) {
               {rows.map((m) => (
                 <tr key={m.id} className="bg-card">
                   <td className="px-3 py-2 whitespace-nowrap text-xs text-muted-foreground">
-                    {m.createdAt.toISOString().slice(0, 19).replace("T", " ")}
+                    {formatDateBr(m.createdAt)}
                   </td>
                   <td className="px-3 py-2">{m.store.name}</td>
                   <td className="px-3 py-2">{m.produtoVariacao.produto.nome}</td>

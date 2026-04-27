@@ -41,7 +41,7 @@ export default async function ContasReceberPage({ searchParams }: Props) {
           <p className="mt-1 text-sm text-muted-foreground">
             Saldos em aberto na loja{" "}
             <span className="font-medium text-foreground">{activeStore.name}</span>
-            . Agrupe pedidos para receber em lote.
+            . Monte um lote de pedidos para receber tudo de uma vez (por ordem FIFO).
           </p>
         </div>
         <Link href="/vendas" className={cn(buttonVariants({ variant: "outline" }))}>
@@ -115,7 +115,7 @@ export default async function ContasReceberPage({ searchParams }: Props) {
                             href={`/vendas/cobrancas/novo?tipo=CLIENTE&clienteId=${encodeURIComponent(row.clienteId)}`}
                             className={cn(buttonVariants({ size: "sm" }))}
                           >
-                            Novo grupo
+                            Novo lote
                           </Link>
                         </div>
                       </td>
@@ -167,7 +167,7 @@ export default async function ContasReceberPage({ searchParams }: Props) {
                             href={`/vendas/cobrancas/novo?tipo=CORRETOR&corretorId=${encodeURIComponent(row.corretorId)}`}
                             className={cn(buttonVariants({ size: "sm" }))}
                           >
-                            Novo grupo
+                            Novo lote
                           </Link>
                         </div>
                       </td>

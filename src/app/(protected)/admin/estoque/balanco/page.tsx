@@ -6,6 +6,7 @@ import { getStoresForUserEstoque } from "@/modules/estoque/estoque-queries";
 import { listBalancosEstoqueForStore } from "@/modules/estoque/balanco-estoque-queries";
 import { ESTOQUE_ROLES_LEITURA } from "@/modules/estoque/estoque-roles";
 import { cn } from "@/lib/utils";
+import { formatDateBr } from "@/lib/format-date-br";
 
 type Props = { searchParams?: Promise<{ store?: string }> };
 
@@ -110,11 +111,11 @@ export default async function BalancoEstoqueListPage({ searchParams }: Props) {
                 </td>
                 <td className="px-4 py-3 tabular-nums">{r.linhas}</td>
                 <td className="px-4 py-3 text-muted-foreground">
-                  {r.createdAt.toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" })}
+                  {formatDateBr(r.createdAt)}
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">
                   {r.concluidoEm
-                    ? r.concluidoEm.toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" })
+                    ? formatDateBr(r.concluidoEm)
                     : "—"}
                 </td>
                 <td className="px-4 py-3 text-right">

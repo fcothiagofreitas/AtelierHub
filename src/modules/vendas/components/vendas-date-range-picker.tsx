@@ -2,8 +2,9 @@
 
 import * as React from "react"
 import { flushSync } from "react-dom"
-import { format, isSameDay } from "date-fns"
+import { isSameDay } from "date-fns"
 import { ptBR } from "date-fns/locale"
+import { formatDateBr } from "@/lib/format-date-br"
 import { CalendarIcon } from "lucide-react"
 import type { DateRange } from "react-day-picker"
 
@@ -121,15 +122,14 @@ export function VendasDateRangePicker({
             {date?.from ? (
               date.to ? (
                 isSameDay(date.from, date.to) ? (
-                  format(date.from, "d 'de' MMM yyyy", { locale: ptBR })
+                  formatDateBr(date.from)
                 ) : (
                   <>
-                    {format(date.from, "d 'de' MMM yyyy", { locale: ptBR })} –{" "}
-                    {format(date.to, "d 'de' MMM yyyy", { locale: ptBR })}
+                    {formatDateBr(date.from)} – {formatDateBr(date.to)}
                   </>
                 )
               ) : (
-                format(date.from, "d 'de' MMM yyyy", { locale: ptBR })
+                formatDateBr(date.from)
               )
             ) : (
               <span>Escolher datas</span>

@@ -246,7 +246,7 @@ export default async function AdminPage() {
               </li>
               <li>
                 <span className="font-medium text-foreground">{pendencias.gruposCobranca}</span>{" "}
-                grupo(s) de cobrança registado(s)
+                lote(s) de recebimento registado(s)
                 {pendencias.gruposCobranca > 0 && (
                   <>
                     {" "}
