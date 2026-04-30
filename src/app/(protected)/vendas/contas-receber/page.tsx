@@ -9,11 +9,10 @@ import {
   listContasReceberPorCliente,
   listContasReceberPorCorretor,
 } from "@/modules/vendas/cobranca-queries";
-
-const money = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL",
-});
+import {
+  ContasReceberTabelaCliente,
+  ContasReceberTabelaCorretor,
+} from "@/modules/vendas/components/contas-receber-tabela";
 
 type Props = {
   searchParams?: Promise<{ tab?: string }>;
@@ -41,7 +40,8 @@ export default async function ContasReceberPage({ searchParams }: Props) {
           <p className="mt-1 text-sm text-muted-foreground">
             Saldos em aberto na loja{" "}
             <span className="font-medium text-foreground">{activeStore.name}</span>
-            . Monte um lote de pedidos para receber tudo de uma vez (por ordem FIFO).
+            . Use <span className="font-medium text-foreground">Receber</span> para
+            pagamento em lote; o valor aplica-se por ordem de pedido (FIFO).
           </p>
         </div>
         <Link href="/vendas" className={cn(buttonVariants({ variant: "outline" }))}>
@@ -76,107 +76,17 @@ export default async function ContasReceberPage({ searchParams }: Props) {
 
       {tab === "cliente" ? (
         <div className="overflow-hidden rounded-lg border bg-card">
-          {porCliente.length === 0 ? (
-            <p className="p-8 text-center text-sm text-muted-foreground">
-              Nenhum saldo em aberto por cliente.
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[640px] text-sm">
-                <thead className="bg-muted/50 text-left text-muted-foreground">
-                  <tr>
-                    <th className="px-4 py-3 font-medium">Cliente</th>
-                    <th className="px-4 py-3 font-medium">Pedidos</th>
-                    <th className="px-4 py-3 text-right font-medium">Saldo total</th>
-                    <th className="px-4 py-3 font-medium" />
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {porCliente.map((row) => (
-                    <tr key={row.clienteId} className="bg-card">
-                      <td className="px-4 py-3 font-medium">{row.label}</td>
-                      <td className="px-4 py-3 tabular-nums text-muted-foreground">
-                        {row.pedidosEmAberto}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums font-medium">
-                        {money.format(row.saldoTotal)}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex flex-wrap justify-end gap-2">
-                          <Link
-                            href={`/vendas?clienteId=${encodeURIComponent(row.clienteId)}&estadoAberto=1`}
-                            className={cn(
-                              buttonVariants({ variant: "outline", size: "sm" }),
-                            )}
-                          >
-                            Ver pedidos
-                          </Link>
-                          <Link
-                            href={`/vendas/cobrancas/novo?tipo=CLIENTE&clienteId=${encodeURIComponent(row.clienteId)}`}
-                            className={cn(buttonVariants({ size: "sm" }))}
-                          >
-                            Novo lote
-                          </Link>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <ContasReceberTabelaCliente
+            storeId={activeStore.id}
+            rows={porCliente}
+          />
         </div>
       ) : (
         <div className="overflow-hidden rounded-lg border bg-card">
-          {porCorretor.length === 0 ? (
-            <p className="p-8 text-center text-sm text-muted-foreground">
-              Nenhum saldo em aberto por corretor.
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[640px] text-sm">
-                <thead className="bg-muted/50 text-left text-muted-foreground">
-                  <tr>
-                    <th className="px-4 py-3 font-medium">Corretor</th>
-                    <th className="px-4 py-3 font-medium">Pedidos</th>
-                    <th className="px-4 py-3 text-right font-medium">Saldo total</th>
-                    <th className="px-4 py-3 font-medium" />
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {porCorretor.map((row) => (
-                    <tr key={row.corretorId} className="bg-card">
-                      <td className="px-4 py-3 font-medium">{row.name}</td>
-                      <td className="px-4 py-3 tabular-nums text-muted-foreground">
-                        {row.pedidosEmAberto}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums font-medium">
-                        {money.format(row.saldoTotal)}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex flex-wrap justify-end gap-2">
-                          <Link
-                            href={`/vendas?corretorId=${encodeURIComponent(row.corretorId)}&estadoAberto=1`}
-                            className={cn(
-                              buttonVariants({ variant: "outline", size: "sm" }),
-                            )}
-                          >
-                            Ver pedidos
-                          </Link>
-                          <Link
-                            href={`/vendas/cobrancas/novo?tipo=CORRETOR&corretorId=${encodeURIComponent(row.corretorId)}`}
-                            className={cn(buttonVariants({ size: "sm" }))}
-                          >
-                            Novo lote
-                          </Link>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <ContasReceberTabelaCorretor
+            storeId={activeStore.id}
+            rows={porCorretor}
+          />
         </div>
       )}
     </div>

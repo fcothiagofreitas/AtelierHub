@@ -11,6 +11,10 @@ import { ROLES_ACESSO_VENDAS } from "@/modules/vendas/lib/roles";
 import { resolverDividaCorretorAoQuitarPedido } from "@/modules/vendas/lib/corretor-divida-quit";
 import { garantirEntregaAoQuitarPedido } from "@/modules/vendas/lib/entrega-ao-quitar";
 import { gerarLancamentosComissaoPedidoQuitado } from "@/modules/comissoes/gerar-lancamentos-comissao";
+import {
+  listPedidosAbertosParaGrupo,
+  type PedidoAbertoGrupoRow,
+} from "@/modules/vendas/cobranca-queries";
 
 export type CobrancaActionOk = { ok: true; grupoId: string };
 export type CobrancaActionErr = { error: string };
@@ -36,10 +40,33 @@ function decMin(a: Prisma.Decimal, b: Prisma.Decimal): Prisma.Decimal {
   return a.lt(b) ? a : b;
 }
 
-export async function criarGrupoCobranca(input: {
+export async function getPedidosParaRecebimentoLote(
+  storeId: string,
+  opts: { tipo: GrupoCobrancaTipo; clienteId?: string; corretorId?: string },
+): Promise<{ pedidos: PedidoAbertoGrupoRow[] } | CobrancaActionErr> {
+  const session = await requireRole(ROLES_ACESSO_VENDAS);
+  try {
+    assertStoreInSession(session, storeId);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Sem permissão." };
+  }
+  const pedidos = await listPedidosAbertosParaGrupo(
+    session.user.tenantId,
+    storeId,
+    opts,
+  );
+  return { pedidos };
+}
+
+/**
+ * Cria o lote de recebimento e aplica as formas de pagamento no mesmo passo
+ * (FIFO); evita o fluxo intermédio "criar lote" sem receber.
+ */
+export async function receberEmLote(input: {
   storeId: string;
   tipo: GrupoCobrancaTipo;
   pedidoIds: string[];
+  linhas: LinhaRecebimento[];
 }): Promise<CobrancaActionOk | CobrancaActionErr> {
   const session = await requireRole(ROLES_ACESSO_VENDAS);
   const tenantId = session.user.tenantId;
@@ -48,6 +75,25 @@ export async function criarGrupoCobranca(input: {
     assertStoreInSession(session, input.storeId);
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Sem permissão." };
+  }
+
+  const linhasParsed = input.linhas
+    .map((l) => ({
+      forma: l.forma,
+      valor: parseValor(l.valorRegistar),
+    }))
+    .filter((l): l is { forma: FormaPagamento; valor: Prisma.Decimal } =>
+      l.valor !== null && l.valor.gt(0),
+    );
+
+  if (linhasParsed.length === 0) {
+    return { error: "Informe pelo menos um valor para registar." };
+  }
+
+  for (const l of linhasParsed) {
+    if (!FORMAS_VALIDAS.includes(l.forma)) {
+      return { error: "Forma de pagamento inválida." };
+    }
   }
 
   const ids = [...new Set(input.pedidoIds)].filter(Boolean);
@@ -129,15 +175,140 @@ export async function criarGrupoCobranca(input: {
         select: { id: true },
       });
 
-      return criado.id;
+      const grupo = await tx.grupoCobranca.findFirst({
+        where: {
+          id: criado.id,
+          tenantId,
+          storeId: input.storeId,
+        },
+        include: {
+          itens: {
+            orderBy: [{ ordem: "asc" }, { id: "asc" }],
+            include: {
+              pedido: {
+                include: { pagamentos: { select: { valor: true } } },
+              },
+            },
+          },
+        },
+      });
+
+      if (!grupo) throw new Error("Lote de recebimento não encontrado.");
+      if (grupo.itens.length === 0) throw new Error("Lote sem pedidos.");
+
+      const itensOrdenados = grupo.itens;
+      const saldos = new Map<string, Prisma.Decimal>();
+
+      for (const it of itensOrdenados) {
+        const ped = it.pedido;
+        if (!ped.total) throw new Error(`Pedido #${ped.numero} sem total.`);
+        if (!["EM_ABERTO", "PAGO_PARCIAL"].includes(ped.estado)) {
+          throw new Error(
+            `Pedido #${ped.numero} não está mais em aberto; actualize a página.`,
+          );
+        }
+        const ja2 = ped.pagamentos.reduce(
+          (a, x) => a.add(x.valor),
+          new Prisma.Decimal(0),
+        );
+        const saldo2 = ped.total.sub(ja2);
+        saldos.set(
+          ped.id,
+          saldo2.gt(0) ? saldo2 : new Prisma.Decimal(0),
+        );
+      }
+
+      const totalGrupoAberto = [...saldos.values()].reduce(
+        (a, s) => a.add(s),
+        new Prisma.Decimal(0),
+      );
+
+      const totalLinhas = linhasParsed.reduce(
+        (a, l) => a.add(l.valor),
+        new Prisma.Decimal(0),
+      );
+
+      if (totalLinhas.gt(totalGrupoAberto.add(new Prisma.Decimal("0.01")))) {
+        throw new Error(
+          `Total a registar (${totalLinhas.toFixed(2)}) supera o saldo do lote (${totalGrupoAberto.toFixed(2)}).`,
+        );
+      }
+
+      for (const linha of linhasParsed) {
+        let restante = linha.valor;
+        for (const it of itensOrdenados) {
+          if (restante.lte(0)) break;
+          const s = saldos.get(it.pedidoId);
+          if (!s || s.lte(0)) continue;
+          const chunk = decMin(restante, s);
+          if (chunk.lte(0)) continue;
+
+          await tx.pagamento.create({
+            data: {
+              tenantId,
+              pedidoId: it.pedidoId,
+              forma: linha.forma,
+              valor: chunk,
+              criadoPorId: session.user.colaboradorId ?? null,
+              grupoCobrancaId: grupo.id,
+            },
+          });
+
+          saldos.set(it.pedidoId, s.sub(chunk));
+          restante = restante.sub(chunk);
+        }
+
+        if (restante.gt(new Prisma.Decimal("0.01"))) {
+          throw new Error(
+            `Não foi possível aplicar toda a linha (${linha.forma}): saldo insuficiente no lote.`,
+          );
+        }
+      }
+
+      for (const it of itensOrdenados) {
+        const ped = await tx.pedido.findUnique({
+          where: { id: it.pedidoId },
+          select: { id: true, total: true },
+        });
+        if (!ped?.total) continue;
+
+        const agg = await tx.pagamento.aggregate({
+          where: { pedidoId: ped.id },
+          _sum: { valor: true },
+        });
+        const pago = agg._sum.valor ?? new Prisma.Decimal(0);
+        const novoEstado = pago.gte(ped.total) ? "QUITADO" : "PAGO_PARCIAL";
+        await tx.pedido.update({
+          where: { id: ped.id },
+          data: {
+            estado: novoEstado,
+            ...(novoEstado === "QUITADO" ? { modalidade: "DIRETA" } : {}),
+          },
+        });
+        if (novoEstado === "QUITADO") {
+          await resolverDividaCorretorAoQuitarPedido(tx, ped.id);
+          await garantirEntregaAoQuitarPedido(tx, {
+            pedidoId: ped.id,
+            entreguePorId: session.user.colaboradorId ?? null,
+          });
+          await gerarLancamentosComissaoPedidoQuitado(tx, ped.id);
+        }
+      }
+
+      return grupo.id;
     });
 
+    revalidatePath("/vendas");
     revalidatePath("/vendas/contas-receber");
     revalidatePath("/vendas/cobrancas");
+    revalidatePath(`/vendas/cobrancas/${grupoId}`);
     return { ok: true, grupoId };
   } catch (e) {
     return {
-      error: e instanceof Error ? e.message : "Não foi possível criar o lote.",
+      error:
+        e instanceof Error
+          ? e.message
+          : "Não foi possível registar o recebimento em lote.",
     };
   }
 }
@@ -313,4 +484,3 @@ export async function registrarMultiPagamentoGrupo(input: {
     };
   }
 }
-

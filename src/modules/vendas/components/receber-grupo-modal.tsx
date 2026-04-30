@@ -137,7 +137,7 @@ export function ReceberGrupoModal({
         )}
       >
         <DialogHeader className="shrink-0 border-b px-5 py-4 text-left">
-          <DialogTitle>Receber pagamento do lote</DialogTitle>
+          <DialogTitle>Receber</DialogTitle>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto">
