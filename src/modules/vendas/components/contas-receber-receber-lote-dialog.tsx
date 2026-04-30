@@ -268,58 +268,27 @@ export function ContasReceberReceberLoteDialog({
                   </thead>
                   <tbody className="divide-y">
                     {rows.map((p) => (
-                      <React.Fragment key={p.id}>
-                        <tr className="bg-card">
-                          <td className="px-5 py-2">
-                            <input
-                              type="checkbox"
-                              className="size-4 rounded border"
-                              checked={selected.has(p.id)}
-                              onChange={() => toggle(p.id)}
-                              disabled={submitBusy}
-                            />
-                          </td>
-                          <td className="font-mono tabular-nums">{p.numero}</td>
-                          <td className="max-w-[180px] truncate text-muted-foreground">
-                            {p.clienteLabel ?? "—"}
-                          </td>
-                          <td className="whitespace-nowrap text-muted-foreground">
-                            {formatDateBr(p.createdAt)}
-                          </td>
-                          <td className="px-5 text-right tabular-nums">
-                            {moneyFmt(p.saldo)}
-                          </td>
-                        </tr>
-                        {p.pagamentosAnteriores.length > 0 ? (
-                          <tr className="border-t-0 bg-muted/15">
-                            <td className="px-5 pb-3 pt-0" colSpan={5}>
-                              <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                                Pagamentos já registados
-                              </p>
-                              <ul className="space-y-0.5 text-xs text-muted-foreground">
-                                {p.pagamentosAnteriores.map((ev) => (
-                                  <li key={ev.id} className="tabular-nums">
-                                    <span className="text-foreground">
-                                      {formatDateBr(ev.createdAt)}
-                                    </span>
-                                    {" · "}
-                                    <span>{formasPagamentoLabels[ev.forma]}</span>
-                                    {" · "}
-                                    <span className="font-medium text-foreground">
-                                      {moneyFmt(ev.valor)}
-                                    </span>
-                                    {ev.obs?.trim() ? (
-                                      <span className="block text-[11px] italic">
-                                        Obs.: {ev.obs.trim()}
-                                      </span>
-                                    ) : null}
-                                  </li>
-                                ))}
-                              </ul>
-                            </td>
-                          </tr>
-                        ) : null}
-                      </React.Fragment>
+                      <tr key={p.id} className="bg-card">
+                        <td className="px-5 py-2">
+                          <input
+                            type="checkbox"
+                            className="size-4 rounded border"
+                            checked={selected.has(p.id)}
+                            onChange={() => toggle(p.id)}
+                            disabled={submitBusy}
+                          />
+                        </td>
+                        <td className="font-mono tabular-nums">{p.numero}</td>
+                        <td className="max-w-[180px] truncate text-muted-foreground">
+                          {p.clienteLabel ?? "—"}
+                        </td>
+                        <td className="whitespace-nowrap text-muted-foreground">
+                          {formatDateBr(p.createdAt)}
+                        </td>
+                        <td className="px-5 text-right tabular-nums">
+                          {moneyFmt(p.saldo)}
+                        </td>
+                      </tr>
                     ))}
                   </tbody>
                 </table>

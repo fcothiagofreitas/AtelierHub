@@ -1,4 +1,4 @@
-import type { FormaPagamento, GrupoCobrancaTipo, PedidoEstado } from "@prisma/client";
+import type { GrupoCobrancaTipo, PedidoEstado } from "@prisma/client";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { clienteNomeCurto } from "@/modules/vendas/lib/cliente-nome";
@@ -143,16 +143,6 @@ export async function listContasReceberPorCorretor(
     .sort((a, b) => b.saldoTotal - a.saldoTotal);
 }
 
-/** Pagamentos já registados no pedido (para exibir log quando há pagamento parcial). */
-export type PedidoAbertoGrupoPagamentoLog = {
-  id: string;
-  /** ISO string para serialização ao cliente. */
-  createdAt: string;
-  forma: FormaPagamento;
-  valor: number;
-  obs: string | null;
-};
-
 export type PedidoAbertoGrupoRow = {
   id: string;
   numero: number;
@@ -161,7 +151,6 @@ export type PedidoAbertoGrupoRow = {
   total: number;
   jaPago: number;
   createdAt: Date;
-  pagamentosAnteriores: PedidoAbertoGrupoPagamentoLog[];
 };
 
 export async function listPedidosAbertosParaGrupo(
@@ -227,13 +216,6 @@ export async function listPedidosAbertosParaGrupo(
       total: Number(total.toFixed(2)),
       jaPago: Number(jaPago.toFixed(2)),
       createdAt: p.createdAt,
-      pagamentosAnteriores: p.pagamentos.map((pay) => ({
-        id: pay.id,
-        createdAt: pay.createdAt.toISOString(),
-        forma: pay.forma,
-        valor: Number(pay.valor.toFixed(2)),
-        obs: pay.obs,
-      })),
     });
   }
   return out;
