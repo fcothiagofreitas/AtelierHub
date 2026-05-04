@@ -79,7 +79,7 @@ export default async function VendasPage({ searchParams }: Props) {
             <span className="font-medium text-foreground">{activeStore.name}</span>
             .{" "}
             <Link
-              href="/vendas/contas-receber"
+              href="/contas-receber"
               className="font-medium text-primary underline-offset-4 hover:underline"
             >
               Contas a receber

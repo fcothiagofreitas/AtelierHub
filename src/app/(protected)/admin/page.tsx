@@ -252,7 +252,7 @@ export default async function AdminPage() {
                     {" "}
                     —{" "}
                     <Link
-                      href="/vendas/contas-receber"
+                      href="/contas-receber"
                       className="text-primary underline-offset-4 hover:underline"
                     >
                       contas a receber
@@ -270,7 +270,7 @@ export default async function AdminPage() {
         <div className="mt-3 flex flex-wrap gap-2">
           <QuickLink href="/vendas" label="Vendas" icon={ShoppingBag} />
           <QuickLink href="/clientes" label="Clientes" />
-          <QuickLink href="/vendas/contas-receber" label="Contas a receber" />
+          <QuickLink href="/contas-receber" label="Contas a receber" />
           <QuickLink href="/vendas/trocas" label="Trocas" />
           <QuickLink href="/admin/comissoes" label="Comissões" />
           <QuickLink href="/admin/lojas/new" label="Nova loja" />

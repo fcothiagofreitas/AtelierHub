@@ -62,7 +62,7 @@ const navGroups: NavGroup[] = [
       },
       {
         label: "Contas a receber",
-        href: "/vendas/contas-receber",
+        href: "/contas-receber",
         icon: Banknote,
         roles: ROLES_COM_CLIENTES,
       },

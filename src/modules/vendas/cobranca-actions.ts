@@ -11,10 +11,6 @@ import { ROLES_ACESSO_VENDAS } from "@/modules/vendas/lib/roles";
 import { resolverDividaCorretorAoQuitarPedido } from "@/modules/vendas/lib/corretor-divida-quit";
 import { garantirEntregaAoQuitarPedido } from "@/modules/vendas/lib/entrega-ao-quitar";
 import { gerarLancamentosComissaoPedidoQuitado } from "@/modules/comissoes/gerar-lancamentos-comissao";
-import {
-  listPedidosAbertosParaGrupo,
-  type PedidoAbertoGrupoRow,
-} from "@/modules/vendas/cobranca-queries";
 
 export type CobrancaActionOk = { ok: true; grupoId: string };
 export type CobrancaActionErr = { error: string };
@@ -38,24 +34,6 @@ function parseValor(s: string): Prisma.Decimal | null {
 
 function decMin(a: Prisma.Decimal, b: Prisma.Decimal): Prisma.Decimal {
   return a.lt(b) ? a : b;
-}
-
-export async function getPedidosParaRecebimentoLote(
-  storeId: string,
-  opts: { tipo: GrupoCobrancaTipo; clienteId?: string; corretorId?: string },
-): Promise<{ pedidos: PedidoAbertoGrupoRow[] } | CobrancaActionErr> {
-  const session = await requireRole(ROLES_ACESSO_VENDAS);
-  try {
-    assertStoreInSession(session, storeId);
-  } catch (e) {
-    return { error: e instanceof Error ? e.message : "Sem permissão." };
-  }
-  const pedidos = await listPedidosAbertosParaGrupo(
-    session.user.tenantId,
-    storeId,
-    opts,
-  );
-  return { pedidos };
 }
 
 /**
@@ -299,7 +277,8 @@ export async function receberEmLote(input: {
     });
 
     revalidatePath("/vendas");
-    revalidatePath("/vendas/contas-receber");
+    revalidatePath("/contas-receber");
+    revalidatePath("/contas-receber/recebimento");
     revalidatePath("/vendas/cobrancas");
     revalidatePath(`/vendas/cobrancas/${grupoId}`);
     return { ok: true, grupoId };
@@ -474,7 +453,8 @@ export async function registrarMultiPagamentoGrupo(input: {
     });
 
     revalidatePath("/vendas");
-    revalidatePath("/vendas/contas-receber");
+    revalidatePath("/contas-receber");
+    revalidatePath("/contas-receber/recebimento");
     revalidatePath(`/vendas/cobrancas/${input.grupoId}`);
     return { ok: true };
   } catch (e) {

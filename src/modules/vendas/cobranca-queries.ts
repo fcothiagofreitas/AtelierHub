@@ -1,4 +1,8 @@
-import type { GrupoCobrancaTipo, PedidoEstado } from "@prisma/client";
+import type {
+  FormaPagamento,
+  GrupoCobrancaTipo,
+  PedidoEstado,
+} from "@prisma/client";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { clienteNomeCurto } from "@/modules/vendas/lib/cliente-nome";
@@ -143,6 +147,15 @@ export async function listContasReceberPorCorretor(
     .sort((a, b) => b.saldoTotal - a.saldoTotal);
 }
 
+/** Pagamentos já registados no pedido (para resumo na tela de recebimento). */
+export type PagamentoAbertoGrupoLinha = {
+  id: string;
+  createdAt: string;
+  forma: FormaPagamento;
+  valor: number;
+  obs: string | null;
+};
+
 export type PedidoAbertoGrupoRow = {
   id: string;
   numero: number;
@@ -150,7 +163,8 @@ export type PedidoAbertoGrupoRow = {
   saldo: number;
   total: number;
   jaPago: number;
-  createdAt: Date;
+  createdAt: string;
+  pagamentos: PagamentoAbertoGrupoLinha[];
 };
 
 export async function listPedidosAbertosParaGrupo(
@@ -215,7 +229,14 @@ export async function listPedidosAbertosParaGrupo(
       saldo: Number(saldo.toFixed(2)),
       total: Number(total.toFixed(2)),
       jaPago: Number(jaPago.toFixed(2)),
-      createdAt: p.createdAt,
+      createdAt: p.createdAt.toISOString(),
+      pagamentos: p.pagamentos.map((x) => ({
+        id: x.id,
+        createdAt: x.createdAt.toISOString(),
+        forma: x.forma,
+        valor: Number(x.valor.toFixed(2)),
+        obs: x.obs,
+      })),
     });
   }
   return out;
@@ -308,4 +329,34 @@ export async function getGrupoCobrancaDetalhe(
     itens,
     saldoGrupo: Number(saldoGrupo.toFixed(2)),
   };
+}
+
+/** Rótulo para o cabeçalho da página de recebimento (cliente ou corretor). */
+export async function getRecebimentoPartyLabel(
+  tenantId: string,
+  storeId: string,
+  tipo: GrupoCobrancaTipo,
+  clienteId?: string,
+  corretorId?: string,
+): Promise<string | null> {
+  if (tipo === "CLIENTE" && clienteId) {
+    const c = await prisma.cliente.findFirst({
+      where: { id: clienteId, tenantId, storeId },
+      select: {
+        tipo: true,
+        nome: true,
+        fantasia: true,
+        razaoSocial: true,
+      },
+    });
+    return c ? clienteNomeCurto(c) : null;
+  }
+  if (tipo === "CORRETOR" && corretorId) {
+    const c = await prisma.corretor.findFirst({
+      where: { id: corretorId, tenantId },
+      select: { name: true },
+    });
+    return c?.name ?? null;
+  }
+  return null;
 }

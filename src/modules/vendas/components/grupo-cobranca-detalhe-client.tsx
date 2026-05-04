@@ -58,7 +58,7 @@ export function GrupoCobrancaDetalheClient({
           </div>
         </div>
         <Link
-          href="/vendas/contas-receber"
+          href="/contas-receber"
           className={cn(buttonVariants({ variant: "outline" }))}
         >
           Contas a receber

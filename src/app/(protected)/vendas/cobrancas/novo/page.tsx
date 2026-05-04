@@ -5,5 +5,5 @@ import { redirect } from "next/navigation";
  * (Pagamento em lote → Receber), num único passo.
  */
 export default function CobrancasNovoRedirect() {
-  redirect("/vendas/contas-receber");
+  redirect("/contas-receber");
 }
