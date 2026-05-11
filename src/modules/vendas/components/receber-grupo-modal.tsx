@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { parseBRL } from "@/lib/form-utils";
 import { cn } from "@/lib/utils";
 import {
   registrarMultiPagamentoGrupo,
@@ -24,12 +25,6 @@ import type { FormaPagamento } from "@prisma/client";
 
 const fmt = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-
-function parseBRL(s: string): number {
-  const clean = s.replace(/\s/g, "").replace(",", ".");
-  const n = Number(clean);
-  return Number.isFinite(n) ? n : 0;
-}
 
 function formatSaldoInput(n: number) {
   return n.toLocaleString("pt-BR", {

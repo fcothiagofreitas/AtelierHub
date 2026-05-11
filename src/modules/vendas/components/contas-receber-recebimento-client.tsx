@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { parseBRL } from "@/lib/form-utils";
 import { formatDateBr } from "@/lib/format-date-br";
 import { receberEmLote } from "@/modules/vendas/cobranca-actions";
 import type { LinhaRecebimento } from "@/modules/vendas/pagamento-actions";
@@ -19,12 +20,6 @@ import {
 
 const moneyFmt = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-
-function parseBRL(s: string): number {
-  const clean = s.replace(/\s/g, "").replace(",", ".");
-  const num = Number(clean);
-  return Number.isFinite(num) ? num : 0;
-}
 
 function formatSaldoInput(n: number) {
   return n.toLocaleString("pt-BR", {
