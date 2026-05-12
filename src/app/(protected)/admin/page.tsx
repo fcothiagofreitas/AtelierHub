@@ -271,7 +271,7 @@ export default async function AdminPage() {
           <QuickLink href="/vendas" label="Vendas" icon={ShoppingBag} />
           <QuickLink href="/clientes" label="Clientes" />
           <QuickLink href="/contas-receber" label="Contas a receber" />
-          <QuickLink href="/trocas" label="Trocas" />
+          <QuickLink href="/vendas/trocas" label="Trocas" />
           <QuickLink href="/admin/comissoes" label="Comissões" />
           <QuickLink href="/admin/lojas/new" label="Nova loja" />
           <QuickLink href="/admin/colaboradores/new" label="Novo colaborador" />

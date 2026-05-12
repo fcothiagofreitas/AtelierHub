@@ -68,7 +68,7 @@ const navGroups: NavGroup[] = [
       },
       {
         label: "Trocas",
-        href: "/trocas",
+        href: "/vendas/trocas",
         icon: Repeat2,
         roles: ROLES_COM_CLIENTES,
       },
