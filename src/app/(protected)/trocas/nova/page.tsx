@@ -20,7 +20,10 @@ export default async function NovaTrocaPage() {
     id: c.id,
     name: clienteNomeCurto(c),
     creditoTroca: c.creditoTroca.toNumber(),
+    vendaRapidaPadrao: c.vendaRapidaPadrao,
   }));
+
+  const defaultClienteId = clientes.find((c) => c.vendaRapidaPadrao)?.id ?? "";
 
   const vendedorOptions = vendedores.map((v) => ({
     id: v.id,
@@ -40,6 +43,7 @@ export default async function NovaTrocaPage() {
       <TrocaPdv
         storeId={activeStore.id}
         defaultColaboradorId={defaultColaboradorId}
+        defaultClienteId={defaultClienteId}
         clientes={clienteOptions}
         vendedores={vendedorOptions}
       />

@@ -24,7 +24,7 @@ import {
 
 type SelectOption = { id: string; name: string };
 
-type ClienteOption = SelectOption & { creditoTroca: number };
+type ClienteOption = SelectOption & { creditoTroca: number; vendaRapidaPadrao: boolean };
 
 type CartLine = {
   key: string;
@@ -52,19 +52,24 @@ const panelMutedClass =
 export type TrocaPdvProps = {
   storeId: string;
   defaultColaboradorId: string;
+  defaultClienteId?: string;
   clientes: ClienteOption[];
   vendedores: SelectOption[];
 };
 
-export function TrocaPdv({ storeId, defaultColaboradorId, clientes, vendedores }: TrocaPdvProps) {
+export function TrocaPdv({ storeId, defaultColaboradorId, defaultClienteId = "", clientes, vendedores }: TrocaPdvProps) {
   const router = useRouter();
   const [busy, setBusy] = React.useState(false);
 
   // Header fields
-  const [clienteId, setClienteId] = React.useState("");
-  const [clienteQuery, setClienteQuery] = React.useState("");
+  const [clienteId, setClienteId] = React.useState(defaultClienteId);
+  const [clienteQuery, setClienteQuery] = React.useState(
+    () => clientes.find((c) => c.id === defaultClienteId)?.name ?? "",
+  );
   const [clienteListaAberta, setClienteListaAberta] = React.useState(false);
-  const [creditoAcumulado, setCreditoAcumulado] = React.useState(0);
+  const [creditoAcumulado, setCreditoAcumulado] = React.useState(
+    () => clientes.find((c) => c.id === defaultClienteId)?.creditoTroca ?? 0,
+  );
   const clienteCampoRef = React.useRef<HTMLDivElement>(null);
   const [vendedorId, setVendedorId] = React.useState(() =>
     vendedores.some((v) => v.id === defaultColaboradorId)

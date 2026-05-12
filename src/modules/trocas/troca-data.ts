@@ -18,6 +18,7 @@ export async function getTrocaLojaOptions(tenantId: string, storeId: string) {
         fantasia: true,
         razaoSocial: true,
         creditoTroca: true,
+        vendaRapidaPadrao: true,
       },
       orderBy: [{ nome: "asc" }],
       take: 300,
