@@ -92,7 +92,8 @@ model Troca {
   numero   Int
 
   clienteId      String
-  pedidoOrigemId String
+  /// Opcional: pedido de referência (legado); trocas novas usam `TROCA_INDEPENDENTE` sem origem.
+  pedidoOrigemId String?
   tipoFluxo      TrocaTipoFluxo
   estado         TrocaEstado @default(CONCLUIDA)
 
@@ -107,7 +108,7 @@ model Troca {
   tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   store        Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
   cliente      Cliente      @relation(fields: [clienteId], references: [id], onDelete: Restrict)
-  pedidoOrigem Pedido       @relation("TrocaPedidoOrigem", fields: [pedidoOrigemId], references: [id], onDelete: Restrict)
+  pedidoOrigem Pedido?      @relation("TrocaPedidoOrigem", fields: [pedidoOrigemId], references: [id], onDelete: Restrict)
   pedidoNovo   Pedido?      @relation("TrocaPedidoNovo", fields: [pedidoNovoId], references: [id], onDelete: SetNull)
   criadoPor    Colaborador? @relation("TrocaCriador", fields: [criadoPorId], references: [id], onDelete: SetNull)
 
@@ -124,16 +125,21 @@ model Troca {
 model TrocaItem {
   id           String @id @default(cuid())
   trocaId      String
-  pedidoItemId String
+  /// Legado: linha originada num pedido.
+  pedidoItemId String?
+  /// Linha por catálogo (troca independente): obrigatório quando `pedidoItemId` é null.
+  produtoVariacaoId String?
   quantidade   Int
-  /// Preço unitário da linha no pedido (referência para o crédito).
+  /// Snapshot do valor unitário usado no crédito.
   valorUnitario Decimal @db.Decimal(14, 2)
 
-  troca      Troca      @relation(fields: [trocaId], references: [id], onDelete: Cascade)
-  pedidoItem PedidoItem @relation(fields: [pedidoItemId], references: [id], onDelete: Restrict)
+  troca             Troca             @relation(fields: [trocaId], references: [id], onDelete: Cascade)
+  pedidoItem        PedidoItem?       @relation(fields: [pedidoItemId], references: [id], onDelete: Restrict)
+  produtoVariacao   ProdutoVariacao?  @relation(fields: [produtoVariacaoId], references: [id], onDelete: Restrict)
 
   @@index([trocaId])
   @@index([pedidoItemId])
+  @@index([produtoVariacaoId])
 }
 
 enum BalancoEstoqueEstado {
@@ -420,6 +426,7 @@ model ProdutoVariacao {
   movimentosEstoque MovimentoEstoque[]
   pedidoItens       PedidoItem[]
   balancoItens      BalancoEstoqueItem[]
+  trocaItens        TrocaItem[]
 }
 
 enum MovimentoEstoqueTipo {
@@ -449,6 +456,8 @@ enum TrocaEstado {
 enum TrocaTipoFluxo {
   VENDA_QUITADA
   CONSIGNADO_NAO_QUITADO
+  /// Troca por artigos sem vínculo obrigatório ao pedido de origem (crédito direto).
+  TROCA_INDEPENDENTE
 }
 
 /// Saldo agregado por loja e SKU (variação).

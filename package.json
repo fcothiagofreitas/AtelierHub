@@ -17,6 +17,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "db:migrate:health": "node --env-file=.env scripts/prisma-migrations-health.mjs",
+    "db:repair-troca": "prisma db execute --file scripts/sql/ensure-troca-independente.sql",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",

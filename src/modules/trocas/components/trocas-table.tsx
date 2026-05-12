@@ -30,8 +30,6 @@ export function TrocasTable({ rows }: Props) {
             <th className="px-4 py-3 text-left font-medium">Cliente</th>
             <th className="px-4 py-3 text-left font-medium">Tipo</th>
             <th className="px-4 py-3 text-right font-medium">Crédito</th>
-            <th className="px-4 py-3 text-left font-medium">Pedido origem</th>
-            <th className="px-4 py-3 text-left font-medium">Pedido novo</th>
           </tr>
         </thead>
         <tbody className="divide-y">
@@ -45,10 +43,6 @@ export function TrocasTable({ rows }: Props) {
               <td className="px-4 py-3">{trocaTipoFluxoLabel(r.tipoFluxo)}</td>
               <td className="px-4 py-3 text-right tabular-nums font-medium">
                 {money.format(Number(r.valorCredito.toString()))}
-              </td>
-              <td className="px-4 py-3">#{r.pedidoOrigemNumero}</td>
-              <td className="px-4 py-3 text-muted-foreground">
-                {r.pedidoNovoNumero != null ? `#${r.pedidoNovoNumero}` : "—"}
               </td>
             </tr>
           ))}
