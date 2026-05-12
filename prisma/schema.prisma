@@ -41,6 +41,13 @@ enum PedidoEstado {
 enum PedidoModalidade {
   DIRETA
   CONSIGNADA
+  TROCA
+}
+
+enum TrocaEstado {
+  EM_ANDAMENTO
+  CONCLUIDA
+  CANCELADA
 }
 
 /// Agrupamento de pedidos para cobrança (por cliente ou por corretor).
@@ -75,9 +82,67 @@ model Tenant {
   movimentosCorretor MovimentoCorretor[]
   gruposCobranca    GrupoCobranca[]
   lancamentosComissao LancamentoComissao[]
-  balancosEstoque   BalancoEstoque[]
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  balancosEstoque     BalancoEstoque[]
+  trocas              Troca[]
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+}
+
+/// Registo de troca: artigos devolvidos pelo cliente, crédito gerado e pedido de saída opcional.
+model Troca {
+  id       String @id @default(cuid())
+  tenantId String
+  storeId  String
+  numero   Int
+
+  clienteId  String
+  vendedorId String
+
+  estado TrocaEstado @default(EM_ANDAMENTO)
+
+  /// Soma(quantidade × valorUnitário) dos itens devolvidos.
+  creditoGerado       Decimal @default(0) @db.Decimal(14, 2)
+  /// Valor do crédito aplicado no pedido de saída.
+  creditoConsumido    Decimal @default(0) @db.Decimal(14, 2)
+  /// Crédito não consumido transferido para Cliente.creditoTroca.
+  creditoRemanescente Decimal @default(0) @db.Decimal(14, 2)
+
+  observacoes String? @db.Text
+
+  tenant   Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  store    Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  cliente  Cliente     @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  vendedor Colaborador @relation("TrocaVendedor", fields: [vendedorId], references: [id], onDelete: Restrict)
+
+  itens       TrocaItem[]
+  pedidoSaida Pedido?     @relation("TrocaPedidoSaida")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([storeId, numero])
+  @@index([tenantId])
+  @@index([tenantId, storeId])
+  @@index([tenantId, createdAt])
+  @@index([clienteId])
+  @@index([vendedorId])
+}
+
+model TrocaItem {
+  id                String @id @default(cuid())
+  trocaId           String
+  produtoVariacaoId String
+  quantidade        Int
+  /// Valor unitário editável pelo vendedor no momento da devolução.
+  valorUnitario     Decimal @db.Decimal(14, 2)
+
+  troca           Troca           @relation(fields: [trocaId], references: [id], onDelete: Cascade)
+  produtoVariacao ProdutoVariacao @relation(fields: [produtoVariacaoId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@index([trocaId])
+  @@index([produtoVariacaoId])
 }
 
 enum BalancoEstoqueEstado {
@@ -363,6 +428,7 @@ model ProdutoVariacao {
   movimentosEstoque MovimentoEstoque[]
   pedidoItens       PedidoItem[]
   balancoItens      BalancoEstoqueItem[]
+  trocaItens        TrocaItem[]
 }
 
 enum MovimentoEstoqueTipo {
@@ -378,6 +444,8 @@ enum MovimentoEstoqueTipo {
   TRANSFERENCIA_ENTRADA
   /// Ajuste por conferência de recebimento ou inventário (delta pode ser + ou -).
   AJUSTE_CONFERENCIA
+  /// Entrada de artigo devolvido pelo cliente numa troca (delta positivo).
+  TROCA_ENTRADA
 }
 
 /// Saldo agregado por loja e SKU (variação).
@@ -470,11 +538,15 @@ model Pedido {
   entreguePorId String?
   entreguePor   Colaborador? @relation("PedidoEntrega", fields: [entreguePorId], references: [id], onDelete: SetNull)
 
+  /// Referência à troca que originou este pedido de saída (opcional).
+  trocaOrigemId String? @unique
+
   itens               PedidoItem[]
   pagamentos          Pagamento[]
   movimentoCorretor   MovimentoCorretor?
   grupoCobrancaItens  GrupoCobrancaPedido[]
   lancamentosComissao LancamentoComissao[]
+  trocaOrigem         Troca?               @relation("TrocaPedidoSaida", fields: [trocaOrigemId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -645,17 +717,20 @@ model Cliente {
   telefone String?
   email    String?
 
-  creditLimit Decimal? @db.Decimal(14, 2)
-  isBlocked   Boolean  @default(false)
-  isActive    Boolean  @default(true)
+  creditLimit  Decimal? @db.Decimal(14, 2)
+  /// Saldo de crédito acumulado de trocas anteriores disponível para uso.
+  creditoTroca Decimal  @default(0) @db.Decimal(14, 2)
+  isBlocked    Boolean  @default(false)
+  isActive     Boolean  @default(true)
 
   corretorId String?
   corretor   Corretor? @relation(fields: [corretorId], references: [id], onDelete: SetNull)
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   store  Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  pedidos Pedido[]
+  pedidos               Pedido[]
   gruposCobrancaCliente GrupoCobranca[]
+  trocas                Troca[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -681,9 +756,10 @@ model Store {
   pedidos           Pedido[]
   gruposCobranca    GrupoCobranca[]
   lancamentosComissao LancamentoComissao[]
-  balancosEstoque   BalancoEstoque[]
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  balancosEstoque     BalancoEstoque[]
+  trocas              Troca[]
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -714,8 +790,9 @@ model Colaborador {
   pedidosEntregaRegistada Pedido[]  @relation("PedidoEntrega")
   pagamentosRegistrados Pagamento[]
   gruposCobrancaCriados GrupoCobranca[] @relation("GrupoCobrancaCriador")
-  comissoesComoVendedor LancamentoComissao[] @relation("ComissaoVendedor")
-  balancosEstoqueCriados BalancoEstoque[]    @relation("BalancoEstoqueCriador")
+  comissoesComoVendedor  LancamentoComissao[] @relation("ComissaoVendedor")
+  balancosEstoqueCriados BalancoEstoque[]     @relation("BalancoEstoqueCriador")
+  trocasComoVendedor     Troca[]              @relation("TrocaVendedor")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

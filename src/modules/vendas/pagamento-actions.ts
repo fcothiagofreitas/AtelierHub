@@ -60,7 +60,7 @@ export async function registrarPagamento(input: {
           storeId: input.storeId,
           estado: { in: ["EM_ABERTO", "PAGO_PARCIAL"] },
         },
-        select: { id: true, total: true, estado: true },
+        select: { id: true, total: true, estado: true, modalidade: true },
       });
 
       if (!pedido) {
@@ -101,7 +101,9 @@ export async function registrarPagamento(input: {
         where: { id: pedido.id },
         data: {
           estado: novoEstado,
-          ...(novoEstado === "QUITADO" ? { modalidade: "DIRETA" } : {}),
+          ...(novoEstado === "QUITADO" && pedido.modalidade === "CONSIGNADA"
+            ? { modalidade: "DIRETA" }
+            : {}),
         },
       });
       if (novoEstado === "QUITADO") {
@@ -184,7 +186,7 @@ export async function registrarMultiPagamento(input: {
           storeId: input.storeId,
           estado: { in: ["EM_ABERTO", "PAGO_PARCIAL"] },
         },
-        select: { id: true, total: true },
+        select: { id: true, total: true, modalidade: true },
       });
 
       if (!pedido) throw new Error("Pedido não encontrado ou não está em aberto.");
@@ -227,7 +229,9 @@ export async function registrarMultiPagamento(input: {
         where: { id: pedido.id },
         data: {
           estado: novoEstado,
-          ...(novoEstado === "QUITADO" ? { modalidade: "DIRETA" } : {}),
+          ...(novoEstado === "QUITADO" && pedido.modalidade === "CONSIGNADA"
+            ? { modalidade: "DIRETA" }
+            : {}),
         },
       });
       if (novoEstado === "QUITADO") {

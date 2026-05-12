@@ -9,6 +9,7 @@ import {
   LibraryBig,
   Package,
   Percent,
+  RefreshCcw,
   Settings2,
   ShoppingBag,
   UserCircle,
@@ -57,6 +58,12 @@ const navGroups: NavGroup[] = [
         label: "Clientes",
         href: "/clientes",
         icon: UserCircle,
+        roles: ROLES_COM_CLIENTES,
+      },
+      {
+        label: "Trocas",
+        href: "/trocas",
+        icon: RefreshCcw,
         roles: ROLES_COM_CLIENTES,
       },
       {

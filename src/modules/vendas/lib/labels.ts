@@ -11,6 +11,7 @@ export const pedidoEstadoLabels: Record<PedidoEstado, string> = {
 export const pedidoModalidadeLabels: Record<PedidoModalidade, string> = {
   DIRETA: "Direta",
   CONSIGNADA: "Consignada",
+  TROCA: "Troca",
 };
 
 export const formasPagamentoLabels: Record<FormaPagamento, string> = {
