@@ -12,10 +12,3 @@ export const ROLES_ALTERAR_VENDEDOR_PDV: UserRole[] = [
   "ADMIN_DA_MARCA",
   "GERENTE_LOJA",
 ];
-
-/** Prazo de troca (dias) e parâmetros operacionais de troca. */
-export const ROLES_CONFIG_PRAZO_TROCA: UserRole[] = [
-  "ADMIN_DA_MARCA",
-  "ADMINISTRATIVO",
-  "GERENTE_LOJA",
-];

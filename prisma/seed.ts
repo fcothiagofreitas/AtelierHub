@@ -32,12 +32,11 @@ async function main() {
 
   const tenant = await prisma.tenant.upsert({
     where: { slug: "brand-demo" },
-    update: { percentualComissaoVendedorPadrao: 2, prazoTrocaDias: 30 },
+    update: { percentualComissaoVendedorPadrao: 2 },
     create: {
       name: "Marca Demo",
       slug: "brand-demo",
       percentualComissaoVendedorPadrao: 2,
-      prazoTrocaDias: 30,
     },
   });
 
