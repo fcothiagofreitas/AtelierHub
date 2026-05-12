@@ -717,11 +717,13 @@ model Cliente {
   telefone String?
   email    String?
 
-  creditLimit  Decimal? @db.Decimal(14, 2)
+  creditLimit       Decimal? @db.Decimal(14, 2)
   /// Saldo de crédito acumulado de trocas anteriores disponível para uso.
-  creditoTroca Decimal  @default(0) @db.Decimal(14, 2)
-  isBlocked    Boolean  @default(false)
-  isActive     Boolean  @default(true)
+  creditoTroca      Decimal  @default(0) @db.Decimal(14, 2)
+  isBlocked         Boolean  @default(false)
+  isActive          Boolean  @default(true)
+  /// Marca o cliente padrão para venda avulsa (consumidor final). Apenas um por loja.
+  vendaRapidaPadrao Boolean  @default(false)
 
   corretorId String?
   corretor   Corretor? @relation(fields: [corretorId], references: [id], onDelete: SetNull)

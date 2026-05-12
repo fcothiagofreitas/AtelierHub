@@ -57,6 +57,9 @@ export default async function VendasPage({ searchParams }: Props) {
     name: clienteNomeCurto(c),
   }));
 
+  const defaultClienteId =
+    pdvOpts.clientes.find((c) => c.vendaRapidaPadrao)?.id ?? "";
+
   const pedidosListaVm = pedidos.map((p) => ({
     id: p.id,
     numero: p.numero,
@@ -98,6 +101,7 @@ export default async function VendasPage({ searchParams }: Props) {
         <VendasPdv
           storeId={activeStore.id}
           defaultColaboradorId={session.user.colaboradorId}
+          defaultClienteId={defaultClienteId}
           clientes={pdvClientes}
           vendedores={pdvOpts.vendedores}
           corretores={pdvOpts.corretores}

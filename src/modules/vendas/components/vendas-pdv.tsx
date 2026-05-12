@@ -79,6 +79,8 @@ const panelMutedClass =
 export type VendasPdvProps = {
   storeId: string;
   defaultColaboradorId: string;
+  /** ID do cliente pré-selecionado na abertura (venda avulsa padrão). */
+  defaultClienteId?: string;
   clientes: SelectOption[];
   vendedores: SelectOption[];
   corretores: PdvCorretorOption[];
@@ -154,6 +156,7 @@ export function VendasPdv(props: VendasPdvProps) {
 function PdvModalInner({
   storeId,
   defaultColaboradorId,
+  defaultClienteId = "",
   clientes,
   vendedores,
   corretores,
@@ -187,9 +190,11 @@ function PdvModalInner({
   React.useEffect(() => {
     pedidoIdRef.current = pedidoId;
   }, [pedidoId]);
-  const [clienteId, setClienteId] = React.useState("");
+  const [clienteId, setClienteId] = React.useState(defaultClienteId);
   /** Nome mostrado após escolha ou regresso do cadastro de cliente. */
-  const [clienteNomeResolvido, setClienteNomeResolvido] = React.useState("");
+  const [clienteNomeResolvido, setClienteNomeResolvido] = React.useState(
+    () => clientes.find((c) => c.id === defaultClienteId)?.name ?? "",
+  );
   const [extraClientes, setExtraClientes] = React.useState<SelectOption[]>([]);
   const [clienteQuery, setClienteQuery] = React.useState("");
   const [clienteListaAberta, setClienteListaAberta] = React.useState(false);
@@ -275,8 +280,8 @@ function PdvModalInner({
 
   const resetFormState = React.useCallback(() => {
     setPedidoId(null);
-    setClienteId("");
-    setClienteNomeResolvido("");
+    setClienteId(defaultClienteId);
+    setClienteNomeResolvido(clientes.find((c) => c.id === defaultClienteId)?.name ?? "");
     setExtraClientes([]);
     setClienteQuery("");
     setClienteListaAberta(false);
@@ -306,7 +311,7 @@ function PdvModalInner({
     setViewDetalhe(null);
     setViewLoading(false);
     setSavedCartSnapshot("");
-  }, [defaultColaboradorId, vendedores]);
+  }, [clientes, defaultClienteId, defaultColaboradorId, vendedores]);
 
   React.useEffect(() => {
     if (!open) {

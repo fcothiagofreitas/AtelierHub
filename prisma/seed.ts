@@ -85,7 +85,7 @@ async function main() {
   await prisma.pedido.deleteMany({ where: { tenantId: tenant.id } });
   await prisma.balancoEstoqueItem.deleteMany({ where: { balanco: { tenantId: tenant.id } } });
   await prisma.balancoEstoque.deleteMany({ where: { tenantId: tenant.id } });
-  await prisma.cliente.deleteMany({ where: { tenantId: tenant.id } });
+  await prisma.cliente.deleteMany({ where: { tenantId: tenant.id, vendaRapidaPadrao: false } });
 
   await prisma.movimentoEstoque.deleteMany({ where: { tenantId: tenant.id } });
   await prisma.estoqueSaldo.deleteMany({ where: { tenantId: tenant.id } });
@@ -780,7 +780,7 @@ async function main() {
   console.log("   gerente.centro@demo.com  / gerente123    — Gerente Centro");
   console.log("   vendedor@demo.com        / vendedor123   — Vendedor Aldeota");
   console.log("   vendedor.centro@demo.com / vendedor123   — Vendedor Centro");
-  console.log("\n📦  Dados: 3 categorias, 6 clientes, 3 produtos (8+ SKUs), pedidos em ambas as lojas,");
+  console.log("\n📦  Dados: 3 categorias, 5 clientes de teste + 1 Cliente Avulso por loja, 3 produtos (8+ SKUs), pedidos em ambas as lojas,");
   console.log("   grupo de cobrança, comissão exemplo, balanço rascunho, estoque nas 3 lojas.");
 }
 

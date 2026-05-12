@@ -66,9 +66,22 @@ export async function upsertStore(
     if (id) {
       await prisma.store.update({ where: { id }, data: { name, slug, kind, isActive } });
     } else {
-      await prisma.store.create({
+      const novaLoja = await prisma.store.create({
         data: { tenantId: session.user.tenantId, name, slug, kind, isActive },
       });
+      if (kind === "OPERATIONAL") {
+        await prisma.cliente.create({
+          data: {
+            tenantId: session.user.tenantId,
+            storeId: novaLoja.id,
+            tipo: "PF",
+            nome: "Cliente Avulso",
+            isActive: true,
+            isBlocked: false,
+            vendaRapidaPadrao: true,
+          },
+        });
+      }
     }
   } catch {
     dbError = "Erro ao salvar a loja. Tente novamente.";
