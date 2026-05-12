@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/authorization";
 import { getActiveStoreContext } from "@/lib/session";
 import { ROLES_ACESSO_VENDAS } from "@/modules/vendas/lib/roles";
-import { getTrocaLojaOptions } from "@/modules/trocas/troca-data";
+import { getPdvLojaOptions } from "@/modules/vendas/pdv-data";
 import { TrocaPdv } from "@/modules/trocas/components/troca-pdv";
 import { clienteNomeCurto } from "@/modules/vendas/lib/cliente-nome";
 
@@ -11,7 +11,7 @@ export default async function NovaTrocaPage() {
   const { activeStore } = await getActiveStoreContext();
   if (!activeStore) redirect("/dashboard");
 
-  const { clientes, vendedores } = await getTrocaLojaOptions(
+  const { clientes, vendedores } = await getPdvLojaOptions(
     activeStore.tenantId,
     activeStore.id,
   );
@@ -22,6 +22,7 @@ export default async function NovaTrocaPage() {
     creditoTroca: c.creditoTroca.toNumber(),
     vendaRapidaPadrao: c.vendaRapidaPadrao,
   }));
+
 
   const defaultClienteId = clientes.find((c) => c.vendaRapidaPadrao)?.id ?? "";
 

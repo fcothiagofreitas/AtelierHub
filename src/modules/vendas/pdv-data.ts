@@ -18,6 +18,7 @@ export async function getPdvLojaOptions(tenantId: string, storeId: string) {
         nome: true,
         fantasia: true,
         razaoSocial: true,
+        creditoTroca: true,
         vendaRapidaPadrao: true,
       },
       orderBy: [{ nome: "asc" }, { fantasia: "asc" }],
