@@ -1,17 +1,17 @@
-# Deploy para ambiente de staging: branch develop (push) ou deploy manual (branch à escolha).
+# Deploy para ambiente de staging: disparado após CI passar em develop, ou manualmente.
 #
 # Segredos (GitHub → Settings → Secrets → Actions):
 #   VPS_HOST, VPS_USER, VPS_SSH_KEY, VPS_PORT  — acesso SSH à VPS
 # Opcional:
 #   VPS_PROJECT_DIR_STAGING — caminho do clone na VPS (default: /var/www/atelierhub)
-#
-# Na VPS: clone desse directório, .env de staging, docker compose + Postgres, PM2.
 
 name: Deploy staging
 
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
     branches: [develop]
+    types: [completed]
   workflow_dispatch:
     inputs:
       branch:
@@ -32,6 +32,7 @@ jobs:
     name: Deploy staging (SSH)
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
 
     steps:
       - name: Checkout code
@@ -47,7 +48,11 @@ jobs:
           command_timeout: 20m
           script: |
             set -e
-            DEPLOY_BRANCH="${{ github.event_name == 'workflow_dispatch' && github.event.inputs.branch || github.ref_name }}"
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+              DEPLOY_BRANCH="${{ github.event.inputs.branch }}"
+            else
+              DEPLOY_BRANCH="${{ github.event.workflow_run.head_branch }}"
+            fi
             PROJECT_DIR="${{ secrets.VPS_PROJECT_DIR_STAGING }}"
             PROJECT_DIR="${PROJECT_DIR:-/var/www/atelierhub}"
             echo "==> Branch: $DEPLOY_BRANCH | Dir: $PROJECT_DIR"
