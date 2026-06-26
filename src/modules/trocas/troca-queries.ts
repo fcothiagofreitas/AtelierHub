@@ -6,6 +6,10 @@ import { assertStoreInSession } from "@/modules/estoque/estoque-auth";
 import { ROLES_ACESSO_VENDAS } from "@/modules/vendas/lib/roles";
 import { clienteNomeCurto } from "@/modules/vendas/lib/cliente-nome";
 import type { TrocaEstado } from "@prisma/client";
+import {
+  createdAtWhereFromTrocasParams,
+  type TrocasSearchParams,
+} from "./lib/date-range";
 
 export type TrocaListRow = {
   id: string;
@@ -20,9 +24,18 @@ export type TrocaListRow = {
   createdAt: string;
 };
 
+const TROCA_ESTADOS: TrocaEstado[] = ["EM_ANDAMENTO", "CONCLUIDA", "CANCELADA"];
+
+function isTrocaEstado(s: string): s is TrocaEstado {
+  return TROCA_ESTADOS.includes(s as TrocaEstado);
+}
+
 export async function listarTrocas(input: {
   storeId: string;
+  filters?: TrocasSearchParams;
+  /** @deprecated use filters.estado */
   estado?: TrocaEstado;
+  /** @deprecated use filters.clienteId */
   clienteId?: string;
   skip?: number;
   take?: number;
@@ -35,15 +48,49 @@ export async function listarTrocas(input: {
     return { error: e instanceof Error ? e.message : "Sem permissão." };
   }
 
+  const filters = input.filters ?? {};
+
+  const estadoParam = filters.estado ?? input.estado;
+  const clienteIdParam = filters.clienteId ?? input.clienteId;
+  const vendedorIdParam = filters.vendedorId;
+  const busca = filters.busca;
+
+  const dateWhere = createdAtWhereFromTrocasParams(filters);
+
+  const estadoWhere =
+    estadoParam && isTrocaEstado(estadoParam) ? estadoParam : undefined;
+
+  let buscaWhere = {};
+  if (busca) {
+    const isNumeric = /^\d+$/.test(busca);
+    if (isNumeric) {
+      const num = parseInt(busca, 10);
+      buscaWhere = { numero: num };
+    } else {
+      buscaWhere = {
+        cliente: {
+          OR: [
+            { nome: { contains: busca, mode: "insensitive" as const } },
+            { fantasia: { contains: busca, mode: "insensitive" as const } },
+            { razaoSocial: { contains: busca, mode: "insensitive" as const } },
+          ],
+        },
+      };
+    }
+  }
+
   const where = {
     tenantId,
     storeId: input.storeId,
-    ...(input.estado ? { estado: input.estado } : {}),
-    ...(input.clienteId ? { clienteId: input.clienteId } : {}),
+    ...(estadoWhere ? { estado: estadoWhere } : {}),
+    ...(clienteIdParam ? { clienteId: clienteIdParam } : {}),
+    ...(vendedorIdParam ? { vendedorId: vendedorIdParam } : {}),
+    ...(dateWhere ? { createdAt: dateWhere } : {}),
+    ...buscaWhere,
   };
 
   const skip = Math.max(0, input.skip ?? 0);
-  const take = Math.min(100, Math.max(10, input.take ?? 20));
+  const take = Math.min(200, Math.max(10, input.take ?? 40));
 
   const [rows, total] = await Promise.all([
     prisma.troca.findMany({
@@ -77,15 +124,18 @@ export async function listarTrocas(input: {
   };
 }
 
+type TrocaDetalheItem = {
+  id: string;
+  produtoVariacaoId: string;
+  label: string;
+  quantidade: number;
+  valorUnitario: number;
+  subtotal: number;
+};
+
 export type TrocaDetalhe = TrocaListRow & {
-  itensDevolvidos: {
-    id: string;
-    produtoVariacaoId: string;
-    label: string;
-    quantidade: number;
-    valorUnitario: number;
-    subtotal: number;
-  }[];
+  itensDevolvidos: TrocaDetalheItem[];
+  itensNovos: TrocaDetalheItem[];
   observacoes: string | null;
 };
 
@@ -106,7 +156,19 @@ export async function getTrocaDetalhe(input: {
     include: {
       cliente: { select: { tipo: true, nome: true, fantasia: true, razaoSocial: true } },
       vendedor: { select: { name: true } },
-      pedidoSaida: { select: { id: true } },
+      pedidoSaida: {
+        select: {
+          id: true,
+          itens: {
+            include: {
+              produtoVariacao: {
+                select: { id: true, nome: true, produto: { select: { nome: true } } },
+              },
+            },
+            orderBy: { createdAt: "asc" as const },
+          },
+        },
+      },
       itens: {
         include: {
           produtoVariacao: {
@@ -141,6 +203,14 @@ export async function getTrocaDetalhe(input: {
         quantidade: it.quantidade,
         valorUnitario: it.valorUnitario.toNumber(),
         subtotal: it.valorUnitario.toNumber() * it.quantidade,
+      })),
+      itensNovos: (troca.pedidoSaida?.itens ?? []).map((it) => ({
+        id: it.id,
+        produtoVariacaoId: it.produtoVariacaoId,
+        label: `${it.produtoVariacao.produto.nome} — ${it.produtoVariacao.nome}`,
+        quantidade: it.quantidade,
+        valorUnitario: it.precoUnitario.toNumber(),
+        subtotal: it.precoUnitario.toNumber() * it.quantidade,
       })),
     },
   };
