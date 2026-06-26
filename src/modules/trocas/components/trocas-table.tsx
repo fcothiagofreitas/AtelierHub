@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { TrocaEstado } from "@prisma/client";
 import { TrocaEstadoBadge } from "@/modules/trocas/components/troca-estado-badge";
 import { formatDateBr } from "@/lib/format-date-br";
@@ -25,16 +25,18 @@ type Props = {
 };
 
 export function TrocasTable({ trocas }: Props) {
+  const router = useRouter();
+
   if (trocas.length === 0) {
     return (
-      <p className="rounded-xl border border-dashed py-16 text-center text-sm text-muted-foreground">
-        Nenhuma troca encontrada.
+      <p className="p-8 text-center text-sm text-muted-foreground">
+        Nenhuma troca encontrada com os filtros atuais.
       </p>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-border">
+    <div className="overflow-x-auto">
       <table className="w-full min-w-[640px] text-sm">
         <thead className="border-b bg-muted/40 text-left text-[11px] text-muted-foreground uppercase">
           <tr>
@@ -44,21 +46,18 @@ export function TrocasTable({ trocas }: Props) {
             <th className="px-3 py-2.5 font-medium">Cliente</th>
             <th className="px-3 py-2.5 font-medium">Vendedor</th>
             <th className="px-3 py-2.5 text-right font-medium">Crédito gerado</th>
-            <th className="px-3 py-2.5 text-right font-medium">Consumido</th>
             <th className="px-3 py-2.5 text-right font-medium">Remanescente</th>
-            <th className="px-3 py-2.5 font-medium">Pedido</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border bg-card">
           {trocas.map((t) => (
-            <tr key={t.id} className="hover:bg-muted/30 transition-colors">
-              <td className="px-3 py-2.5">
-                <Link
-                  href={`/trocas/${t.id}`}
-                  className="font-medium tabular-nums text-primary hover:underline"
-                >
-                  #{t.numero}
-                </Link>
+            <tr
+              key={t.id}
+              className="cursor-pointer hover:bg-muted/30 transition-colors"
+              onClick={() => router.push(`/trocas?pdv=1&view=${t.id}`)}
+            >
+              <td className="px-3 py-2.5 font-medium tabular-nums text-primary">
+                #{t.numero}
               </td>
               <td className="px-3 py-2.5 text-muted-foreground">
                 {formatDateBr(t.createdAt)}
@@ -71,23 +70,8 @@ export function TrocasTable({ trocas }: Props) {
               <td className="px-3 py-2.5 text-right tabular-nums text-emerald-600 font-medium">
                 {BRL.format(t.creditoGerado)}
               </td>
-              <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground">
-                {BRL.format(t.creditoConsumido)}
-              </td>
               <td className="px-3 py-2.5 text-right tabular-nums text-sky-600">
                 {t.creditoRemanescente > 0.004 ? BRL.format(t.creditoRemanescente) : "—"}
-              </td>
-              <td className="px-3 py-2.5">
-                {t.pedidoSaidaId ? (
-                  <Link
-                    href={`/vendas?view=${t.pedidoSaidaId}`}
-                    className="text-xs text-primary hover:underline"
-                  >
-                    Ver pedido
-                  </Link>
-                ) : (
-                  <span className="text-xs text-muted-foreground">—</span>
-                )}
               </td>
             </tr>
           ))}
