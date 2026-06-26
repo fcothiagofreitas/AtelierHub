@@ -41,7 +41,6 @@ export function ClienteFormPf({
 
   const [nome, setNome] = useState(() => cliente?.nome ?? "");
   const [cpfDigits, setCpfDigits] = useState(() => digitsOnly(cliente?.cpf ?? "", 11));
-  const [cpfLookupStatus, setCpfLookupStatus] = useState<"idle" | "loading" | "found" | "not_found">("idle");
   const lastLookedUpCpf = useRef("");
   const [aniversario, setAniversario] = useState(() => dateToInput(cliente?.aniversario ?? null));
   const [endereco, setEndereco] = useState(() => cliente?.endereco ?? "");
@@ -54,28 +53,14 @@ export function ClienteFormPf({
   const [isBlocked, setIsBlocked] = useState(() => cliente?.isBlocked ?? false);
 
   useEffect(() => {
-    console.log("[cpf-form] cpfDigits:", cpfDigits, "length:", cpfDigits.length);
-    if (cpfDigits.length !== 11) {
-      if (cpfLookupStatus !== "idle") setCpfLookupStatus("idle");
-      return;
-    }
+    if (cpfDigits.length !== 11) return;
     if (cpfDigits === lastLookedUpCpf.current) return;
     lastLookedUpCpf.current = cpfDigits;
 
-    console.log("[cpf-form] chamando buscarNomePorCpf...");
-    setCpfLookupStatus("loading");
     buscarNomePorCpf(cpfDigits).then((result) => {
-      console.log("[cpf-form] resultado:", result);
-      if ("error" in result) {
-        setCpfLookupStatus(result.notFound ? "not_found" : "idle");
-        return;
-      }
-      setCpfLookupStatus("found");
-      if (!nome.trim()) setNome(toTitleCase(result.nome));
-    }).catch((err) => {
-      console.error("[cpf-form] erro ao chamar server action:", err);
-      setCpfLookupStatus("idle");
-    });
+      if ("error" in result) return;
+      setNome((prev) => prev.trim() ? prev : toTitleCase(result.nome));
+    }).catch(() => {});
   }, [cpfDigits]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const creditReais =
