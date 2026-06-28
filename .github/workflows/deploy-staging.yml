@@ -81,6 +81,12 @@ jobs:
             echo "==> Installing dependencies..."
             npm ci
 
+            echo "==> Escrevendo .env.local..."
+            cat > "$PROJECT_DIR/.env.local" <<'ENVEOF'
+ASAAS_API_KEY=${{ secrets.ASAAS_API_KEY }}
+ASAAS_API_URL=${{ secrets.ASAAS_API_URL }}
+ENVEOF
+
             echo "==> Prisma migrate + generate..."
             npx prisma migrate resolve --applied "20260512120000_trocas" 2>/dev/null || true
             npx prisma migrate resolve --rolled-back "20260627000000_trocas_repair" 2>/dev/null || true
