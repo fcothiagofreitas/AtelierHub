@@ -1,5 +1,5 @@
--- Repair migration: garante que tudo da migration 20260512120000_trocas está aplicado,
--- independentemente do estado parcial que ficou no banco de staging após a falha.
+-- Repair migration: garante o schema final correto independente do estado parcial
+-- que ficou no banco de staging após a falha de 20260512120000_trocas.
 
 DO $$ BEGIN
   CREATE TYPE "TrocaEstado" AS ENUM ('EM_ANDAMENTO', 'CONCLUIDA', 'CANCELADA');
@@ -14,6 +14,7 @@ ALTER TABLE "Pedido"
   ADD COLUMN IF NOT EXISTS "observacoes" TEXT,
   ADD COLUMN IF NOT EXISTS "trocaOrigemId" TEXT;
 
+-- Cria Troca se não existir; se já existir (parcialmente), os ALTER abaixo complementam.
 CREATE TABLE IF NOT EXISTS "Troca" (
     "id" TEXT NOT NULL,
     "tenantId" TEXT NOT NULL,
@@ -31,6 +32,27 @@ CREATE TABLE IF NOT EXISTS "Troca" (
     CONSTRAINT "Troca_pkey" PRIMARY KEY ("id")
 );
 
+-- Adiciona colunas que podem estar faltando da migração parcial.
+-- DEFAULT temporário é exigido pelo Postgres para colunas NOT NULL em tabelas existentes;
+-- DROP DEFAULT remove o default depois para manter o schema correto.
+ALTER TABLE "Troca" ADD COLUMN IF NOT EXISTS "numero" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "Troca" ALTER COLUMN "numero" DROP DEFAULT;
+
+ALTER TABLE "Troca" ADD COLUMN IF NOT EXISTS "clienteId" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "Troca" ALTER COLUMN "clienteId" DROP DEFAULT;
+
+ALTER TABLE "Troca" ADD COLUMN IF NOT EXISTS "vendedorId" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "Troca" ALTER COLUMN "vendedorId" DROP DEFAULT;
+
+ALTER TABLE "Troca" ADD COLUMN IF NOT EXISTS "estado" "TrocaEstado" NOT NULL DEFAULT 'EM_ANDAMENTO';
+ALTER TABLE "Troca" ADD COLUMN IF NOT EXISTS "creditoGerado" DECIMAL(14,2) NOT NULL DEFAULT 0;
+ALTER TABLE "Troca" ADD COLUMN IF NOT EXISTS "creditoConsumido" DECIMAL(14,2) NOT NULL DEFAULT 0;
+ALTER TABLE "Troca" ADD COLUMN IF NOT EXISTS "creditoRemanescente" DECIMAL(14,2) NOT NULL DEFAULT 0;
+ALTER TABLE "Troca" ADD COLUMN IF NOT EXISTS "observacoes" TEXT;
+
+ALTER TABLE "Troca" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "Troca" ALTER COLUMN "updatedAt" DROP DEFAULT;
+
 CREATE TABLE IF NOT EXISTS "TrocaItem" (
     "id" TEXT NOT NULL,
     "trocaId" TEXT NOT NULL,
@@ -40,6 +62,18 @@ CREATE TABLE IF NOT EXISTS "TrocaItem" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "TrocaItem_pkey" PRIMARY KEY ("id")
 );
+
+ALTER TABLE "TrocaItem" ADD COLUMN IF NOT EXISTS "trocaId" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "TrocaItem" ALTER COLUMN "trocaId" DROP DEFAULT;
+
+ALTER TABLE "TrocaItem" ADD COLUMN IF NOT EXISTS "produtoVariacaoId" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "TrocaItem" ALTER COLUMN "produtoVariacaoId" DROP DEFAULT;
+
+ALTER TABLE "TrocaItem" ADD COLUMN IF NOT EXISTS "quantidade" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "TrocaItem" ALTER COLUMN "quantidade" DROP DEFAULT;
+
+ALTER TABLE "TrocaItem" ADD COLUMN IF NOT EXISTS "valorUnitario" DECIMAL(14,2) NOT NULL DEFAULT 0;
+ALTER TABLE "TrocaItem" ALTER COLUMN "valorUnitario" DROP DEFAULT;
 
 CREATE INDEX IF NOT EXISTS "Troca_tenantId_idx" ON "Troca"("tenantId");
 CREATE INDEX IF NOT EXISTS "Troca_tenantId_storeId_idx" ON "Troca"("tenantId", "storeId");
