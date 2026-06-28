@@ -1,14 +1,11 @@
--- CreateEnum (idempotente: ignora se já existe)
-DO $$ BEGIN
-  CREATE TYPE "TrocaEstado" AS ENUM ('EM_ANDAMENTO', 'CONCLUIDA', 'CANCELADA');
-EXCEPTION WHEN duplicate_object THEN null;
-END $$;
+-- CreateEnum
+CREATE TYPE "TrocaEstado" AS ENUM ('EM_ANDAMENTO', 'CONCLUIDA', 'CANCELADA');
 
--- AlterEnum (idempotente)
-ALTER TYPE "MovimentoEstoqueTipo" ADD VALUE IF NOT EXISTS 'TROCA_ENTRADA';
+-- AlterEnum
+ALTER TYPE "MovimentoEstoqueTipo" ADD VALUE 'TROCA_ENTRADA';
 
--- AlterEnum (idempotente)
-ALTER TYPE "PedidoModalidade" ADD VALUE IF NOT EXISTS 'TROCA';
+-- AlterEnum
+ALTER TYPE "PedidoModalidade" ADD VALUE 'TROCA';
 
 -- AlterTable
 ALTER TABLE "Cliente" ADD COLUMN     "creditoTroca" DECIMAL(14,2) NOT NULL DEFAULT 0;

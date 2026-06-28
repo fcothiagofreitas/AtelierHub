@@ -82,6 +82,7 @@ jobs:
             npm ci
 
             echo "==> Prisma migrate + generate..."
+            npx prisma migrate resolve --applied "20260512120000_trocas" 2>/dev/null || true
             npx prisma migrate deploy
 
             echo "==> Build Next.js..."
