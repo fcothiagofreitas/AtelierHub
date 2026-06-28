@@ -75,10 +75,8 @@ jobs:
             npm ci
 
             echo "==> Escrevendo .env.local..."
-            cat > "$PROJECT_DIR/.env.local" <<'ENVEOF'
-ASAAS_API_KEY=${{ secrets.ASAAS_API_KEY }}
-ASAAS_API_URL=${{ secrets.ASAAS_API_URL }}
-ENVEOF
+            echo 'ASAAS_API_KEY=${{ secrets.ASAAS_API_KEY }}' > "$PROJECT_DIR/.env.local"
+            echo 'ASAAS_API_URL=${{ secrets.ASAAS_API_URL }}' >> "$PROJECT_DIR/.env.local"
 
             echo "==> Prisma migrate + generate..."
             npx prisma migrate deploy
