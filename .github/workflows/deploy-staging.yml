@@ -83,6 +83,7 @@ jobs:
 
             echo "==> Prisma migrate + generate..."
             npx prisma migrate resolve --applied "20260512120000_trocas" 2>/dev/null || true
+            npx prisma migrate resolve --rolled-back "20260627000000_trocas_repair" 2>/dev/null || true
             npx prisma migrate deploy
 
             echo "==> Build Next.js..."
