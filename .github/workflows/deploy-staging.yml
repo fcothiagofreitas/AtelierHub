@@ -82,8 +82,8 @@ jobs:
             npm ci
 
             echo "==> Escrevendo .env.local..."
-            echo 'ASAAS_API_KEY=${{ secrets.ASAAS_API_KEY }}' > "$PROJECT_DIR/.env.local"
-            echo 'ASAAS_API_URL=${{ secrets.ASAAS_API_URL }}' >> "$PROJECT_DIR/.env.local"
+            printf 'ASAAS_API_KEY=\\%s\n' '${{ secrets.ASAAS_API_KEY }}' > "$PROJECT_DIR/.env.local"
+            printf 'ASAAS_API_URL=%s\n' '${{ secrets.ASAAS_API_URL }}' >> "$PROJECT_DIR/.env.local"
 
             echo "==> Prisma migrate + generate..."
             npx prisma migrate resolve --applied "20260512120000_trocas" 2>/dev/null || true
